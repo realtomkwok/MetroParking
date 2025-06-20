@@ -6,56 +6,107 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-
-    var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
-        }
-    }
+	@State private var isLoading = false
+	@State private var facilities: [FacilityID: FacilityName] = [:]
+	@State private var errorMessage: String?
+	
+	var body: some View {
+		NavigationView {
+			VStack {
+					// Test button
+				Button(action: fetchFacilities) {
+					HStack {
+						if isLoading {
+							ProgressView()
+								.scaleEffect(0.8)
+						}
+						Text(isLoading ? "Loading..." : "Load Facilities")
+					}
+					.foregroundColor(.white)
+					.padding()
+					.background(Color.blue)
+					.cornerRadius(10)
+				}
+				.disabled(isLoading)
+				.padding()
+				
+					// Error message
+				if let error = errorMessage {
+					Text("Error: \(error)")
+						.foregroundColor(.red)
+						.padding()
+				}
+				
+					// Simple list showing dictionary data
+				if !facilities.isEmpty {
+					Text("Found \(facilities.count) facilities:")
+						.font(.headline)
+						.padding()
+					
+					List(facilities.sorted(by: { $0.key < $1.key }), id: \.key) { facilityId, facilityName in
+						VStack(alignment: .leading) {
+							Text(facilityName)
+								.font(.headline)
+								.foregroundColor(facilityName.contains("Cherrybrook") ? .green : .primary)
+							Text("ID: \(facilityId)")
+								.font(.caption)
+								.foregroundColor(.secondary)
+						}
+						.padding(.vertical, 2)
+					}
+				} else if !isLoading {
+					Text("Tap the button to load facilities")
+						.foregroundColor(.secondary)
+						.padding()
+					
+					Spacer()
+				}
+			}
+			.navigationTitle("Facilities Test")
+		}
+	}
+	
+	private func fetchFacilities() {
+		Task {
+			isLoading = true
+			errorMessage = nil
+			
+			do {
+				print("🔍 Testing API configuration...")
+				Configuration.printConfiguration()
+				
+				print("🌐 Calling API...")
+				let result = try await ParkingAPIService.shared.fetchAllFacilities()
+				
+				await MainActor.run {
+					self.facilities = result
+					print("✅ Success! Got \(result.count) facilities")
+					
+						// Show first few in console
+					for (id, name) in result.prefix(3) {
+						print("- \(id): \(name)")
+					}
+					
+						// Look for Cherrybrook
+					if let cherrybrookEntry = result.first(where: { $0.value.contains("Cherrybrook") }) {
+						print("🌳 Found Cherrybrook: ID \(cherrybrookEntry.key) = \(cherrybrookEntry.value)")
+					}
+				}
+				
+			} catch {
+				await MainActor.run {
+					self.errorMessage = error.localizedDescription
+					print("❌ Error: \(error)")
+				}
+			}
+			
+			isLoading = false
+		}
+	}
 }
 
 #Preview {
-    ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+	ContentView()
 }

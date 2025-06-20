@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		182A3C0C2E03BB9000E64A38 /* Config.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 182A3C0B2E03BB9000E64A38 /* Config.xcconfig */; };
+		182A3C0E2E03BC3500E64A38 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 182A3C0D2E03BC3100E64A38 /* .gitignore */; };
+		182A3C122E03C14100E64A38 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182A3C112E03C13F00E64A38 /* Configuration.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		184037062DD9F82F009D7FBA /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,14 +30,30 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		182A3C0B2E03BB9000E64A38 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		182A3C0D2E03BC3100E64A38 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		182A3C112E03C13F00E64A38 /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
 		184036F62DD9F82D009D7FBA /* MetroParking.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MetroParking.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		184037052DD9F82F009D7FBA /* MetroParkingTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MetroParkingTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1840370F2DD9F82F009D7FBA /* MetroParkingUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MetroParkingUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		182A3C1D2E04016F00E64A38 /* Exceptions for "MetroParking" folder in "MetroParking" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 184036F52DD9F82D009D7FBA /* MetroParking */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		184036F82DD9F82D009D7FBA /* MetroParking */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				182A3C1D2E04016F00E64A38 /* Exceptions for "MetroParking" folder in "MetroParking" target */,
+			);
 			path = MetroParking;
 			sourceTree = "<group>";
 		};
@@ -75,6 +97,9 @@
 		184036ED2DD9F82D009D7FBA = {
 			isa = PBXGroup;
 			children = (
+				182A3C112E03C13F00E64A38 /* Configuration.swift */,
+				182A3C0D2E03BC3100E64A38 /* .gitignore */,
+				182A3C0B2E03BB9000E64A38 /* Config.xcconfig */,
 				184036F82DD9F82D009D7FBA /* MetroParking */,
 				184037082DD9F82F009D7FBA /* MetroParkingTests */,
 				184037122DD9F82F009D7FBA /* MetroParkingUITests */,
@@ -212,6 +237,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				182A3C0C2E03BB9000E64A38 /* Config.xcconfig in Resources */,
+				182A3C0E2E03BC3500E64A38 /* .gitignore in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -236,6 +263,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				182A3C122E03C14100E64A38 /* Configuration.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -274,6 +302,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CAR_PARK_API_BASE_URL = "https://api.transport.nsw.gov.au/v1";
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -322,6 +351,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_KEY_WKExtensionDelegateClassName = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
@@ -330,6 +360,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				TFNSW_API_KEY = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJKb29wclQzMDFZTkg1Nm5jMkNhSGhwak91aDZLZ0hoWm5xZk90MFBhSlNJIiwiaWF0IjoxNzUwMjUyODA3fQ.dj69CrwJElcDtSQ2kfT8I6i-3v1hNm-Lg4rlxnnuocM";
 			};
 			name = Debug;
 		};
@@ -338,6 +369,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CAR_PARK_API_BASE_URL = "https://api.transport.nsw.gov.au/v1";
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -380,12 +412,14 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_KEY_WKExtensionDelegateClassName = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				TFNSW_API_KEY = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJKb29wclQzMDFZTkg1Nm5jMkNhSGhwak91aDZLZ0hoWm5xZk90MFBhSlNJIiwiaWF0IjoxNzUwMjUyODA3fQ.dj69CrwJElcDtSQ2kfT8I6i-3v1hNm-Lg4rlxnnuocM";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -400,11 +434,13 @@
 				DEVELOPMENT_TEAM = 3M6C8L4M5D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MetroParking/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_WKExtensionDelegateClassName = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -428,11 +464,13 @@
 				DEVELOPMENT_TEAM = 3M6C8L4M5D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MetroParking/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_WKExtensionDelegateClassName = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

@@ -1,0 +1,9 @@
+//
+//  .gitignore
+//  MetroParking
+//
+//  Created by Tom Kwok on 19/6/2025.
+//
+
+*.xcconfig
+Info.plist

@@ -52,7 +52,6 @@ class ParkingAPIService {
 		}
 	}
 
-	
 	// API METHODS
 	// Fatch all the facilities and return
 	func fetchAllFacilities() async throws -> [FacilityID: FacilityName] {
@@ -81,7 +80,14 @@ class ParkingAPIService {
 			let facilities = try JSONDecoder().decode([FacilityID: FacilityName].self, from: data)
 			print("Successfully decoded \(facilities.count) facilities")
 			
-			return facilities
+			// Exclude historical data
+			return facilities.filter { (_, name) in
+				let isHistorical = name.lowercased().contains("historical only")
+				
+				return !isHistorical
+			}
+			
+			
 		} catch let decodingError as DecodingError {
 			throw APIError.decodingError(decodingError)
 		} catch {

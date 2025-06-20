@@ -5,6 +5,8 @@
 //  Created by Tom Kwok on 19/6/2025.
 //
 
+import SwiftUI
+
 struct ParkingAPIResponse: Codable {
 	let tsn: String
 	let spots: String
@@ -61,5 +63,52 @@ struct ParkingOccupancyAPI: Codable {
 		case loop, total, monthlies
 		case openGate = "open_gate"
 		case transients
+	}
+}
+
+// Statuses of availability are based on TfNSW recommendation
+// Full: availableSpots < 1
+// Almost full: availableSpots < 10% of total
+
+enum AvailabilityStatus {
+	case available, almostFull, full
+	
+	var color: Color {
+		switch self {
+			case .available: return .green
+			case .almostFull: return .yellow
+			case .full: return .red
+		}
+	}
+	
+	var text: String {
+		switch self {
+			case .available: return "Available"
+			case .almostFull: return "Almost Full"
+			case .full: return "Full"
+		}
+	}
+}
+
+extension ParkingAPIResponse {
+	var availableSpots: Int {
+		guard let totalSpots = Int(spots),
+			  let occupiedSpots = Int(occupancy.total ?? "0") else {
+			return 0
+		}
+		return max(0, totalSpots - occupiedSpots) 	// Avoid negative value
+	}
+	
+	var availabilityStatus: AvailabilityStatus {
+		let available = availableSpots
+		let total = Int(spots) ?? 0
+		
+		if available <= 0 {
+			return .full
+		} else if available < total / 10 {
+			return .almostFull
+		} else {
+			return .available
+		}
 	}
 }

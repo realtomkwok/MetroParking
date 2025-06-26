@@ -10,6 +10,28 @@ import Foundation
 typealias FacilityID = String
 typealias FacilityName = String
 
+struct APIErrorResponse: Codable {
+	let errorDetails: ErrorDetails?
+	
+	var message: String {
+		return errorDetails?.message ?? "Unknown API error"
+	}
+	
+	enum CodingKeys: String, CodingKey {
+		case errorDetails = "ErrorDetails"
+	}
+}
+
+struct ErrorDetails: Codable {
+	let message: String
+	let code: String?
+	
+	enum CodingKeys: String, CodingKey {
+		case message = "Message"
+		case code = "Code"
+	}
+}
+
 enum APIError: Error, LocalizedError {
 	case invalidURL
 	case noData
@@ -104,22 +126,51 @@ class ParkingAPIService {
 		req.setValue("application/json", forHTTPHeaderField: "accept")
 		req.setValue("apikey \(apiKey)", forHTTPHeaderField: "Authorization")
 		
-		print ("Fetching facility \(id) from: \(url)")
+		print("Fetching facility \(id) from: \(url)")
 		
 		do {
-			let (data, _) = try await URLSession.shared.data(for: req)
+			let (data, response) = try await URLSession.shared.data(for: req)
 			
+				// Check HTTP status
+			if let httpResponse = response as? HTTPURLResponse {
+				if httpResponse.statusCode == 429 {
+					print("⚠️ Rate limited for facility \(id)")
+					throw APIError.networkError(NSError(domain: "RateLimit", code: 429, userInfo: [NSLocalizedDescriptionKey: "Rate limit exceeded"]))
+				} else if httpResponse.statusCode != 200 {
+					print("⚠️ HTTP \(httpResponse.statusCode) for facility \(id)")
+				}
+			}
+			
+				// Check for specific error response (only if it contains "ErrorDetails")
+			if let jsonString = String(data: data, encoding: .utf8),
+				jsonString.contains("ErrorDetails") {
+				print("❌ API error response for facility \(id)")
+				throw APIError.noData
+			}
+			
+				// Strategy 1: Try single object (most common)
 			do {
 				let facility = try JSONDecoder().decode(ParkingAPIResponse.self, from: data)
+				print("✅ Facility \(id) decoded as single object")
 				return facility
 			} catch {
-				let facilities = try JSONDecoder().decode([ParkingAPIResponse].self, from: data)
-				guard let facility = facilities.first else {
-					throw APIError.noData
-				}
-				
-				return facility
+				print("⚠️ Single object decode failed for \(id), trying dictionary...")
 			}
+			
+				// Strategy 2: Try dictionary format
+			do {
+				let facilitiesDict = try JSONDecoder().decode([FacilityID: ParkingAPIResponse].self, from: data)
+				if let facility = facilitiesDict[id] ?? facilitiesDict.values.first {
+					print("✅ Facility \(id) decoded from dictionary")
+					return facility
+				}
+			} catch {
+				print("⚠️ Dictionary decode failed for \(id)")
+			}
+			
+			print("❌ All decode strategies failed for facility \(id)")
+			throw APIError.noData
+			
 		} catch {
 			throw APIError.networkError(error)
 		}

@@ -73,18 +73,32 @@ struct ContentView: View {
 				hasInitialised = true
 				await initialisedApp()
 			}
+			.onDisappear {
+				refreshManager.stopAutoRefresh()
+			}
 	}
 	
 	private func initialisedApp() async {
 		/// Connect the data manager to SwiftData
 		dataManager.setModelContext(modelContext)
+		/// Connect the refresh manager to SwiftData
+		refreshManager.setModelContext(modelContext)
+		
 		/// Load static facilities
 		await dataManager.loadStaticFacilitiesIfNeeded()
+		
+		/// Startl loading occupancy data
+		await refreshManager.performInitialOccupancyLoad()
+		
+		refreshManager.startAutoRefresh()
 	}
 }
 
 struct ForegroundView: View {
 	@State private var selectedScreen: ScreenView = .pinned
+	
+	/// Refresh manager
+	@ObservedObject private var refreshManager = FacilityRefreshManager.shared
 	
 	/// SwiftData Queries
 	@Query private var allFacilities: [ParkingFacility]
@@ -154,7 +168,9 @@ struct ForegroundView: View {
 				Button {
 					//TODO: Refresh
 
-					/*@START_MENU_TOKEN@*//*@PLACEHOLDER=Action@*/ /*@END_MENU_TOKEN@*/
+					Task {
+						await refreshManager.performInitialOccupancyLoad()
+					}
 				} label: {
 					ZStack() {
 						Label("Refresh", systemImage: "arrow.clockwise")
@@ -163,8 +179,9 @@ struct ForegroundView: View {
 					.frame(minWidth: 20, minHeight: 20)
 
 				}
-				.buttonStyle(.bordered)
 				.buttonBorderShape(.circle)
+				.buttonStyle(.bordered)
+				.controlSize(.regular)
 				
 				Button {
 					// TODO: Show menu for more info
@@ -177,8 +194,9 @@ struct ForegroundView: View {
 					}
 					.frame(minWidth: 20, minHeight: 20)
 				}
-				.buttonStyle(.bordered)
 				.buttonBorderShape(.circle)
+				.buttonStyle(.bordered)
+				.controlSize(.regular)
 				// To align with other components
 				.offset(x: 4)
 			}

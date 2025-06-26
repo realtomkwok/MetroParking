@@ -112,3 +112,19 @@ extension ParkingAPIResponse {
 		}
 	}
 }
+
+extension ParkingAPIResponse {
+	var staticInfo: StaticFacilityInfo {
+		StaticFacilityInfo(
+			facilityId: self.facilityId,
+			name: self.facilityName,
+			suburb: self.location.suburb,
+			address: self.location.address,
+			latitude: Double(self.location.latitude) ?? 0,
+			longitude: Double(self.location.longitude) ?? 0,
+			totalSpaces: Int(self.spots) ?? 0,
+			tsn: self.tsn,
+			tfnswFacilityId: self.tfnswFacilityId
+		)
+	}
+}

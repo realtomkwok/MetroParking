@@ -15,56 +15,58 @@ struct ParkingGauge: View {
 		return Double(facility.currentOccupancy) / Double(facility.totalSpaces)
 	}
 	
-	private var availablityStatus: AvailabilityStatus {
-		let available = facility.currentAvailableSpots
-		let total = facility.totalSpaces
-		
-		if available == 0 {
-			return .full
-		} else if available < total / 10 {
-			return .almostFull
-		} else {
-			return .available
-		}
-	}
-	
-    var body: some View {
-		VStack(spacing: 24) {
-			VStack(spacing: -8) {
-				Gauge(value: occupancyProgress, in: 0...1) {
-				} currentValueLabel: {
-					if availablityStatus == .full {
-						Text("Full")
-							.textCase(.uppercase)
-					} else {
-						Text("\(facility.currentOccupancy)")
+	var body: some View {
+		NavigationLink(destination: FacilityDetailView(facility: facility)) {
+			VStack {
+				VStack(spacing: -12) {
+					Gauge(value: occupancyProgress, in: 0...1) {
+					} currentValueLabel: {
+							Text("\(facility.currentAvailableSpots)")
+					} minimumValueLabel: {
+						EmptyView()
+					} maximumValueLabel: {
+						EmptyView()
 					}
+					.gaugeStyle(.accessoryCircular)
+					.tint(Gradient(colors: [
+						AvailabilityStatus.available.color,
+						AvailabilityStatus.almostFull.color,
+						AvailabilityStatus.full.color
+					]))
+					.scaleEffect(1.5)
 					
-				} minimumValueLabel: {
-					EmptyView()
-				} maximumValueLabel: {
-					EmptyView()
+					if facility.availablityStatus == .full {
+						Text("full")
+							.textCase(.uppercase)
+							.font(.caption)
+							.offset(y: 8)
+					} else {
+						Text("spaces")
+							.textCase(.uppercase)
+							.font(.caption)
+							.offset(y: 8)
+					}
 				}
-				.gaugeStyle(.accessoryCircular)
-				.tint(Gradient(colors: [AvailabilityStatus.available.color, AvailabilityStatus.almostFull.color, AvailabilityStatus.full.color]))
-//				.scaleEffect(1.6)
-				Text("spaces")
-					.textCase(.uppercase)
-					.font(.caption2)
+				.padding(24)
+				.background(.thinMaterial)
+				.clipShape(Circle())
+				
+				VStack(alignment: .center, spacing: 0) {
+					Text(facility.displayName)
+						.font(.callout)
+						.multilineTextAlignment(.center)
+						.lineLimit(2)
+						.frame(maxWidth: .infinity)
+					Spacer(minLength: 0)
+				}
+				.frame(maxWidth: .infinity, maxHeight: 48)
+				
 			}
-			.padding(16)
-			.background(.ultraThinMaterial)
-			.clipShape(Circle())
-			.scaleEffect(1.2)
-			
-			Text(facility.displayName)
-				.font(.callout)
-				.multilineTextAlignment(.center)
-				.lineLimit(2)
 		}
-		.padding(16)
-		.frame(maxWidth: 160, maxHeight: 192)
-    }
+		.buttonStyle(.plain)
+		.frame(maxWidth: 112)
+	}
+
 }
 
 #Preview("Medium Facility - 🟢 Available", traits: .sizeThatFitsLayout) {

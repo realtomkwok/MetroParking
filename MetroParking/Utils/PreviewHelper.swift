@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import SwiftData
 
 struct PreviewHelper {
 	
@@ -114,6 +115,79 @@ extension PreviewHelper {
 			// For additional facilities beyond the pattern, use random
 			facility.currentOccupancy = Int(Double(facility.totalSpaces) * Double.random(in: 0.1...0.9))
 
+		}
+	}
+}
+
+
+extension PreviewHelper {
+	
+	/// Creates a preview container using the static data
+	@MainActor static func previewContainer(withSamplePins: Bool = true) -> ModelContainer {
+		do {
+			
+			/// In-memory container
+			let config = ModelConfiguration(isStoredInMemoryOnly: true)
+			let container = try ModelContainer(for: ParkingFacility.self, configurations: config)
+			let context = container.mainContext
+			
+			loadAllStaticFacilities(into: context)
+			
+			if withSamplePins {
+				addSamplePinnedFacilities(to: context)
+			}
+			
+			try context.save()
+			return container
+			
+		} catch {
+			fatalError("Failed to create preview container: \(error)")
+		}
+	}
+	
+	/// Load all static facilities (same as FacilityDataManager does)
+	private static func loadAllStaticFacilities(into context: ModelContext) {
+		let userLocation = (lat: -33.8688, lon: 151.2093) // Sydney CBD
+		let staticFacilities = ParkingFacility.getFacilitiesSortedByDistance(from: userLocation)
+		
+		for staticInfo in staticFacilities {
+			let facility = ParkingFacility(from: staticInfo)
+			context.insert(facility)
+		}
+		
+		print("📦 Preview: Loaded \(staticFacilities.count) static facilities")
+	}
+	
+	/// Add some realistic pinned facilities with varied occupancy
+	private static func addSamplePinnedFacilities(to context: ModelContext) {
+		let descriptor = FetchDescriptor<ParkingFacility>()
+		
+		do {
+			let allFacilities = try context.fetch(descriptor)
+			
+			// Pin some realistic facilities with varied data
+			let facilitiesToPin = [
+				(name: "Kiama", occupancyRatio: 0.95),           // Almost full, small facility
+				(name: "Gosford", occupancyRatio: 0.3),          // Available, large facility
+				(name: "Leppington", occupancyRatio: 1.0),       // Full, very large facility
+				(name: "Gordon", occupancyRatio: 0.6),           // Moderate, medium facility
+			]
+			
+			for (facilityName, occupancyRatio) in facilitiesToPin {
+				if let facility = allFacilities.first(where: { $0.name.contains(facilityName) }) {
+					facility.isFavourite = true
+					
+						// Set realistic occupancy data
+					if occupancyRatio > 0 {
+						facility.currentOccupancy = Int(Double(facility.totalSpaces) * occupancyRatio)
+					}
+				}
+			}
+			
+			print("📌 Preview: Pinned \(facilitiesToPin.count) sample facilities")
+			
+		} catch {
+			print("❌ Preview: Failed to add sample pins: \(error)")
 		}
 	}
 }

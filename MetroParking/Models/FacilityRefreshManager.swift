@@ -349,10 +349,12 @@ extension FacilityRefreshManager {
 	private func saveContext() {
 		guard let context = modelContext else { return }
 		
-		do {
-			try context.save()
-		} catch {
-			print("❌ Failed to save context: \(error)")
+		withAnimation(.bouncy) {
+			do {
+				try context.save()
+			} catch {
+				print("❌ Failed to save context: \(error)")
+			}
 		}
 	}
 }

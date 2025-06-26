@@ -33,13 +33,15 @@
 		182A3C0B2E03BB9000E64A38 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		182A3C0D2E03BC3100E64A38 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		182A3C112E03C13F00E64A38 /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
+		182A3C222E0666D300E64A38 /* GenerateStaticDataArray.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = GenerateStaticDataArray.playground; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.swift; };
+		182A3C282E0833FF00E64A38 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
 		184036F62DD9F82D009D7FBA /* MetroParking.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MetroParking.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		184037052DD9F82F009D7FBA /* MetroParkingTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MetroParkingTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1840370F2DD9F82F009D7FBA /* MetroParkingUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MetroParkingUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		182A3C1D2E04016F00E64A38 /* Exceptions for "MetroParking" folder in "MetroParking" target */ = {
+		182A3C8F2E0CAE5500E64A38 /* Exceptions for "MetroParking" folder in "MetroParking" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -49,10 +51,10 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		184036F82DD9F82D009D7FBA /* MetroParking */ = {
+		182A3C822E0CAE5500E64A38 /* MetroParking */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				182A3C1D2E04016F00E64A38 /* Exceptions for "MetroParking" folder in "MetroParking" target */,
+				182A3C8F2E0CAE5500E64A38 /* Exceptions for "MetroParking" folder in "MetroParking" target */,
 			);
 			path = MetroParking;
 			sourceTree = "<group>";
@@ -94,15 +96,33 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		182A3C212E0666B300E64A38 /* Playgrounds */ = {
+			isa = PBXGroup;
+			children = (
+				182A3C222E0666D300E64A38 /* GenerateStaticDataArray.playground */,
+			);
+			path = Playgrounds;
+			sourceTree = "<group>";
+		};
+		182A3C272E0833FE00E64A38 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				182A3C282E0833FF00E64A38 /* CoreLocation.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		184036ED2DD9F82D009D7FBA = {
 			isa = PBXGroup;
 			children = (
+				182A3C822E0CAE5500E64A38 /* MetroParking */,
 				182A3C112E03C13F00E64A38 /* Configuration.swift */,
 				182A3C0D2E03BC3100E64A38 /* .gitignore */,
 				182A3C0B2E03BB9000E64A38 /* Config.xcconfig */,
-				184036F82DD9F82D009D7FBA /* MetroParking */,
+				182A3C212E0666B300E64A38 /* Playgrounds */,
 				184037082DD9F82F009D7FBA /* MetroParkingTests */,
 				184037122DD9F82F009D7FBA /* MetroParkingUITests */,
+				182A3C272E0833FE00E64A38 /* Frameworks */,
 				184036F72DD9F82D009D7FBA /* Products */,
 			);
 			sourceTree = "<group>";
@@ -133,7 +153,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				184036F82DD9F82D009D7FBA /* MetroParking */,
+				182A3C822E0CAE5500E64A38 /* MetroParking */,
 			);
 			name = MetroParking;
 			packageProductDependencies = (
@@ -435,6 +455,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MetroParking/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Metro Parking";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -465,6 +486,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MetroParking/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Metro Parking";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

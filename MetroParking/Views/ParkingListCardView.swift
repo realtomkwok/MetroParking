@@ -64,7 +64,8 @@ struct ParkingListCardView: View {
 						.textCase(.uppercase)
 						.padding(.horizontal, 8)
 						.padding(.vertical, 4)
-						.foregroundStyle(Color(.label))
+						.foregroundStyle(.white)
+						.blendMode(.hardLight)
 						.background(facility.availablityStatus.color)
 						.clipShape(RoundedRectangle(cornerRadius: 999))
 				}

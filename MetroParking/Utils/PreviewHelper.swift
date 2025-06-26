@@ -124,24 +124,26 @@ extension PreviewHelper {
 	
 	/// Creates a preview container using the static data
 	@MainActor static func previewContainer(withSamplePins: Bool = true) -> ModelContainer {
-		do {
-			
-			/// In-memory container
-			let config = ModelConfiguration(isStoredInMemoryOnly: true)
-			let container = try ModelContainer(for: ParkingFacility.self, configurations: config)
-			let context = container.mainContext
-			
-			loadAllStaticFacilities(into: context)
-			
-			if withSamplePins {
-				addSamplePinnedFacilities(to: context)
+		withAnimation(.snappy) {
+			do {
+				
+				/// In-memory container
+				let config = ModelConfiguration(isStoredInMemoryOnly: true)
+				let container = try ModelContainer(for: ParkingFacility.self, configurations: config)
+				let context = container.mainContext
+				
+				loadAllStaticFacilities(into: context)
+				
+				if withSamplePins {
+					addSamplePinnedFacilities(to: context)
+				}
+				
+				try context.save()
+				return container
+				
+			} catch {
+				fatalError("Failed to create preview container: \(error)")
 			}
-			
-			try context.save()
-			return container
-			
-		} catch {
-			fatalError("Failed to create preview container: \(error)")
 		}
 	}
 	

@@ -14,31 +14,30 @@ struct FacilityDetailView: View {
 	
 	var body: some View {
 		VStack(alignment: .leading, spacing: 16) {
-			Text(facility.name)
-				.font(.largeTitle)
-				.fontWeight(.bold)
-			
-			Text("\(facility.suburb), \(facility.address)")
-				.font(.subheadline)
-				.foregroundColor(.secondary)
-			
-			Text("Total Spaces: \(facility.totalSpaces)")
-				.font(.headline)
-			
-			if let lastVisited = facility.lastVisited {
-				Text("Last visited: \(lastVisited, format: .dateTime)")
-					.font(.caption)
+			VStack(alignment: .leading) {
+				Text("\(facility.suburb), \(facility.address)")
+					.font(.subheadline)
 					.foregroundColor(.secondary)
+				
+				Text("Total Spaces: \(facility.totalSpaces)")
+					.font(.headline)
+				
+				if let lastVisited = facility.lastVisited {
+					Text("Last visited: \(lastVisited, format: .dateTime)")
+						.font(.caption)
+						.foregroundColor(.secondary)
+				}
 			}
-			
 			Spacer()
 		}
 		.padding()
-		.navigationTitle("Facility Details")
-		.navigationBarTitleDisplayMode(.inline)
+		.navigationTitle(facility.displayName)
+		.navigationBarTitleDisplayMode(.large)
 		.onAppear {
 			facility.markAsVisited()
-			try? modelContext.save()
+			withAnimation(.snappy) {
+				try? modelContext.save()
+			}
 		}
 	}
 }

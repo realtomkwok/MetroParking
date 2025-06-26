@@ -6,107 +6,265 @@
 //
 
 import SwiftUI
+import SwiftData
 
-struct ContentView: View {
-	@State private var isLoading = false
-	@State private var facilities: [FacilityID: FacilityName] = [:]
-	@State private var errorMessage: String?
+
+enum ScreenView: String, CaseIterable, Identifiable {
+	case pinned
+	case all
 	
-	var body: some View {
-		NavigationView {
-			VStack {
-					// Test button
-				Button(action: fetchFacilities) {
-					HStack {
-						if isLoading {
-							ProgressView()
-								.scaleEffect(0.8)
-						}
-						Text(isLoading ? "Loading..." : "Load Facilities")
-					}
-					.foregroundColor(.white)
-					.padding()
-					.background(Color.blue)
-					.cornerRadius(10)
-				}
-				.disabled(isLoading)
-				.padding()
-				
-					// Error message
-				if let error = errorMessage {
-					Text("Error: \(error)")
-						.foregroundColor(.red)
-						.padding()
-				}
-				
-					// Simple list showing dictionary data
-				if !facilities.isEmpty {
-					Text("Found \(facilities.count) facilities:")
-						.font(.headline)
-						.padding()
-					
-					List(facilities.sorted(by: { $0.key < $1.key }), id: \.key) { facilityId, facilityName in
-						VStack(alignment: .leading) {
-							Text(facilityName)
-								.font(.headline)
-								.foregroundColor(facilityName.contains("Cherrybrook") ? .green : .primary)
-							Text("ID: \(facilityId)")
-								.font(.caption)
-								.foregroundColor(.secondary)
-						}
-						.padding(.vertical, 2)
-					}
-				} else if !isLoading {
-					Text("Tap the button to load facilities")
-						.foregroundColor(.secondary)
-						.padding()
-					
-					Spacer()
-				}
-			}
-			.navigationTitle("Facilities Test")
+	var id: String { self.rawValue }
+	
+	var displayName: String {
+		switch self {
+			case .pinned: "Pinned & Recents"
+			case .all: "All Parkings"
 		}
 	}
 	
-	private func fetchFacilities() {
-		Task {
-			isLoading = true
-			errorMessage = nil
-			
-			do {
-				print("🔍 Testing API configuration...")
-				Configuration.printConfiguration()
-				
-				print("🌐 Calling API...")
-				let result = try await ParkingAPIService.shared.fetchAllFacilities()
-				
-				await MainActor.run {
-					self.facilities = result
-					print("✅ Success! Got \(result.count) facilities")
-					
-						// Show first few in console
-					for (id, name) in result.prefix(3) {
-						print("- \(id): \(name)")
-					}
-					
-						// Look for Cherrybrook
-					if let cherrybrookEntry = result.first(where: { $0.value.contains("Cherrybrook") }) {
-						print("🌳 Found Cherrybrook: ID \(cherrybrookEntry.key) = \(cherrybrookEntry.value)")
-					}
-				}
-				
-			} catch {
-				await MainActor.run {
-					self.errorMessage = error.localizedDescription
-					print("❌ Error: \(error)")
-				}
-			}
-			
-			isLoading = false
+	var iconName: String {
+		switch self {
+			case .pinned: "star"
+			case .all: "parkingsign.square"
+		}
+	}
+	
+	@ViewBuilder
+	func destinationView(all: [ParkingFacility], pinned: [ParkingFacility], recents: [ParkingFacility]) -> some View {
+		switch self {
+			case .pinned: MainView(
+				pinnedFacilities: pinned,
+				recentFacilities: recents
+			)
+			case .all: AllFacilitiesView(facilities: all)
 		}
 	}
 }
 
-#Preview {
+
+struct ContentView: View {
+	@Namespace var namespace
+	
+	/// Load SwiftData environment
+	@Environment(\.modelContext) private var modelContext
+	
+	/// Data manager
+	@StateObject private var dataManager = FacilityDataManager()
+	
+	/// Refresh manager
+	@ObservedObject private var refreshManager = FacilityRefreshManager.shared
+	
+	/// UI State
+	@State private var presentSheet = true
+	@State private var hasInitialised = false
+	
+	var body: some View {
+		BackgroundView()
+			.sheet(isPresented: $presentSheet) {
+				ForegroundView()
+					.background(.regularMaterial)
+					.presentationDetents([.medium, .large])
+					.presentationDragIndicator(.hidden)
+					.presentationBackgroundInteraction(.enabled)
+					.interactiveDismissDisabled()
+			}
+			.task {
+				guard !hasInitialised else { return }
+				hasInitialised = true
+				await initialisedApp()
+			}
+	}
+	
+	private func initialisedApp() async {
+		/// Connect the data manager to SwiftData
+		dataManager.setModelContext(modelContext)
+		/// Load static facilities
+		await dataManager.loadStaticFacilitiesIfNeeded()
+	}
+}
+
+struct ForegroundView: View {
+	@State private var selectedScreen: ScreenView = .pinned
+	
+	/// SwiftData Queries
+	@Query private var allFacilities: [ParkingFacility]
+	/// Pinned facilities
+	@Query(filter: #Predicate<ParkingFacility> { $0.isFavourite == true }, animation: .snappy)
+	private var pinnedFacilities: [ParkingFacility]
+	/// Recently visited facilities
+	@Query(
+		filter: #Predicate<ParkingFacility> { $0.lastVisited != nil },
+		sort: [SortDescriptor(\ParkingFacility.lastVisited, order: .reverse)],
+		animation: .snappy
+		)
+	private var recentlyVisitedFacilities: [ParkingFacility]
+	
+	
+	var body: some View {
+		NavigationStack {
+			VStack(alignment: .leading) {
+				Topbar()
+				selectedScreen.destinationView(
+					all: allFacilities,
+					pinned: pinnedFacilities,
+					recents: recentlyVisitedFacilities
+				)
+				Spacer()
+			}
+			.padding()
+			.ignoresSafeArea()
+		}
+	}
+	
+	@ViewBuilder
+	func Topbar() -> some View {
+		HStack(alignment: .center) {
+			Menu {
+				ForEach(ScreenView.allCases) { screen in
+					Button(action: {
+						selectedScreen = screen
+					}) {
+						HStack {
+							Text(screen.displayName)
+							Image(systemName: screen.iconName)
+							
+							if selectedScreen != screen {
+								Spacer()
+								Image(systemName: "checkmark")
+							}
+						}
+					}
+					
+				}
+			} label: {
+				HStack {
+					Text(selectedScreen.displayName)
+						.font(.title)
+						.fontWeight(.medium)
+						.tracking(-0.4)
+					Image(systemName: "chevron.down")
+						.font(.callout)
+						.fontWeight(.medium)
+				}
+			}
+			
+			Spacer()
+			
+			HStack(alignment: .center) {
+				Button {
+					//TODO: Refresh
+
+					/*@START_MENU_TOKEN@*//*@PLACEHOLDER=Action@*/ /*@END_MENU_TOKEN@*/
+				} label: {
+					ZStack() {
+						Label("Refresh", systemImage: "arrow.clockwise")
+							.fontWeight(.semibold)
+					}
+					.frame(minWidth: 20, minHeight: 20)
+
+				}
+				.buttonStyle(.bordered)
+				.buttonBorderShape(.circle)
+				
+				Button {
+					// TODO: Show menu for more info
+					/*@START_MENU_TOKEN@*//*@PLACEHOLDER=Action@*/ /*@END_MENU_TOKEN@*/
+				} label: {
+					ZStack(alignment: .center) {
+						Label("More", systemImage: "ellipsis")
+							.fontWeight(.semibold)
+
+					}
+					.frame(minWidth: 20, minHeight: 20)
+				}
+				.buttonStyle(.bordered)
+				.buttonBorderShape(.circle)
+				// To align with other components
+				.offset(x: 4)
+			}
+		}
+		.frame(maxWidth: .infinity, maxHeight: 48)
+		.padding(.bottom, 16)
+	}
+}
+
+struct BackgroundView: View {
+	var body: some View {
+		VStack {
+			Rectangle()
+				.foregroundStyle(.blue)
+				.ignoresSafeArea()
+		}
+	}
+}
+
+struct MainView: View {
+	let pinnedFacilities: [ParkingFacility]
+	let recentFacilities: [ParkingFacility]
+	
+	var body: some View {
+		ScrollView(.vertical, showsIndicators: false) {
+			VStack(alignment: .leading, spacing: 24) {
+				PinnedFacility()
+				RecentFacility()
+			}
+			.frame(maxWidth: .infinity)
+		}
+	}
+	
+	@ViewBuilder
+	func PinnedFacility() -> some View {
+		
+		Text("Pinned")
+			.font(.headline)
+		
+		HStack(alignment: .center) {
+			if pinnedFacilities.isEmpty {
+				// TODO: Reword
+				Text("No pinned parking yet")
+			} else {
+				ScrollView(.horizontal, showsIndicators: false) {
+					HStack(alignment: .center, spacing: 0) {
+						ForEach(pinnedFacilities, id: \.facilityId) { facility in
+								ParkingGauge(facility: facility)
+						}
+						.padding(.horizontal, 8)
+					}
+				}
+			}
+		}
+		.frame(maxWidth: .infinity, minHeight: 64)
+	}
+	
+	@ViewBuilder
+	func RecentFacility() -> some View {
+		Text("Recents")
+			.font(.headline)
+		
+		LazyVStack(alignment: .leading) {
+			ForEach(recentFacilities, id: \.facilityId) { facility in
+				ParkingListCardView(facility: facility)
+			}
+		}
+	}
+}
+
+struct AllFacilitiesView: View{
+	let facilities: [ParkingFacility]
+	
+	var body: some View {
+		ScrollView(.vertical, showsIndicators: false) {
+			LazyVStack(alignment: .listRowSeparatorLeading) {
+				ForEach(facilities, id: \.facilityId) { facility in
+					ParkingListCardView(facility: facility)
+				}
+			}
+		}
+	}
+}
+
+
+#Preview("Normal App State") {
 	ContentView()
+		.modelContainer(PreviewHelper.previewContainer(withSamplePins: true))
 }

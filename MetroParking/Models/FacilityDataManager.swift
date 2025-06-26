@@ -54,12 +54,14 @@ class FacilityDataManager: ObservableObject {
 			context.insert(facility)
 		}
 		
-		do {
-			try context.save()
-			print("💾 Saved \(staticFacilities.count) static facilities")
-			staticDataLoadTime = Date()
-		} catch {
-			print("❌ Failed to save static facilities: \(error)")
+		withAnimation(.snappy) {
+			do {
+				try context.save()
+				print("💾 Saved \(staticFacilities.count) static facilities")
+				staticDataLoadTime = Date()
+			} catch {
+				print("❌ Failed to save static facilities: \(error)")
+			}
 		}
 		
 		isLoadingStaticData = false
@@ -118,16 +120,20 @@ class FacilityDataManager: ObservableObject {
 		
 		let descriptor = FetchDescriptor<ParkingFacility>()
 		
-		do {
-			let facilities = try context.fetch(descriptor)
-			for facility in facilities {
-				context.delete(facility)
+		withAnimation(.spring) {
+			do {
+				let facilities = try context.fetch(descriptor)
+				for facility in facilities {
+					context.delete(facility)
+				}
+				try context.save()
+				print("🗑️ Cleared all facilities")
+			} catch {
+				print("❌ Failed to clear facilities: \(error)")
 			}
-			try context.save()
-			print("🗑️ Cleared all facilities")
-		} catch {
-			print("❌ Failed to clear facilities: \(error)")
 		}
+		
+
 	}
 }
 

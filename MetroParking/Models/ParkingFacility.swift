@@ -42,6 +42,7 @@ final class ParkingFacility {
 	
 	var totalSpaces: Int
 	var lastUpdated: Date
+	var lastVisited: Date?
 	
 	var isFavourite: Bool
 	var notificationThreshold: Int?				// For feature "notify when under X spaces"
@@ -63,6 +64,23 @@ final class ParkingFacility {
 	
 	@Relationship(deleteRule: .cascade, inverse: \ParkingZone.facility)
 	var zones: [ParkingZone] = []
+	
+	var availablityStatus: AvailabilityStatus {
+		let available = currentAvailableSpots
+		let total = totalSpaces
+		
+		if available == -1 {
+			return .noData
+		}
+		
+		if available == 0 {
+			return .full
+		} else if available < total / 10 {
+			return .almostFull
+		} else {
+			return .available
+		}
+	}
 	
 	var refreshGroup: RefreshGroup {
 		return refreshGroupType == "high" ? .high : .standard
@@ -127,6 +145,8 @@ final class ParkingFacility {
 		
 		let dateFormatter = ISO8601DateFormatter()
 		self.lastUpdated = dateFormatter.date(from: apiResponse.messageDate) ?? Date()
+		self.lastVisited = nil
+		
 		self.isFavourite = false
 		self.notificationThreshold = nil
 		
@@ -145,6 +165,7 @@ final class ParkingFacility {
 		self.totalSpaces = staticInfo.totalSpaces
 		self.lastUpdated = Date.distantPast // No occupancy data yet
 		self.isFavourite = false
+		self.lastVisited = nil
 		self.notificationThreshold = nil
 		
 		self.classifyRefreshGroup()
@@ -207,5 +228,9 @@ extension ParkingFacility {
 		self.nextScheduledRefresh = Date().addingTimeInterval(backoffInterval)
 		
 		print("❌ \(name): Failure #\(retrivalFailures), retry in \(Int(backoffInterval/60))min")
+	}
+	
+	func markAsVisited() {
+		lastVisited = Date()
 	}
 }

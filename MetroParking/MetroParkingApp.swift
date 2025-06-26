@@ -12,6 +12,8 @@ import SwiftData
 struct MetroParkingApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
+			ParkingFacility.self,
+			ParkingZone.self,
             Item.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
@@ -26,7 +28,18 @@ struct MetroParkingApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+				.modelContainer(sharedModelContainer)
+				.onAppear {
+					setupRefreshManager()
+				}
         }
-        .modelContainer(sharedModelContainer)
     }
+	
+	private func setupRefreshManager() {
+		let context = sharedModelContainer.mainContext
+		
+		Task { @MainActor in
+			FacilityRefreshManager.shared.setModelContext(context)
+		}
+	}
 }

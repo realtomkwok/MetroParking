@@ -395,6 +395,7 @@ extension ParkingFacility {
 	}
 	
 	private static func calculateDistance(from: (lat: Double, lon: Double), to: (lat: Double, lon: Double)) -> Double {
+		// TODO: Should be a viable distance retrieved from MapKit
 		let latDiff = from.lat - to.lat
 		let lonDiff = from.lon - to.lon
 		return sqrt(latDiff * latDiff + lonDiff * lonDiff)

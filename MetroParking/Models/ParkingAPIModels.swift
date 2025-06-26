@@ -71,13 +71,14 @@ struct ParkingOccupancyAPI: Codable {
 // Almost full: availableSpots < 10% of total
 
 enum AvailabilityStatus {
-	case available, almostFull, full
+	case available, almostFull, full, noData
 	
 	var color: Color {
 		switch self {
 			case .available: return .green
 			case .almostFull: return .yellow
 			case .full: return .red
+			case .noData: return .gray
 		}
 	}
 	
@@ -86,6 +87,7 @@ enum AvailabilityStatus {
 			case .available: return "Available"
 			case .almostFull: return "Almost Full"
 			case .full: return "Full"
+			case .noData: return "No Data"
 		}
 	}
 }

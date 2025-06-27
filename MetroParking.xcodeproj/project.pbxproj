@@ -10,6 +10,7 @@
 		182A3C0C2E03BB9000E64A38 /* Config.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 182A3C0B2E03BB9000E64A38 /* Config.xcconfig */; };
 		182A3C0E2E03BC3500E64A38 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 182A3C0D2E03BC3100E64A38 /* .gitignore */; };
 		182A3C122E03C14100E64A38 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182A3C112E03C13F00E64A38 /* Configuration.swift */; };
+		182A3CCA2E0EC2E600E64A38 /* MapKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 182A3CC82E0EC2E300E64A38 /* MapKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,6 +36,7 @@
 		182A3C112E03C13F00E64A38 /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
 		182A3C222E0666D300E64A38 /* GenerateStaticDataArray.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = GenerateStaticDataArray.playground; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.swift; };
 		182A3C282E0833FF00E64A38 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
+		182A3CC82E0EC2E300E64A38 /* MapKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MapKit.framework; path = System/Library/Frameworks/MapKit.framework; sourceTree = SDKROOT; };
 		184036F62DD9F82D009D7FBA /* MetroParking.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MetroParking.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		184037052DD9F82F009D7FBA /* MetroParkingTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MetroParkingTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1840370F2DD9F82F009D7FBA /* MetroParkingUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MetroParkingUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -76,6 +78,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				182A3CCA2E0EC2E600E64A38 /* MapKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -107,6 +110,7 @@
 		182A3C272E0833FE00E64A38 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				182A3CC82E0EC2E300E64A38 /* MapKit.framework */,
 				182A3C282E0833FF00E64A38 /* CoreLocation.framework */,
 			);
 			name = Frameworks;
@@ -456,11 +460,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MetroParking/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Metro Parking";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKExtensionDelegateClassName = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -487,11 +492,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MetroParking/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Metro Parking";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKExtensionDelegateClassName = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

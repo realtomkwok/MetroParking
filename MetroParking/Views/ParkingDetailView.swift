@@ -10,6 +10,7 @@ import SwiftData
 
 struct FacilityDetailView: View {
 	let facility: ParkingFacility
+	
 	@Environment(\.modelContext) private var modelContext
 	
 	var body: some View {

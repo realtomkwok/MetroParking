@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ParkingGauge: View {
 	let facility: ParkingFacility
+	let mapState: MapStateManager
 	
 	private var occupancyProgress: Double {
 		guard facility.totalSpaces > 0 else { return 0 }
@@ -61,8 +62,15 @@ struct ParkingGauge: View {
 					Spacer(minLength: 0)
 				}
 				.frame(maxWidth: .infinity, maxHeight: 48)
-				
 			}
+			.simultaneousGesture(
+				TapGesture().onEnded { _ in
+					mapState.focusOnFacility(facility)
+					
+					let impact = UIImpactFeedbackGenerator(style: .medium)
+					impact.impactOccurred()
+				}
+			)
 		}
 		.buttonStyle(.plain)
 		.frame(maxWidth: 112)
@@ -71,13 +79,14 @@ struct ParkingGauge: View {
 }
 
 #Preview("Medium Facility - 🟢 Available", traits: .sizeThatFitsLayout) {
-	ParkingGauge(facility: PreviewHelper.availableFacility())
+	ParkingGauge(facility: PreviewHelper.availableFacility(),
+	mapState: MapStateManager())
 }
 
 #Preview("Small Facility - 🟡 Almost-full", traits: .sizeThatFitsLayout) {
-	ParkingGauge(facility: PreviewHelper.almostFullFacility())
+	ParkingGauge(facility: PreviewHelper.almostFullFacility(), mapState: MapStateManager())
 }
 
 #Preview("Large Facility - 🔴 Full", traits: .sizeThatFitsLayout) {
-	ParkingGauge(facility: PreviewHelper.fullFacility())
+	ParkingGauge(facility: PreviewHelper.fullFacility(),mapState: MapStateManager())
 }

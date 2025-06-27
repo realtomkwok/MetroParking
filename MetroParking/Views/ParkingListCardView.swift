@@ -12,6 +12,7 @@ struct ParkingListCardView: View {
 	@Environment(\.modelContext) private var modelContext
 	
 	let facility: ParkingFacility
+	let mapState: MapStateManager
 	// TODO: Replace value with real distance
 	let distance = Measurement(value: 5.2, unit: UnitLength.kilometers)
 	
@@ -95,9 +96,12 @@ struct ParkingListCardView: View {
 			.background(.thickMaterial)
 			.clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
 		}
+		.onTapGesture {
+			mapState.focusOnFacility(facility)
+		}
 	}
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-	ParkingListCardView(facility: PreviewHelper.almostFullFacility())
+	ParkingListCardView(facility: PreviewHelper.almostFullFacility(), mapState: MapStateManager())
 }

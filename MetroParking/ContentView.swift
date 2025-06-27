@@ -31,13 +31,22 @@ enum ScreenView: String, CaseIterable, Identifiable {
 	}
 	
 	@ViewBuilder
-	func destinationView(all: [ParkingFacility], pinned: [ParkingFacility], recents: [ParkingFacility]) -> some View {
+	func destinationView(
+		all: [ParkingFacility],
+		pinned: [ParkingFacility],
+		recents: [ParkingFacility],
+		mapState: MapStateManager
+	) -> some View {
 		switch self {
 			case .pinned: MainView(
 				pinnedFacilities: pinned,
-				recentFacilities: recents
+				recentFacilities: recents,
+				mapState: mapState
 			)
-			case .all: AllFacilitiesView(facilities: all)
+			case .all: AllFacilitiesView(
+				facilities: all,
+				mapState: mapState
+			)
 		}
 	}
 }
@@ -51,22 +60,26 @@ struct ContentView: View {
 	
 	/// Data manager
 	@StateObject private var dataManager = FacilityDataManager()
-	
 	/// Refresh manager
 	@ObservedObject private var refreshManager = FacilityRefreshManager.shared
+	/// Map State manager
+	@StateObject private var mapStateManager = MapStateManager()
+	
 	
 	/// UI State
 	@State private var presentSheet = true
+	@State private var sheetDetent: PresentationDetent = .fraction(0.7)
+	@State private var showMinimisedSheet = false
 	@State private var hasInitialised = false
 	
 	var body: some View {
 		ZStack {
-			BackgroundView()
+			BackgroundView(mapState: mapStateManager)
 				.sheet(isPresented: $presentSheet) {
-					ForegroundView()
+					ForegroundView(mapState: mapStateManager)
 						.presentationCornerRadius(24)
 						.presentationBackground(.regularMaterial)
-						.presentationDetents([.fraction(0.7), .large])
+						.presentationDetents([sheetDetent, .large])
 						.presentationDragIndicator(.visible)
 						.presentationBackgroundInteraction(.enabled)
 						.presentationContentInteraction(.resizes)
@@ -77,11 +90,24 @@ struct ContentView: View {
 					hasInitialised = true
 					await initialisedApp()
 				}
+				.onAppear {
+					setupMapCallBack()
+				}
 				.onDisappear {
 					refreshManager.stopAutoRefresh()
 				}
 				.foregroundStyle(.foreground)
 				.fontDesign(.rounded)
+		}
+	}
+	
+	private func setupMapCallBack() {
+		mapStateManager.onFacilityFocused = {
+			
+			/// Animate sheet to show more map
+			withAnimation(.easeInOut(duration: 0.6)) {
+				sheetDetent = .fraction(0.4)
+			}
 		}
 	}
 	
@@ -102,6 +128,8 @@ struct ContentView: View {
 }
 
 struct ForegroundView: View {
+	@ObservedObject var mapState: MapStateManager
+	
 	@State private var selectedScreen: ScreenView = .pinned
 	@State private var showMoreMenu: Bool = false
 	
@@ -129,7 +157,8 @@ struct ForegroundView: View {
 					selectedScreen.destinationView(
 						all: allFacilities,
 						pinned: pinnedFacilities,
-						recents: recentlyVisitedFacilities
+						recents: recentlyVisitedFacilities,
+						mapState: mapState
 					)
 				}
 				.padding(.horizontal)
@@ -206,14 +235,36 @@ struct ForegroundView: View {
 			}
 		}
 		.frame(maxWidth: .infinity, maxHeight: 56)
-		.padding(.vertical)
+		.padding(.top)
 	}
 }
 
 struct BackgroundView: View {
+	@ObservedObject var mapState: MapStateManager
+	@Query var allFacilities: [ParkingFacility]
+	
 	var body: some View {
 		VStack {
-			Map()
+			Map(position: $mapState.cameraPosition) {
+				ForEach(allFacilities, id: \.facilityId) { facility in
+					
+					Annotation(facility.displayName, coordinate: CLLocationCoordinate2D(latitude: facility.latitude, longitude: facility.longitude))
+					{
+						ParkingMapAnnotation(
+							facility: facility,
+							isSelected: mapState.selectedFacility?.facilityId == facility.facilityId)
+						.onTapGesture {
+							mapState.focusOnFacility(facility)
+						}
+					}
+				}
+			}
+			.mapStyle(.standard(elevation: .realistic))
+			.mapControls {
+				MapUserLocationButton()
+				MapCompass()
+				MapScaleView()
+			}
 		}
 	}
 }
@@ -221,6 +272,7 @@ struct BackgroundView: View {
 struct MainView: View {
 	let pinnedFacilities: [ParkingFacility]
 	let recentFacilities: [ParkingFacility]
+	let mapState: MapStateManager
 	
 	var body: some View {
 		ScrollView(.vertical, showsIndicators: false) {
@@ -240,13 +292,13 @@ struct MainView: View {
 		
 		HStack(alignment: .center) {
 			if pinnedFacilities.isEmpty {
-				// TODO: Reword
+					// TODO: Reword
 				Text("No pinned parking yet")
 			} else {
 				ScrollView(.horizontal, showsIndicators: false) {
 					HStack(alignment: .center, spacing: 0) {
 						ForEach(pinnedFacilities, id: \.facilityId) { facility in
-								ParkingGauge(facility: facility)
+							ParkingGauge(facility: facility, mapState: mapState)
 						}
 						.padding(.horizontal, 8)
 					}
@@ -263,7 +315,7 @@ struct MainView: View {
 		
 		LazyVStack(alignment: .leading) {
 			ForEach(recentFacilities, id: \.facilityId) { facility in
-				ParkingListCardView(facility: facility)
+				ParkingListCardView(facility: facility, mapState: mapState)
 			}
 		}
 	}
@@ -271,12 +323,13 @@ struct MainView: View {
 
 struct AllFacilitiesView: View{
 	let facilities: [ParkingFacility]
+	let mapState: MapStateManager
 	
 	var body: some View {
 		ScrollView(.vertical, showsIndicators: false) {
 			LazyVStack(alignment: .listRowSeparatorLeading) {
 				ForEach(facilities, id: \.facilityId) { facility in
-					ParkingListCardView(facility: facility)
+					ParkingListCardView(facility: facility, mapState: mapState)
 				}
 			}
 		}

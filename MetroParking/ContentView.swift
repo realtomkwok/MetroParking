@@ -123,13 +123,9 @@ struct ForegroundView: View {
 					pinned: pinnedFacilities,
 					recents: recentlyVisitedFacilities
 				)
-				.ignoresSafeArea()
-
-				Spacer()
 			}
-			.padding()
+			.padding(.horizontal)
 		}
-		.background()
 	}
 	
 	@ViewBuilder
@@ -201,7 +197,7 @@ struct ForegroundView: View {
 			}
 		}
 		.frame(maxWidth: .infinity, maxHeight: 48)
-		.padding(.bottom, 16)
+		.padding(.top)
 	}
 }
 
@@ -225,7 +221,6 @@ struct MainView: View {
 				PinnedFacility()
 				RecentFacility()
 			}
-			.frame(maxWidth: .infinity)
 		}
 	}
 	

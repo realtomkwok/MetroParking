@@ -8,9 +8,14 @@
 import SwiftUI
 
 struct ParkingListCardView: View {
+	
+	@Environment(\.modelContext) private var modelContext
+	
 	let facility: ParkingFacility
 	// TODO: Replace value with real distance
 	let distance = Measurement(value: 5.2, unit: UnitLength.kilometers)
+	
+	// TODO: Update indicator
 	
 	var body: some View {
 		NavigationLink(destination: FacilityDetailView(facility: facility)) {
@@ -29,28 +34,36 @@ struct ParkingListCardView: View {
 					VStack(alignment: .leading, spacing: 8) {
 						HStack(alignment: .center) {
 							Image(systemName: "point.bottomleft.filled.forward.to.point.topright.scurvepath")
+								.frame(minWidth: 20, minHeight: 20)
+								.fontWeight(.medium)
 							Text("\(distance.formatted()) away")
 						}
+						.font(.callout)
 						.foregroundStyle(Color(.secondaryLabel))
 						
-						// TODO: Update Indicator
-						HStack {
+						HStack(alignment: .center) {
 							Image(systemName: "circlebadge.fill")
-							Text("Live")
+								.symbolEffect(.pulse.byLayer, options: .repeat(.continuous))
+								.frame(minWidth: 20, minHeight: 20)
+							Text(facility.lastUpdated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))
 								.textCase(.uppercase)
+							
 						}
-						.foregroundStyle(Color(.tertiaryLabel))
+						.font(.callout)
+						.foregroundStyle(Color(.secondaryLabel))
 					}
 				}
 				
 				Spacer(minLength: 48)
 				
 				VStack(alignment: .trailing) {
+					
 					VStack(alignment: .center, spacing: 0) {
 						Text("\(facility.currentAvailableSpots)")
 							.font(.largeTitle)
 							.fontDesign(.rounded)
 							.foregroundStyle(Color(.label))
+							.contentTransition(.numericText(value: Double(facility.currentAvailableSpots)))
 						Text("spaces")
 							.foregroundStyle(Color(.secondaryLabel))
 					}
@@ -69,9 +82,6 @@ struct ParkingListCardView: View {
 						.background(facility.availablityStatus.color)
 						.clipShape(RoundedRectangle(cornerRadius: 999))
 				}
-				
-
-
 			}
 			.buttonStyle(.plain)
 			.frame(maxHeight: 160)

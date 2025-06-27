@@ -189,16 +189,16 @@ extension ParkingFacility {
 	}
 	
 	func updateFromAPI(_ apiResponse: ParkingAPIResponse) {
-			// Update occupancy cache
+		// Update occupancy cache
 		self.currentOccupancy = Int(apiResponse.occupancy.total ?? "0") ?? 0
 		
-			// Update persistent data
+		// Update persistent data
 		self.lastUpdated = Date()
 		self.lastRefreshed = Date()
 		self.retrivalFailures = 0
 		self.lastFailureDate = nil
 		
-			// Update total spaces if it changed
+		// Update total spaces if it changed
 		let newTotalSpaces = Int(apiResponse.spots) ?? self.totalSpaces
 		if newTotalSpaces != self.totalSpaces {
 			self.totalSpaces = newTotalSpaces

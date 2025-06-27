@@ -22,6 +22,7 @@ struct ParkingGauge: View {
 					Gauge(value: occupancyProgress, in: 0...1) {
 					} currentValueLabel: {
 							Text("\(facility.currentAvailableSpots)")
+							.contentTransition(.numericText(value: Double(facility.currentAvailableSpots)))
 					} minimumValueLabel: {
 						EmptyView()
 					} maximumValueLabel: {

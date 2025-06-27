@@ -33,6 +33,19 @@ struct FacilityDetailView: View {
 		.padding()
 		.navigationTitle(facility.displayName)
 		.navigationBarTitleDisplayMode(.large)
+		.toolbar {
+			ToolbarItem(placement: .topBarTrailing) {
+				Button {
+					facility.isFavourite = !facility.isFavourite
+				} label: {
+					if facility.isFavourite {
+						Label("Unpin", systemImage: "pin.fill")
+					} else {
+						Label("Pin", systemImage: "pin")
+					}
+				}
+			}
+		}
 		.onAppear {
 			facility.markAsVisited()
 			withAnimation(.snappy) {

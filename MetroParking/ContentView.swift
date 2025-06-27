@@ -62,7 +62,6 @@ struct ContentView: View {
 		BackgroundView()
 			.sheet(isPresented: $presentSheet) {
 				ForegroundView()
-					.background(.regularMaterial)
 					.presentationDetents([.medium, .large])
 					.presentationDragIndicator(.hidden)
 					.presentationBackgroundInteraction(.enabled)
@@ -96,6 +95,7 @@ struct ContentView: View {
 
 struct ForegroundView: View {
 	@State private var selectedScreen: ScreenView = .pinned
+	@State private var showMoreMenu: Bool = false
 	
 	/// Refresh manager
 	@ObservedObject private var refreshManager = FacilityRefreshManager.shared
@@ -123,11 +123,13 @@ struct ForegroundView: View {
 					pinned: pinnedFacilities,
 					recents: recentlyVisitedFacilities
 				)
+				.ignoresSafeArea()
+
 				Spacer()
 			}
 			.padding()
-			.ignoresSafeArea()
 		}
+		.background()
 	}
 	
 	@ViewBuilder
@@ -141,11 +143,6 @@ struct ForegroundView: View {
 						HStack {
 							Text(screen.displayName)
 							Image(systemName: screen.iconName)
-							
-							if selectedScreen != screen {
-								Spacer()
-								Image(systemName: "checkmark")
-							}
 						}
 					}
 					
@@ -175,6 +172,8 @@ struct ForegroundView: View {
 					ZStack() {
 						Label("Refresh", systemImage: "arrow.clockwise")
 							.fontWeight(.semibold)
+							.disabled(refreshManager.isRefreshing)
+							.symbolEffect(.rotate.clockwise.byLayer, options: .repeat(.continuous), isActive: refreshManager.isRefreshing)
 					}
 					.frame(minWidth: 20, minHeight: 20)
 
@@ -190,7 +189,7 @@ struct ForegroundView: View {
 					ZStack(alignment: .center) {
 						Label("More", systemImage: "ellipsis")
 							.fontWeight(.semibold)
-
+							.symbolEffect(.wiggle.byLayer, options: .nonRepeating, isActive: showMoreMenu)
 					}
 					.frame(minWidth: 20, minHeight: 20)
 				}
@@ -284,5 +283,5 @@ struct AllFacilitiesView: View{
 
 #Preview("Normal App State") {
 	ContentView()
-		.modelContainer(PreviewHelper.previewContainer(withSamplePins: true))
+		.modelContainer(PreviewHelper.previewContainer(withSamplePins: false))
 }

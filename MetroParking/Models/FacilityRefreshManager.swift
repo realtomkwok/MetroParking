@@ -242,8 +242,12 @@ extension FacilityRefreshManager {
 		do {
 			let response = try await ParkingAPIService.shared.fetchFacility(id: facility.facilityId)
 			
-				// Update facility with API response
-			facility.updateFromAPI(response)
+			// Update facility with API response
+			await MainActor.run {
+				withAnimation {
+					facility.updateFromAPI(response)
+				}
+			}
 			facility.scheduleNextRefresh(appState: currentAppState)
 			
 				// Update stats

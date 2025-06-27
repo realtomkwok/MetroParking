@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import MapKit
 
 
 enum ScreenView: String, CaseIterable, Identifiable {
@@ -59,22 +60,29 @@ struct ContentView: View {
 	@State private var hasInitialised = false
 	
 	var body: some View {
-		BackgroundView()
-			.sheet(isPresented: $presentSheet) {
-				ForegroundView()
-					.presentationDetents([.medium, .large])
-					.presentationDragIndicator(.hidden)
-					.presentationBackgroundInteraction(.enabled)
-					.interactiveDismissDisabled()
-			}
-			.task {
-				guard !hasInitialised else { return }
-				hasInitialised = true
-				await initialisedApp()
-			}
-			.onDisappear {
-				refreshManager.stopAutoRefresh()
-			}
+		ZStack {
+			BackgroundView()
+				.sheet(isPresented: $presentSheet) {
+					ForegroundView()
+						.presentationCornerRadius(24)
+						.presentationBackground(.regularMaterial)
+						.presentationDetents([.fraction(0.7), .large])
+						.presentationDragIndicator(.visible)
+						.presentationBackgroundInteraction(.enabled)
+						.presentationContentInteraction(.resizes)
+						.interactiveDismissDisabled()
+				}
+				.task {
+					guard !hasInitialised else { return }
+					hasInitialised = true
+					await initialisedApp()
+				}
+				.onDisappear {
+					refreshManager.stopAutoRefresh()
+				}
+				.foregroundStyle(.foreground)
+				.fontDesign(.rounded)
+		}
 	}
 	
 	private func initialisedApp() async {
@@ -115,17 +123,17 @@ struct ForegroundView: View {
 	
 	
 	var body: some View {
-		NavigationStack {
-			VStack(alignment: .leading) {
-				Topbar()
-				selectedScreen.destinationView(
-					all: allFacilities,
-					pinned: pinnedFacilities,
-					recents: recentlyVisitedFacilities
-				)
+			NavigationStack {
+				VStack(alignment: .leading) {
+					Topbar()
+					selectedScreen.destinationView(
+						all: allFacilities,
+						pinned: pinnedFacilities,
+						recents: recentlyVisitedFacilities
+					)
+				}
+				.padding(.horizontal)
 			}
-			.padding(.horizontal)
-		}
 	}
 	
 	@ViewBuilder
@@ -141,7 +149,6 @@ struct ForegroundView: View {
 							Image(systemName: screen.iconName)
 						}
 					}
-					
 				}
 			} label: {
 				HStack {
@@ -153,6 +160,7 @@ struct ForegroundView: View {
 						.font(.callout)
 						.fontWeight(.medium)
 				}
+				.foregroundStyle(.foreground)
 			}
 			
 			Spacer()
@@ -168,12 +176,12 @@ struct ForegroundView: View {
 					ZStack() {
 						Label("Refresh", systemImage: "arrow.clockwise")
 							.fontWeight(.semibold)
-							.disabled(refreshManager.isRefreshing)
 							.symbolEffect(.rotate.clockwise.byLayer, options: .repeat(.continuous), isActive: refreshManager.isRefreshing)
 					}
 					.frame(minWidth: 20, minHeight: 20)
-
+					.foregroundStyle(.secondary)
 				}
+				.disabled(refreshManager.isRefreshing)
 				.buttonBorderShape(.circle)
 				.buttonStyle(.bordered)
 				.controlSize(.regular)
@@ -188,6 +196,7 @@ struct ForegroundView: View {
 							.symbolEffect(.wiggle.byLayer, options: .nonRepeating, isActive: showMoreMenu)
 					}
 					.frame(minWidth: 20, minHeight: 20)
+					.foregroundStyle(.foreground)
 				}
 				.buttonBorderShape(.circle)
 				.buttonStyle(.bordered)
@@ -196,17 +205,15 @@ struct ForegroundView: View {
 				.offset(x: 4)
 			}
 		}
-		.frame(maxWidth: .infinity, maxHeight: 48)
-		.padding(.top)
+		.frame(maxWidth: .infinity, maxHeight: 56)
+		.padding(.vertical)
 	}
 }
 
 struct BackgroundView: View {
 	var body: some View {
 		VStack {
-			Rectangle()
-				.foregroundStyle(.blue)
-				.ignoresSafeArea()
+			Map()
 		}
 	}
 }
@@ -221,6 +228,7 @@ struct MainView: View {
 				PinnedFacility()
 				RecentFacility()
 			}
+			.foregroundStyle(.foreground)
 		}
 	}
 	
@@ -278,5 +286,5 @@ struct AllFacilitiesView: View{
 
 #Preview("Normal App State") {
 	ContentView()
-		.modelContainer(PreviewHelper.previewContainer(withSamplePins: false))
+		.modelContainer(PreviewHelper.previewContainer(withSamplePins: true))
 }

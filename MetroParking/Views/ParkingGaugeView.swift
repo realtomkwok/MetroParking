@@ -11,31 +11,11 @@ struct ParkingGauge: View {
 	let facility: ParkingFacility
 	let mapState: MapStateManager
 	
-	private var occupancyProgress: Double {
-		guard facility.totalSpaces > 0 else { return 0 }
-		return Double(facility.currentOccupancy) / Double(facility.totalSpaces)
-	}
-	
 	var body: some View {
 		NavigationLink(destination: FacilityDetailView(facility: facility)) {
 			VStack {
 				VStack(spacing: -12) {
-					Gauge(value: occupancyProgress, in: 0...1) {
-					} currentValueLabel: {
-							Text("\(facility.currentAvailableSpots)")
-							.contentTransition(.numericText(value: Double(facility.currentAvailableSpots)))
-					} minimumValueLabel: {
-						EmptyView()
-					} maximumValueLabel: {
-						EmptyView()
-					}
-					.gaugeStyle(.accessoryCircular)
-					.tint(Gradient(colors: [
-						AvailabilityStatus.available.color,
-						AvailabilityStatus.almostFull.color,
-						AvailabilityStatus.full.color
-					]))
-					.scaleEffect(1.5)
+					// TODO: GaugeView
 					
 					if facility.availablityStatus == .full {
 						Text("full")

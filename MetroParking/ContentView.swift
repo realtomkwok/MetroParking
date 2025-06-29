@@ -96,7 +96,6 @@ struct ContentView: View {
 				.onDisappear {
 					refreshManager.stopAutoRefresh()
 				}
-				.foregroundStyle(.foreground)
 				.fontDesign(.rounded)
 		}
 	}
@@ -247,18 +246,16 @@ struct BackgroundView: View {
 		VStack {
 			Map(position: $mapState.cameraPosition) {
 				ForEach(allFacilities, id: \.facilityId) { facility in
-					
-					Annotation(facility.displayName, coordinate: CLLocationCoordinate2D(latitude: facility.latitude, longitude: facility.longitude))
-					{
-						ParkingMapAnnotation(
-							facility: facility,
-							isSelected: mapState.selectedFacility?.facilityId == facility.facilityId)
-						.onTapGesture {
-							mapState.focusOnFacility(facility)
+					Marker(
+						coordinate: CLLocationCoordinate2D(latitude: facility.latitude, longitude: facility.longitude),
+						label: {
+//							Gauge(value: <#T##BinaryFloatingPoint#>, label: <#T##() -> View#>, currentValueLabel: <#T##() -> View#>)
+							Label(facility.displayName, image: "parkingsing")
 						}
-					}
+					)
 				}
 			}
+			
 			.mapStyle(.standard(elevation: .realistic))
 			.mapControls {
 				MapUserLocationButton()

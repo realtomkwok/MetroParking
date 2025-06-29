@@ -13,7 +13,6 @@ struct ParkingMapAnnotation: View {
 	
 	var body: some View {
 		VStack(spacing: 4) {
-			
 			ZStack {
 				Circle()
 					.fill(facility.availablityStatus.color.gradient)
@@ -28,19 +27,12 @@ struct ParkingMapAnnotation: View {
 					.foregroundColor(.white)
 
 			}
-		
-			// Show name if selected
-			if isSelected {
-				Text(facility.displayName)
-					.font(.caption)
-					.fontWeight(.medium)
-					.padding(.horizontal, 8)
-					.padding(.vertical, 4)
-					.background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
-					.fixedSize()
-			}
 		}
 		.scaleEffect(isSelected ? 1.2 : 1.0)
 		.animation(.spring(response: 0.3), value: isSelected)
 	}
+}
+
+#Preview {
+	ParkingMapAnnotation(facility: PreviewHelper.almostFullFacility(), isSelected: true)
 }

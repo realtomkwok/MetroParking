@@ -10,6 +10,7 @@ import SwiftUI
 struct ParkingGauge: View {
   let facility: ParkingFacility
   let mapState: MapStateManager
+  let sheetState: SheetStateManager
 
   private var occupancyProgress: Double {
     guard facility.totalSpaces > 0 else { return 0 }
@@ -17,7 +18,10 @@ struct ParkingGauge: View {
   }
 
   var body: some View {
-    NavigationLink(destination: FacilityDetailView(facility: facility)) {
+    Button {
+      mapState.focusOnFacility(facility)
+      sheetState.showFacilityDetail(facility)
+    } label: {
       VStack {
         VStack(spacing: -12) {
           ParkingProgressGauge(
@@ -71,20 +75,23 @@ struct ParkingGauge: View {
 #Preview("Medium Facility - 🟢 Available", traits: .sizeThatFitsLayout) {
   ParkingGauge(
     facility: PreviewHelper.availableFacility(),
-    mapState: MapStateManager()
+    mapState: MapStateManager(),
+    sheetState: SheetStateManager()
   )
 }
 
 #Preview("Small Facility - 🟡 Almost-full", traits: .sizeThatFitsLayout) {
   ParkingGauge(
     facility: PreviewHelper.almostFullFacility(),
-    mapState: MapStateManager()
+    mapState: MapStateManager(),
+    sheetState: SheetStateManager()
   )
 }
 
 #Preview("Large Facility - 🔴 Full", traits: .sizeThatFitsLayout) {
   ParkingGauge(
     facility: PreviewHelper.fullFacility(),
-    mapState: MapStateManager()
+    mapState: MapStateManager(),
+    sheetState: SheetStateManager()
   )
 }

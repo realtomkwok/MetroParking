@@ -24,7 +24,7 @@ class MapStateManager: ObservableObject {
   var onFacilityFocused: (() -> Void)?
 
   /// Animation control
-  private let animationDuration: TimeInterval = 1.0
+  private let animationDuration: TimeInterval = 2
 
   /// Calculate offset to position facility above the sheet
   let latitudeOffset = 0.004  // Moves center down so facility appears higher
@@ -58,7 +58,7 @@ extension MapStateManager {
   func showAllFacilities() {
     let allFacilitiesRegion = MKCoordinateRegion(
       center: CLLocationCoordinate2D(latitude: -33.8688, longitude: 151.2093),  // TODO: Replace this with user's current location
-      span: MKCoordinateSpan(latitudeDelta: 0.8, longitudeDelta: 0.8))
+      span: MKCoordinateSpan(latitudeDelta: 1.2, longitudeDelta: 1.2))
 
     withAnimation(.snappy(duration: animationDuration)) {
       cameraPosition = .region(allFacilitiesRegion)

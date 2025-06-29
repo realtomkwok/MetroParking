@@ -17,8 +17,8 @@ struct ParkingMapAnnotation: View {
         RoundedRectangle(cornerRadius: .infinity)
           .fill(facility.availablityStatus.color.gradient)
           .frame(
-            width: isSelected ? 48 : 16,
-            height: isSelected ? 48 : 16
+            width: isSelected ? 56 : 16,
+            height: isSelected ? 56 : 16
           )
           .overlay(
             Circle()
@@ -28,6 +28,7 @@ struct ParkingMapAnnotation: View {
         if isSelected {
           VStack(alignment: .center) {
             Text("\(facility.currentAvailableSpots)")
+              .font(.subheadline)
               .multilineTextAlignment(.center)
               .foregroundStyle(
                 facility.availablityStatus.color
@@ -45,16 +46,11 @@ struct ParkingMapAnnotation: View {
           }
 
         }
-
-        //				Image(systemName: "parkingsign")
-        //					.font(.system(size: isSelected ? 14 : 10, weight: .bold))
-        //					.foregroundColor(.white)
-
       }
     }
-    .frame(width: 48, height: 48)
     .scaleEffect(isSelected ? 1.2 : 1)
     .animation(.spring(response: 0.3), value: isSelected)
+    .padding(.bottom, isSelected ? 8 : 0)
   }
 }
 

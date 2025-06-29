@@ -34,19 +34,22 @@ enum ScreenView: String, CaseIterable, Identifiable {
     all: [ParkingFacility],
     pinned: [ParkingFacility],
     recents: [ParkingFacility],
-    mapState: MapStateManager
+    mapState: MapStateManager,
+    sheetState: SheetStateManager
   ) -> some View {
     switch self {
     case .pinned:
       MainView(
         pinnedFacilities: pinned,
         recentFacilities: recents,
-        mapState: mapState
+        mapState: mapState,
+        sheetState: sheetState
       )
     case .all:
       AllFacilitiesView(
         facilities: all,
-        mapState: mapState
+        mapState: mapState,
+        sheetState: sheetState
       )
     }
   }
@@ -68,8 +71,6 @@ struct ContentView: View {
 
   /// UI State
   @State private var presentSheet = true
-  @State private var currentDetent: PresentationDetent = SheetStateManager()
-    .currentDentent
   @State private var hasInitialised = false
 
   var body: some View {
@@ -79,17 +80,21 @@ struct ContentView: View {
         sheetState: sheetStateManager
       )
       .sheet(isPresented: $presentSheet) {
-        ForegroundView(mapState: mapStateManager)
-          .presentationCornerRadius(24)
-          .presentationBackground(.regularMaterial)
-          .presentationDetents(
-            [.medium, .large],
-            selection: $currentDetent
-          )
-          .presentationDragIndicator(.visible)
-          .presentationBackgroundInteraction(.enabled)
-          .presentationContentInteraction(.resizes)
-          .interactiveDismissDisabled()
+
+        ForegroundView(
+          mapState: mapStateManager,
+          sheetState: sheetStateManager
+        )
+        .presentationCornerRadius(24)
+        .presentationBackground(.regularMaterial)
+        .presentationDetents(
+          [.fraction(0.3), .medium, .large],
+          selection: $sheetStateManager.currentDentent
+        )
+        .presentationDragIndicator(.visible)
+        .presentationBackgroundInteraction(.enabled)
+        .presentationContentInteraction(.resizes)
+        .interactiveDismissDisabled()
       }
       .task {
         guard !hasInitialised else { return }
@@ -121,6 +126,7 @@ struct ContentView: View {
 
 struct ForegroundView: View {
   @ObservedObject var mapState: MapStateManager
+  @ObservedObject var sheetState: SheetStateManager
 
   @State private var selectedScreen: ScreenView = .pinned
   @State private var showMoreMenu: Bool = false
@@ -130,13 +136,13 @@ struct ForegroundView: View {
 
   /// SwiftData Queries
   @Query private var allFacilities: [ParkingFacility]
-  /// Pinned facilities
+  // For pinned facilities
   @Query(
     filter: #Predicate<ParkingFacility> { $0.isFavourite == true },
     animation: .snappy
   )
   private var pinnedFacilities: [ParkingFacility]
-  /// Recently visited facilities
+  // For recently visited facilities
   @Query(
     filter: #Predicate<ParkingFacility> { $0.lastVisited != nil },
     sort: [SortDescriptor(\ParkingFacility.lastVisited, order: .reverse)],
@@ -145,18 +151,41 @@ struct ForegroundView: View {
   private var recentlyVisitedFacilities: [ParkingFacility]
 
   var body: some View {
-    NavigationStack {
-      VStack(alignment: .leading) {
-        Topbar()
-        selectedScreen.destinationView(
-          all: allFacilities,
-          pinned: pinnedFacilities,
-          recents: recentlyVisitedFacilities,
-          mapState: mapState
-        )
-      }
-      .padding(.horizontal)
+    VStack(alignment: .leading) {
+      Topbar()
+      selectedScreen.destinationView(
+        all: allFacilities,
+        pinned: pinnedFacilities,
+        recents: recentlyVisitedFacilities,
+        mapState: mapState,
+        sheetState: sheetState
+      )
     }
+    .padding(.horizontal)
+    .background(.thickMaterial)
+    .sheet(
+      isPresented: $sheetState.showingFacilityDetail,
+      onDismiss: {
+        mapState.showAllFacilities()
+      },
+      content: {
+        if let facility = sheetState.selectedFacilityForDetail {
+          FacilityDetailView(
+            facility: facility,
+            onDismiss: {
+              sheetState.hideFacilityDetail()
+              mapState.showAllFacilities()
+            }
+          )
+          .presentationDetents(
+            [.fraction(0.2), .medium, .large], selection: $sheetState.currentDentent
+          )
+          .presentationDragIndicator(.visible)
+          //					.presentationCornerRadius(24)
+          .presentationBackgroundInteraction(.enabled)
+        }
+      }
+    )
   }
 
   @ViewBuilder
@@ -183,62 +212,56 @@ struct ForegroundView: View {
             .font(.callout)
             .fontWeight(.medium)
         }
-        .foregroundStyle(.foreground)
       }
 
       Spacer()
 
-      HStack(alignment: .center) {
+      HStack(alignment: .center, spacing: 8) {
         Button {
-          //TODO: Refresh
-
           Task {
             await refreshManager.performInitialOccupancyLoad()
           }
         } label: {
-          ZStack {
-            Label("Refresh", systemImage: "arrow.clockwise")
-              .fontWeight(.semibold)
-              .symbolEffect(
-                .rotate.clockwise.byLayer,
-                options: .repeat(.continuous),
-                isActive: refreshManager.isRefreshing
-              )
-          }
-          .frame(minWidth: 20, minHeight: 20)
-          .foregroundStyle(.secondary)
+          Label("Refresh", systemImage: "arrow.clockwise")
+            .fontWeight(.semibold)
+            .symbolEffect(
+              .rotate.clockwise.byLayer,
+              options: .repeat(.continuous),
+              isActive: refreshManager.isRefreshing
+            )
+            .frame(minWidth: 20, minHeight: 20)
+            .foregroundStyle(.secondary)
         }
         .disabled(refreshManager.isRefreshing)
         .buttonBorderShape(.circle)
         .buttonStyle(.bordered)
-        .controlSize(.regular)
+        .foregroundStyle(.primary)
 
         Button {
           // TODO: Show menu for more info
           /*@START_MENU_TOKEN@*//*@PLACEHOLDER=Action@*/
           /*@END_MENU_TOKEN@*/
         } label: {
-          ZStack(alignment: .center) {
-            Label("More", systemImage: "ellipsis")
-              .fontWeight(.semibold)
-              .symbolEffect(
-                .wiggle.byLayer,
-                options: .nonRepeating,
-                isActive: showMoreMenu
-              )
-          }
-          .frame(minWidth: 20, minHeight: 20)
-          .foregroundStyle(.foreground)
+          Label("More", systemImage: "ellipsis")
+            .fontWeight(.semibold)
+            .symbolEffect(
+              .wiggle.byLayer,
+              options: .nonRepeating,
+              isActive: showMoreMenu
+            )
+            .frame(minWidth: 20, minHeight: 20)
+            .foregroundStyle(.foreground)
         }
         .buttonBorderShape(.circle)
         .buttonStyle(.bordered)
-        .controlSize(.regular)
-        // To align with other components
-        .offset(x: 4)
+        .foregroundStyle(.primary)
       }
+      // To align with other components
+      .offset(x: 4)
     }
-    .frame(maxWidth: .infinity, maxHeight: 56)
+    .frame(height: 56)
     .padding(.top)
+    .foregroundStyle(.foreground)
   }
 }
 
@@ -268,6 +291,7 @@ struct BackgroundView: View {
             )
             .onTapGesture {
               mapState.focusOnFacility(facility)
+              sheetState.showFacilityDetail(facility)
             }
           }
 
@@ -295,6 +319,7 @@ struct MainView: View {
   let pinnedFacilities: [ParkingFacility]
   let recentFacilities: [ParkingFacility]
   let mapState: MapStateManager
+  let sheetState: SheetStateManager
 
   var body: some View {
     ScrollView(.vertical, showsIndicators: false) {
@@ -321,7 +346,11 @@ struct MainView: View {
           HStack(alignment: .center, spacing: 0) {
             ForEach(pinnedFacilities, id: \.facilityId) {
               facility in
-              ParkingGauge(facility: facility, mapState: mapState)
+              ParkingGauge(
+                facility: facility,
+                mapState: mapState,
+                sheetState: sheetState
+              )
             }
             .padding(.horizontal, 8)
           }
@@ -338,7 +367,11 @@ struct MainView: View {
 
     LazyVStack(alignment: .leading) {
       ForEach(recentFacilities, id: \.facilityId) { facility in
-        ParkingListCardView(facility: facility, mapState: mapState)
+        ParkingListCardView(
+          facility: facility,
+          mapState: mapState,
+          sheetState: sheetState
+        )
       }
     }
   }
@@ -347,12 +380,17 @@ struct MainView: View {
 struct AllFacilitiesView: View {
   let facilities: [ParkingFacility]
   let mapState: MapStateManager
+  let sheetState: SheetStateManager
 
   var body: some View {
     ScrollView(.vertical, showsIndicators: false) {
       LazyVStack(alignment: .listRowSeparatorLeading) {
         ForEach(facilities, id: \.facilityId) { facility in
-          ParkingListCardView(facility: facility, mapState: mapState)
+          ParkingListCardView(
+            facility: facility,
+            mapState: mapState,
+            sheetState: sheetState
+          )
         }
       }
     }

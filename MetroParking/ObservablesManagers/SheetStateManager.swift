@@ -5,6 +5,7 @@
 //  Created by Tom Kwok on 29/6/2025.
 //
 
+import SwiftData
 import SwiftUI
 
 enum SheetState: CaseIterable {
@@ -18,7 +19,7 @@ enum SheetState: CaseIterable {
     case .minimised:
       return .fraction(0.1)
     case .compact:
-      return .fraction(0.3)
+      return .fraction(0.4)
     case .expanded:
       return .medium
     case .fullScreen:
@@ -30,10 +31,11 @@ enum SheetState: CaseIterable {
 @MainActor
 class SheetStateManager: ObservableObject {
 
-  @Published var sheetState: SheetState = .minimised
-  @Published var currentDentent: PresentationDetent = .fraction(0.25)
-  @Published var selectedFacilityForDetail: ParkingFacility?
+  @Published var sheetState: SheetState = .expanded
+  @Published var currentDentent: PresentationDetent = .medium
+
   @Published var showingFacilityDetail = false
+  @Published var selectedFacilityForDetail: ParkingFacility?
 
   /// Set the height of sheet
   func setSheetState(_ newState: SheetState, animated: Bool = true) {
@@ -51,12 +53,11 @@ class SheetStateManager: ObservableObject {
   func showFacilityDetail(_ facility: ParkingFacility) {
     selectedFacilityForDetail = facility
     showingFacilityDetail = true
-    setSheetState(.compact)
+    setSheetState(.expanded)
   }
 
   func hideFacilityDetail() {
     selectedFacilityForDetail = nil
     showingFacilityDetail = false
-    setSheetState(.expanded)
   }
 }

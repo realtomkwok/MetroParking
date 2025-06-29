@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		181A64BD2E0FA50600F6BBAC /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 181A64BC2E0FA50600F6BBAC /* AppIcon.icon */; };
-		182A3C0C2E03BB9000E64A38 /* Config.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 182A3C0B2E03BB9000E64A38 /* Config.xcconfig */; };
 		182A3C0E2E03BC3500E64A38 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 182A3C0D2E03BC3100E64A38 /* .gitignore */; };
 		182A3C122E03C14100E64A38 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182A3C112E03C13F00E64A38 /* Configuration.swift */; };
 /* End PBXBuildFile section */
@@ -223,7 +222,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1630;
-				LastUpgradeCheck = 1630;
+				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					184036F52DD9F82D009D7FBA = {
 						CreatedOnToolsVersion = 16.3;
@@ -265,7 +264,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				181A64BD2E0FA50600F6BBAC /* AppIcon.icon in Resources */,
-				182A3C0C2E03BB9000E64A38 /* Config.xcconfig in Resources */,
 				182A3C0E2E03BC3500E64A38 /* .gitignore in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

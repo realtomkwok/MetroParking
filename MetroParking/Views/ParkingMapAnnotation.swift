@@ -15,7 +15,7 @@ struct ParkingMapAnnotation: View {
     VStack(spacing: 4) {
       ZStack {
         RoundedRectangle(cornerRadius: .infinity)
-          .fill(facility.availablityStatus.color.gradient)
+          .fill(facility.availabilityStatus.color.gradient)
           .frame(
             width: isSelected ? 56 : 16,
             height: isSelected ? 56 : 16

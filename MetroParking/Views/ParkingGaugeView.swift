@@ -27,11 +27,11 @@ struct ParkingGauge: View {
           ParkingProgressGauge(
             availableSpaces: facility.currentAvailableSpots,
             totalSpaces: facility.totalSpaces,
-            availablityStatus: facility.availablityStatus,
+            availabilityStatus: facility.availabilityStatus,
           )
           .scaleEffect(1.5)
 
-          if facility.availablityStatus == .full {
+          if facility.availabilityStatus == .full {
             Text("full")
               .textCase(.uppercase)
               .font(.caption)

@@ -54,7 +54,7 @@ struct ParkingListCardView: View {
 
           Spacer(minLength: 32)
 
-          Text("\(facility.availablityStatus.text)")
+          Text("\(facility.availabilityStatus.text)")
             .font(.subheadline)
             .fontWeight(.semibold)
             .fontDesign(.rounded)
@@ -64,7 +64,7 @@ struct ParkingListCardView: View {
             .foregroundStyle(.white)
             .blendMode(.hardLight)
             .foregroundStyle(.fill)
-            .background(facility.availablityStatus.color)
+            .background(facility.availabilityStatus.color)
             .clipShape(RoundedRectangle(cornerRadius: 999))
 
         }

@@ -31,7 +31,7 @@ struct ParkingMapAnnotation: View {
               .font(.subheadline)
               .multilineTextAlignment(.center)
               .foregroundStyle(
-                facility.availablityStatus.color
+                facility.availabilityStatus.color
                   .adpatedTextColor()
               )
               .fontWeight(.semibold)

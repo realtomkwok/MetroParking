@@ -10,7 +10,7 @@ import SwiftUI
 struct ParkingProgressGauge: View {
   let availableSpaces: Int
   let totalSpaces: Int
-  let availablityStatus: AvailabilityStatus
+  let availabilityStatus: AvailabilityStatus
 
   private var occupancyProgress: Double {
     guard totalSpaces > 0 else { return 0 }
@@ -53,7 +53,7 @@ struct ParkingProgressGauge: View {
       ParkingProgressGauge(
         availableSpaces: facility.currentAvailableSpots,
         totalSpaces: facility.totalSpaces,
-        availablityStatus: facility.availablityStatus,
+        availabilityStatus: facility.availabilityStatus,
       )
     }
   }

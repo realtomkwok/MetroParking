@@ -7,3 +7,5 @@
 
 *.xcconfig
 Info.plist
+/.idea
+/.llm-context

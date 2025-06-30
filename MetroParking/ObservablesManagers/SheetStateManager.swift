@@ -43,10 +43,10 @@ class SheetStateManager: ObservableObject {
 
     if animated {
       withAnimation(.easeInOut(duration: 0.3)) {
-        currentDentent = newState.detent
+        currentDetent = newState.detent
       }
     } else {
-      currentDentent = newState.detent
+      currentDetent = newState.detent
     }
   }
 

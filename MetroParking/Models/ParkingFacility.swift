@@ -217,7 +217,7 @@ extension ParkingFacility {
     let finalInterval = baseInterval * priorityMultiplier * failureMultiplier
     self.nextScheduledRefresh = Date().addingTimeInterval(finalInterval)
 
-    print("📅 \(name): Next refresh in \(Int(finalInterval))s (failures: \(retrivalFailures))")
+    print("📅 \(name): Next refresh in \(Int(finalInterval))s (failures: \(retrievalFailures))")
   }
 
   func markRefreshFailed() {

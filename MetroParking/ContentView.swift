@@ -89,7 +89,7 @@ struct ContentView: View {
         .presentationBackground(.thinMaterial)
         .presentationDetents(
           [.fraction(0.3), .medium, .large],
-          selection: $sheetStateManager.currentDentent
+          selection: $sheetStateManager.currentDetent
         )
         .presentationDragIndicator(.visible)
         .presentationBackgroundInteraction(.enabled)
@@ -177,7 +177,7 @@ struct ForegroundView: View {
             }
           )
           .presentationDetents(
-            [.fraction(0.2), .medium, .large], selection: $sheetState.currentDentent
+            [.fraction(0.2), .medium, .large], selection: $sheetState.currentDetent
           )
           .presentationBackground(.regularMaterial)
           .presentationDragIndicator(.visible)

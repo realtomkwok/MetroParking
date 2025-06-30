@@ -45,6 +45,7 @@ struct FacilityDetailView: View {
   }
 
   @ViewBuilder
+  // TODO: Add the consistent topbar component
   func Topbar() -> some View {
     HStack {
       Text("\(facility.displayName)")

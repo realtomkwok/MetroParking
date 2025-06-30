@@ -177,7 +177,8 @@ struct ForegroundView: View {
             }
           )
           .presentationDetents(
-            [.fraction(0.2), .medium, .large], selection: $sheetState.currentDetent
+            [.fraction(0.2), .medium, .large],
+            selection: $sheetState.currentDetent
           )
           .presentationBackground(.regularMaterial)
           .presentationDragIndicator(.visible)
@@ -322,20 +323,22 @@ struct MainView: View {
 
   var body: some View {
     ScrollView(.vertical, showsIndicators: false) {
-      VStack(alignment: .leading, spacing: 24) {
+      VStack(alignment: .leading) {
         PinnedFacility()
         RecentFacility()
+          .padding(.top)
       }
-      .foregroundStyle(.foreground)
     }
   }
 
   @ViewBuilder
   func PinnedFacility() -> some View {
 
-    Text("Pinned")
-      .font(.headline)
-      .foregroundStyle(.primary)
+    VStack(alignment: .leading) {
+      Text("Pinned")
+        .font(.headline)
+        .foregroundStyle(.primary)
+    }
 
     HStack(alignment: .center) {
       if pinnedFacilities.isEmpty {
@@ -362,17 +365,18 @@ struct MainView: View {
 
   @ViewBuilder
   func RecentFacility() -> some View {
-    Text("Recents")
-      .font(.headline)
-      .foregroundStyle(.primary)
+    VStack(alignment: .leading) {
+      Text("Recents")
+        .font(.headline)
 
-    LazyVStack(alignment: .leading) {
-      ForEach(recentFacilities, id: \.facilityId) { facility in
-        ParkingListCardView(
-          facility: facility,
-          mapState: mapState,
-          sheetState: sheetState
-        )
+      LazyVStack(alignment: .leading) {
+        ForEach(recentFacilities, id: \.facilityId) { facility in
+          ParkingListCardView(
+            facility: facility,
+            mapState: mapState,
+            sheetState: sheetState
+          )
+        }
       }
     }
   }

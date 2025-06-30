@@ -30,6 +30,7 @@ struct ParkingListCardView: View {
         HStack(alignment: .top) {
           VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center) {
+              /// Facility name
               Text("\(facility.displayName)")
                 .font(.title2)
                 .fontDesign(.rounded)
@@ -37,11 +38,12 @@ struct ParkingListCardView: View {
                 .lineLimit(1)
                 .foregroundStyle(.primary)
 
+              /// is Pinned
               if facility.isFavourite {
-                Label("Pinned", systemImage: "pin.circle")
+                Label("pinned", systemImage: "star.fill")
                   .labelStyle(.iconOnly)
                   .font(.callout)
-                  .foregroundStyle(.secondary)
+                  .foregroundStyle(.tertiary)
               }
             }
 
@@ -54,24 +56,30 @@ struct ParkingListCardView: View {
 
           Spacer(minLength: 32)
 
+          /// Availability Status
           Text("\(facility.availabilityStatus.text)")
             .font(.subheadline)
-            .fontWeight(.semibold)
+            .fontWeight(.bold)
             .fontDesign(.rounded)
             .textCase(.uppercase)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .foregroundStyle(.white)
             .blendMode(.hardLight)
-            .foregroundStyle(.fill)
+            .foregroundStyle(
+              facility.availabilityStatus.color.adaptedTextColor()
+            )
             .background(facility.availabilityStatus.color)
-            .clipShape(RoundedRectangle(cornerRadius: 999))
+            .clipShape(RoundedRectangle(cornerRadius: .infinity))
 
         }
 
         Spacer(minLength: 32)
 
+        /// Row #2
         HStack(alignment: .lastTextBaseline) {
+          /// Updated time
+
           HStack(alignment: .center) {
             Text(
               "updated \(facility.lastUpdated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))"
@@ -82,6 +90,7 @@ struct ParkingListCardView: View {
 
           Spacer()
 
+          /// Current available spaces
           VStack(alignment: .center, spacing: 0) {
             Text("\(facility.currentAvailableSpots)")
               .font(.largeTitle)
@@ -101,7 +110,6 @@ struct ParkingListCardView: View {
       }
       .frame(minHeight: 64, maxHeight: 160)
       .padding(20)
-      .foregroundStyle(.foreground)
       .background(.thickMaterial)
       .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
@@ -111,7 +119,7 @@ struct ParkingListCardView: View {
 
 #Preview(traits: .sizeThatFitsLayout) {
   ParkingListCardView(
-    facility: PreviewHelper.almostFullFacility(),
+    facility: PreviewHelper.pinnedFacilities().first!,
     mapState: MapStateManager(),
     sheetState: SheetStateManager()
   )

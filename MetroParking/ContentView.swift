@@ -86,7 +86,7 @@ struct ContentView: View {
           sheetState: sheetStateManager
         )
         .presentationCornerRadius(24)
-        .presentationBackground(.regularMaterial)
+        .presentationBackground(.thinMaterial)
         .presentationDetents(
           [.fraction(0.3), .medium, .large],
           selection: $sheetStateManager.currentDentent
@@ -162,7 +162,6 @@ struct ForegroundView: View {
       )
     }
     .padding(.horizontal)
-    .background(.thickMaterial)
     .sheet(
       isPresented: $sheetState.showingFacilityDetail,
       onDismiss: {
@@ -180,6 +179,7 @@ struct ForegroundView: View {
           .presentationDetents(
             [.fraction(0.2), .medium, .large], selection: $sheetState.currentDentent
           )
+		  .presentationBackground(.regularMaterial)
           .presentationDragIndicator(.visible)
           //					.presentationCornerRadius(24)
           .presentationBackgroundInteraction(.enabled)
@@ -250,7 +250,6 @@ struct ForegroundView: View {
               isActive: showMoreMenu
             )
             .frame(minWidth: 20, minHeight: 20)
-            .foregroundStyle(.foreground)
         }
         .buttonBorderShape(.circle)
         .buttonStyle(.bordered)
@@ -261,7 +260,7 @@ struct ForegroundView: View {
     }
     .frame(height: 56)
     .padding(.top)
-    .foregroundStyle(.foreground)
+	.foregroundStyle(.foreground)
   }
 }
 
@@ -336,6 +335,7 @@ struct MainView: View {
 
     Text("Pinned")
       .font(.headline)
+	  .foregroundStyle(.primary)
 
     HStack(alignment: .center) {
       if pinnedFacilities.isEmpty {
@@ -364,6 +364,7 @@ struct MainView: View {
   func RecentFacility() -> some View {
     Text("Recents")
       .font(.headline)
+	  .foregroundStyle(.primary)
 
     LazyVStack(alignment: .leading) {
       ForEach(recentFacilities, id: \.facilityId) { facility in

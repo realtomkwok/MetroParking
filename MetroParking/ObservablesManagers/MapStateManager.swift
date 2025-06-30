@@ -15,8 +15,8 @@ class MapStateManager: ObservableObject {
   /// Properties
   @Published var cameraPosition: MapCameraPosition = .region(
     MKCoordinateRegion(
-      center: CLLocationCoordinate2D(latitude: -33.8688, longitude: 151.2093),
-      span: MKCoordinateSpan(latitudeDelta: 0.3, longitudeDelta: 0.3)
+		center: CLLocationCoordinate2D(latitude: -33.8688 - 0.1, longitude: 151.2093 - 0.1),
+      span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
     ))
   @Published var selectedFacility: ParkingFacility? = nil
 
@@ -58,7 +58,7 @@ extension MapStateManager {
   func showAllFacilities() {
     let allFacilitiesRegion = MKCoordinateRegion(
       center: CLLocationCoordinate2D(latitude: -33.8688, longitude: 151.2093),  // TODO: Replace this with user's current location
-      span: MKCoordinateSpan(latitudeDelta: 1.2, longitudeDelta: 1.2))
+	  span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5))
 
     withAnimation(.snappy(duration: animationDuration)) {
       cameraPosition = .region(allFacilitiesRegion)

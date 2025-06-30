@@ -32,7 +32,7 @@ enum SheetState: CaseIterable {
 class SheetStateManager: ObservableObject {
 
   @Published var sheetState: SheetState = .expanded
-  @Published var currentDentent: PresentationDetent = .medium
+  @Published var currentDetent: PresentationDetent = .medium
 
   @Published var showingFacilityDetail = false
   @Published var selectedFacilityForDetail: ParkingFacility?

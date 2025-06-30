@@ -57,7 +57,7 @@ struct FacilityDetailView: View {
           facility.isFavourite = !facility.isFavourite
         } label: {
           Label(
-            facility.isFavourite ? "Pin" : "Unpin",
+            facility.isFavourite ? "Pinned" : "Pin",
             systemImage: facility.isFavourite ? "star.fill" : "star"
           )
           .frame(width: 24, height: 24)

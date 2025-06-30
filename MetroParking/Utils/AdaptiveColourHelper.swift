@@ -27,7 +27,7 @@ extension Color {
     return luminance() > 0.6
   }
 
-  func adpatedTextColor() -> Color {
+  func adaptedTextColor() -> Color {
     return isLight() ? Color.black : Color.white
   }
 }

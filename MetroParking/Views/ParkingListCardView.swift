@@ -67,7 +67,6 @@ struct ParkingListCardView: View {
             .textCase(.uppercase)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .foregroundStyle(.white)
             .blendMode(.hardLight)
             .foregroundStyle(
               facility.availabilityStatus.color.adaptedTextColor()
@@ -96,7 +95,7 @@ struct ParkingListCardView: View {
           /// Current available spaces
           VStack(alignment: .center, spacing: 0) {
             Text("\(facility.currentAvailableSpots)")
-              .font(.largeTitle)
+              .font(.system(size: 48))
               .fontDesign(.rounded)
               .foregroundStyle(Color(.label))
               .contentTransition(

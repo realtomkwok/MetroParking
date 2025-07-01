@@ -65,11 +65,13 @@ struct ContentView: View {
   @StateObject private var dataManager = FacilityDataManager()
   /// Refresh manager
   @ObservedObject private var refreshManager = FacilityRefreshManager.shared
+  /// Location Manager
+  @ObservedObject private var locationManager = LocationManager.shared
+
   /// Map State manager
   @StateObject private var mapStateManager = MapStateManager()
+  /// Sheet manager
   @StateObject private var sheetStateManager = SheetStateManager()
-
-  @ObservedObject private var locationManager = LocationManager()
 
   /// UI State
   @State private var presentSheet = true
@@ -352,13 +354,16 @@ struct BackgroundView: View {
             } else {
               Label(
                 "Show my current location",
-                systemImage: locationState.isLocationAvailable ? "location.fill" : "location"
+                systemImage: locationState.isLocationAvailable
+                  ? "location.fill" : "location"
               )
               .font(.headline)
               .frame(width: 40, height: 40)
               .background(.regularMaterial, in: Circle())
               .padding(.trailing)
-              .contentTransition(.symbolEffect(.replace, options: .default))
+              .contentTransition(
+                .symbolEffect(.replace, options: .default)
+              )
               .labelStyle(.iconOnly)
             }
           }

@@ -105,7 +105,7 @@ class FacilityDataManager: ObservableObject {
 
   func getUserLocation() -> (lat: Double, lon: Double) {
     let userLoc = LocationManager.shared.userLocation
-    return (lat: userLoc.latitude, lon: userLoc.longitude)  // Sydney CBD
+    return (lat: userLoc.latitude, lon: userLoc.longitude)
   }
 
   private func getAllFacilities() async -> [ParkingFacility] {

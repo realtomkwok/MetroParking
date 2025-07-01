@@ -84,7 +84,7 @@ struct ContentView: View {
         sheetState: sheetStateManager,
         locationState: locationManager
       )
-      .sheet(isPresented: $presentSheet) {
+	  .sheet(isPresented: $presentSheet) {
 
         ForegroundView(
           mapState: mapStateManager,

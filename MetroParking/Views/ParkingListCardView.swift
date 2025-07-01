@@ -62,9 +62,10 @@ struct ParkingListCardView: View {
           /// Availability Status
           Text("\(facility.availabilityStatus.text)")
             .font(.subheadline)
-            .fontWeight(.bold)
+            .fontWeight(.semibold)
             .fontDesign(.rounded)
             .textCase(.uppercase)
+			// Ditch 4px padding?
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .blendMode(.hardLight)
@@ -93,7 +94,7 @@ struct ParkingListCardView: View {
           Spacer()
 
           /// Current available spaces
-          VStack(alignment: .center, spacing: 0) {
+          VStack(alignment: .trailing, spacing: 0) {
             Text("\(facility.displayAvailableSpots)")
               .font(.system(size: 48))
               .fontDesign(.rounded)

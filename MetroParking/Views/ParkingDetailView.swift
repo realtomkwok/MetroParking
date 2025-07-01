@@ -7,84 +7,168 @@
 
 import SwiftData
 import SwiftUI
+import MapKit
 
 struct FacilityDetailView: View {
-  let facility: ParkingFacility
-  let onDismiss: () -> Void
+	
+	@Environment(\.modelContext) private var modelContext
+	@Environment(\.dismiss) private var dismiss
+	
+	let facility: ParkingFacility
+	let onDismiss: () -> Void
+	
+	private var occupancyProgress: Double {
+		guard facility.totalSpaces > 0 else { return 0 }
+		return Double(facility.currentOccupancy) / Double(facility.totalSpaces)
+	}
+	
+	var body: some View {
+		NavigationView {
+			ScrollView {
+				VStack(alignment: .leading, spacing: 24) {
+					Topbar()
+					
+					VStack(spacing: 16) {
+						
+							// TODO: Direction Button with ETA
+						
+						Button {
+								// TODO: Calling user's navigation app
+						} label: {
+							HStack(alignment: .center, spacing: 8) {
+								Spacer()
+								Label("Drive there", systemImage: "car.fill")
+									// TODO: Connect ETA from location service
+							Spacer()
+							}
+						}
+						.font(.headline)
+						.buttonStyle(.borderedProminent)
+						.buttonBorderShape(.capsule)
+						.labelStyle(.titleAndIcon)
+						.controlSize(.extraLarge)
+						
+							// TODO: Gauge
+						
+						VStack(alignment: .leading) {
+							HStack(alignment: .center) {
+								Label("Capacity", systemImage: "gauge")
+									.font(.headline)
+									.textCase(.uppercase)
+									.foregroundStyle(.secondary)
+							}
+							.padding()
+							
+							
+							Spacer()
+							
+								/// Current available spaces
+								/// TODO: Dynamic position of the number
+							VStack(alignment: .trailing) {
+								VStack(alignment: .trailing, spacing: 0) {
+									Text("\(facility.displayAvailableSpots)")
+										.font(.system(size: 48))
+										.fontDesign(.rounded)
+										.foregroundStyle(.primary)
+										.contentTransition(
+											.numericText(
+												value: Double(facility.currentAvailableSpots)
+											)
+										)
+									Text("spaces")
+										.foregroundStyle(.secondary)
+								}
+								
+								Gauge(value: occupancyProgress) {
+									Label("Value", systemImage: "car")
+								}
+								.gaugeStyle(.accessoryLinear)
+								.tint(
+									Gradient(colors: [
+										AvailabilityStatus.available.color,
+										AvailabilityStatus.almostFull.color,
+										AvailabilityStatus.full.color,
+									])
+								)
+							}
+							.padding()
+							
+						}
+						.frame(maxWidth: .infinity, maxHeight: 200)
+						.background(.thickMaterial)
+						.clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+							// TODO: Forecast and trend
+						
+							// TODO: Look around
+							//					LookAroundPreview(scene: <#T##Binding<MKLookAroundScene?>#>)
+						
+							// TODO: Stats for nerd (rest of information)
+						List {
+							Text("1")
+						}
+						
+					}
+					
+					Spacer()
+				}
+				.padding()
+			}
+		}
+		.onAppear {
+			facility.markAsVisited()
+			try? modelContext.save()
+		}
+	}
+	
+	@ViewBuilder
+		// TODO: Add the consistent topbar component
+	func Topbar() -> some View {
+		HStack(alignment: .center) {
+				Text("\(facility.displayName)")
+					.font(.title)
+					.multilineTextAlignment(.leading)
+					.lineLimit(2)
+			
+			Spacer(minLength: 16)
+			
+			HStack(alignment: .center) {
+				Button {
+					facility.isFavourite = !facility.isFavourite
+				} label: {
+					Label(
+						facility.isFavourite ? "Pinned" : "Pin",
+						systemImage: facility.isFavourite ? "star.fill" : "star"
+					)
+					.frame(width: 24, height: 24)
+					.contentTransition(
+						.symbolEffect(
+							.replace.magic(fallback: .downUp.wholeSymbol),
+							options: .nonRepeating
+						)
+					)
+				}
+				
+				Button {
+					onDismiss()
+					dismiss()
+				} label: {
+					Label("Close", systemImage: "xmark")
+						.frame(width: 24, height: 24)
+				}
+			}
+			.buttonStyle(.bordered)
+			.buttonBorderShape(.circle)
+			.foregroundStyle(.secondary)
+		}
+		.frame(height: 56)
+		.fontWeight(.bold)
+	}
+	
+}
 
-  @Environment(\.modelContext) private var modelContext
-  @Environment(\.dismiss) private var dismiss
-
-  var body: some View {
-    NavigationView {
-      VStack(alignment: .leading, spacing: 16) {
-        Topbar()
-
-        VStack(alignment: .leading) {
-          Text("\(facility.suburb), \(facility.address)")
-            .font(.subheadline)
-            .foregroundColor(.secondary)
-
-          Text("Total Spaces: \(facility.totalSpaces)")
-            .font(.headline)
-
-          if let lastVisited = facility.lastVisited {
-            Text("Last visited: \(lastVisited, format: .dateTime)")
-              .font(.caption)
-              .foregroundColor(.secondary)
-          }
-        }
-        Spacer()
-      }
-      .padding()
-    }
-    .onAppear {
-      facility.markAsVisited()
-      try? modelContext.save()
-    }
-  }
-
-  @ViewBuilder
-  // TODO: Add the consistent topbar component
-  func Topbar() -> some View {
-    HStack {
-      Text("\(facility.displayName)")
-        .font(.title2)
-        .multilineTextAlignment(.leading)
-      Spacer(minLength: 16)
-
-      HStack(alignment: .center) {
-        Button {
-          facility.isFavourite = !facility.isFavourite
-        } label: {
-          Label(
-            facility.isFavourite ? "Pinned" : "Pin",
-            systemImage: facility.isFavourite ? "star.fill" : "star"
-          )
-          .frame(width: 24, height: 24)
-          .contentTransition(
-            .symbolEffect(
-              .replace.magic(fallback: .downUp.wholeSymbol),
-              options: .nonRepeating
-            )
-          )
-        }
-
-        Button {
-          onDismiss()
-          dismiss()
-        } label: {
-          Label("Close", systemImage: "xmark")
-            .frame(width: 24, height: 24)
-        }
-      }
-      .buttonStyle(.bordered)
-      .buttonBorderShape(.circle)
-      .foregroundStyle(.secondary)
-    }
-    .frame(height: 56)
-    .fontWeight(.bold)
-  }
+extension FacilityDetailView {
+	
+	
 }
 
 #Preview {

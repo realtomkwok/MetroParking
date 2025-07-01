@@ -100,7 +100,7 @@ struct ParkingListCardView: View {
               .foregroundStyle(Color(.label))
               .contentTransition(
                 .numericText(
-                  value: facility.currentAvailableSpots
+                  value: Double(facility.currentAvailableSpots)
                 )
               )
             Text("spaces")

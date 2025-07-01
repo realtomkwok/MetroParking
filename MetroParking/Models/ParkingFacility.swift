@@ -69,7 +69,7 @@ final class ParkingFacility {
     let available = currentAvailableSpots
     let total = totalSpaces
 
-    if isValid(available) {
+    if isValid(Double(available)) {
       let intAvailable = Int(available)
 
       if available == 0 {
@@ -228,16 +228,16 @@ extension ParkingFacility {
     }
   }
 
-  var currentAvailableSpots: Double {
+  var currentAvailableSpots: Int {
     if isOccupancyCacheValid {
-      return Double(_cachedAvailableSpots)
+      return _cachedAvailableSpots
     } else {
-      return Double.nan
+      return -1
     }
   }
 
   var displayAvailableSpots: String {
-    if currentAvailableSpots.isNaN {
+    if currentAvailableSpots == -1 {
       return "--"
     } else {
       return String(format: "%.0f", currentAvailableSpots)
@@ -249,6 +249,6 @@ extension ParkingFacility {
   }
 
   var hasValidSpotData: Bool {
-    isValid(currentAvailableSpots)
+    isValid(Double(currentAvailableSpots))
   }
 }

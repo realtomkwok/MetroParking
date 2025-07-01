@@ -13,6 +13,7 @@ struct ParkingProgressGauge: View {
   let availabilityStatus: AvailabilityStatus
 
   private var occupancyProgress: Double {
+
     guard totalSpaces > 0 else { return 0 }
     let currentOccupancy = totalSpaces - availableSpaces
     return Double(currentOccupancy) / Double(totalSpaces)
@@ -47,7 +48,10 @@ struct ParkingProgressGauge: View {
 
   HStack(spacing: 24) {
     ForEach(
-      [availableFacility, almostFullFacility, FullFacility, noDataFacility],
+      [
+        availableFacility, almostFullFacility, FullFacility,
+        noDataFacility,
+      ],
       id: \.facilityId
     ) { facility in
       ParkingProgressGauge(

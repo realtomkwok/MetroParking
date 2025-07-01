@@ -94,15 +94,13 @@ struct ParkingListCardView: View {
 
           /// Current available spaces
           VStack(alignment: .center, spacing: 0) {
-            Text("\(facility.currentAvailableSpots)")
+            Text("\(facility.displayAvailableSpots)")
               .font(.system(size: 48))
               .fontDesign(.rounded)
               .foregroundStyle(Color(.label))
               .contentTransition(
                 .numericText(
-                  value: Double(
-                    facility.currentAvailableSpots
-                  )
+                  value: facility.currentAvailableSpots
                 )
               )
             Text("spaces")

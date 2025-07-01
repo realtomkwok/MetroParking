@@ -132,7 +132,9 @@ extension FacilityRefreshManager {
 
   private func loadNearest() async {
     let userLoc = LocationManager.shared.userLocation
-    let userLocation = (latitude: userLoc.latitude, longitude: userLoc.longitude)
+    let userLocation = (
+      latitude: userLoc.latitude, longitude: userLoc.longitude
+    )
     let nearest5 = getNearestFacilities(to: userLocation, limit: 5)
       .filter { !$0.isFavourite }
 
@@ -153,9 +155,13 @@ extension FacilityRefreshManager {
   private func loadRemaining() async {
     let favourites = Set(getFavouriteFacilities().map { $0.facilityId })
     let userLoc = LocationManager.shared.userLocation
-    let userLocation = (latitude: userLoc.latitude, longitude: userLoc.longitude)
+    let userLocation = (
+      latitude: userLoc.latitude, longitude: userLoc.longitude
+    )
     let nearest5Ids = Set(
-      getNearestFacilities(to: userLocation, limit: 5).map { $0.facilityId }
+      getNearestFacilities(to: userLocation, limit: 5).map {
+        $0.facilityId
+      }
     )
 
     let remaining = getAllFacilities()
@@ -244,7 +250,9 @@ extension FacilityRefreshManager {
     }
 
     let userLoc = LocationManager.shared.userLocation
-    let defaultLocation = (latitude: userLoc.latitude, longitude: userLoc.longitude)
+    let defaultLocation = (
+      latitude: userLoc.latitude, longitude: userLoc.longitude
+    )
     let nearest = getNearestFacilities(to: defaultLocation, limit: 5)
 
     print("📍 No favourites found, refreshing 5 nearest facilities")
@@ -345,10 +353,13 @@ extension FacilityRefreshManager {
   }
 
   private func getNearestFacilities(
-    to userLocation: (latitude: Double, longitude: Double), limit: Int
+    to userLocation: (latitude: Double, longitude: Double),
+    limit: Int
   ) -> [ParkingFacility] {
     let allFacilities = getAllFacilities()
-    let sorted = LocationManager.shared.sortFacilitiesByDistance(allFacilities)
+    let sorted = LocationManager.shared.sortFacilitiesByDistance(
+      allFacilities
+    )
     return Array(sorted.prefix(limit))
   }
 

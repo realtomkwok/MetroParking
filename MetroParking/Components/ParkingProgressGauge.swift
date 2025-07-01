@@ -51,7 +51,7 @@ struct ParkingProgressGauge: View {
       id: \.facilityId
     ) { facility in
       ParkingProgressGauge(
-        availableSpaces: facility.currentAvailableSpots,
+        availableSpaces: Int(facility.currentAvailableSpots),
         totalSpaces: facility.totalSpaces,
         availabilityStatus: facility.availabilityStatus,
       )

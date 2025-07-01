@@ -69,42 +69,25 @@ final class ParkingFacility {
     let available = currentAvailableSpots
     let total = totalSpaces
 
-    if available == -1 {
+    if isValid(available) {
+      let intAvailable = Int(available)
+
+      if available == 0 {
+        return .full
+      } else if intAvailable < total / 10 {
+        return .almostFull
+      } else {
+        return .available
+      }
+    } else {
       return .noData
+
     }
 
-    if available == 0 {
-      return .full
-    } else if available < total / 10 {
-      return .almostFull
-    } else {
-      return .available
-    }
   }
 
   var refreshGroup: RefreshGroup {
     return refreshGroupType == "high" ? .high : .standard
-  }
-
-  var currentOccupancy: Int {
-    get {
-      if isOccupancyCacheValid {
-        return _cachedOccupancy
-      }
-      return 0
-    }
-    set {
-      _cachedOccupancy = newValue
-      _occupancyCacheTime = Date()
-      _cachedAvailableSpots = max(0, totalSpaces - newValue)
-    }
-  }
-
-  var currentAvailableSpots: Int {
-    if isOccupancyCacheValid {
-      return _cachedAvailableSpots
-    }
-    return -1
   }
 
   var isOccupancyCacheValid: Bool {
@@ -226,5 +209,46 @@ extension ParkingFacility {
 
   func markAsVisited() {
     lastVisited = Date()
+  }
+}
+
+extension ParkingFacility {
+
+  var currentOccupancy: Int {
+    get {
+      if isOccupancyCacheValid {
+        return _cachedOccupancy
+      }
+      return 0
+    }
+    set {
+      _cachedOccupancy = newValue
+      _occupancyCacheTime = Date()
+      _cachedAvailableSpots = max(0, totalSpaces - newValue)
+    }
+  }
+
+  var currentAvailableSpots: Double {
+    if isOccupancyCacheValid {
+      return Double(_cachedAvailableSpots)
+    } else {
+      return Double.nan
+    }
+  }
+
+  var displayAvailableSpots: String {
+    if currentAvailableSpots.isNaN {
+      return "--"
+    } else {
+      return String(format: "%.0f", currentAvailableSpots)
+    }
+  }
+
+  func isValid(_ cacheValue: Double) -> Bool {
+    return cacheValue != Double.nan && cacheValue >= 0
+  }
+
+  var hasValidSpotData: Bool {
+    isValid(currentAvailableSpots)
   }
 }

@@ -69,21 +69,17 @@ final class ParkingFacility {
     let available = currentAvailableSpots
     let total = totalSpaces
 
-    if isValid(Double(available)) {
-      let intAvailable = Int(available)
-
+    if available >= 0 {
       if available == 0 {
         return .full
-      } else if intAvailable < total / 10 {
+      } else if available < total / 10 {
         return .almostFull
       } else {
         return .available
       }
     } else {
       return .noData
-
     }
-
   }
 
   var refreshGroup: RefreshGroup {
@@ -240,15 +236,11 @@ extension ParkingFacility {
     if currentAvailableSpots == -1 {
       return "--"
     } else {
-      return String(format: "%.0f", currentAvailableSpots)
+      return String(currentAvailableSpots)
     }
   }
 
-  func isValid(_ cacheValue: Double) -> Bool {
-    return cacheValue != Double.nan && cacheValue >= 0
-  }
-
   var hasValidSpotData: Bool {
-    isValid(Double(currentAvailableSpots))
+    return currentAvailableSpots >= 0
   }
 }

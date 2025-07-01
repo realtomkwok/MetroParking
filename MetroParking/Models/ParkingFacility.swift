@@ -124,12 +124,6 @@ final class ParkingFacility {
     return retrievalFailures > 0
   }
 
-  func distanceFrom(latitude: Double, longitude: Double) -> Double {
-    let latDiff = self.latitude - latitude
-    let lonDiff = self.longitude - longitude
-    return sqrt(latDiff * latDiff + lonDiff * lonDiff)
-  }
-
   init(from apiResponse: ParkingAPIResponse) {
     self.facilityId = apiResponse.facilityId
     self.name = apiResponse.facilityName
@@ -207,7 +201,7 @@ extension ParkingFacility {
     let baseInterval =
       appState == .active ? refreshGroup.activeInterval : refreshGroup.backgroundInterval
 
-    // Apply favorite priority (50% faster refresh)
+    // Apply favourite priority (50% faster refresh)
     let priorityMultiplier = isFavourite ? 0.5 : 1.0
 
     // Apply exponential backoff for failures

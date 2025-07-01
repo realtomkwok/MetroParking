@@ -65,8 +65,12 @@ struct ContentView: View {
   @StateObject private var dataManager = FacilityDataManager()
   /// Refresh manager
   @ObservedObject private var refreshManager = FacilityRefreshManager.shared
+  /// Location Manager
+  @ObservedObject private var locationManager = LocationManager.shared
+
   /// Map State manager
   @StateObject private var mapStateManager = MapStateManager()
+  /// Sheet manager
   @StateObject private var sheetStateManager = SheetStateManager()
 
   /// UI State
@@ -77,7 +81,8 @@ struct ContentView: View {
     ZStack {
       BackgroundView(
         mapState: mapStateManager,
-        sheetState: sheetStateManager
+        sheetState: sheetStateManager,
+        locationState: locationManager
       )
       .sheet(isPresented: $presentSheet) {
 
@@ -177,7 +182,8 @@ struct ForegroundView: View {
             }
           )
           .presentationDetents(
-            [.fraction(0.2), .medium, .large], selection: $sheetState.currentDetent
+            [.fraction(0.2), .medium, .large],
+            selection: $sheetState.currentDetent
           )
           .presentationBackground(.regularMaterial)
           .presentationDragIndicator(.visible)
@@ -191,6 +197,7 @@ struct ForegroundView: View {
   @ViewBuilder
   func Topbar() -> some View {
     HStack(alignment: .center) {
+      /// Menu (select views)
       Menu {
         ForEach(ScreenView.allCases) { screen in
           Button(action: {
@@ -216,6 +223,7 @@ struct ForegroundView: View {
 
       Spacer()
 
+      /// Topbar trailing buttons
       HStack(alignment: .center, spacing: 8) {
         Button {
           Task {
@@ -267,13 +275,19 @@ struct ForegroundView: View {
 struct BackgroundView: View {
   @ObservedObject var mapState: MapStateManager
   @ObservedObject var sheetState: SheetStateManager
+  @ObservedObject var locationState: LocationManager
+
   @Query var allFacilities: [ParkingFacility]
+  @State private var showLocationPermissionAlert = false
+  @State private var showLocationSettingsAlert = false
 
   var body: some View {
     VStack {
       Map(
         position: $mapState.cameraPosition
       ) {
+        UserAnnotation()
+
         ForEach(allFacilities, id: \.facilityId) { facility in
 
           Annotation(
@@ -295,7 +309,6 @@ struct BackgroundView: View {
           }
 
         }
-
       }
       .mapStyle(
         .standard(
@@ -307,9 +320,89 @@ struct BackgroundView: View {
       )
       .mapControls {
         MapScaleView()
-        MapUserLocationButton()
         MapCompass()
       }
+    }
+    .overlay(alignment: .trailing) {
+      VStack {
+        Button {
+          switch locationState.authorisationStatus {
+          case .notDetermined:
+            showLocationPermissionAlert = true
+          case .restricted, .denied:
+            showLocationSettingsAlert = true
+          case .authorizedAlways, .authorizedWhenInUse:
+
+            let newRegion =
+              locationState.getNearestFacilitiesRegion(
+                facilities: allFacilities,
+                count: 5,
+                paddingFactor: 1
+              )
+
+            withAnimation(.snappy(duration: 1.5)) {
+              mapState.cameraPosition = .region(newRegion)
+            }
+
+          @unknown default:
+            locationState.requestLocationPermission()
+          }
+        } label: {
+          VStack(alignment: .center) {
+            if locationState.isRefreshing {
+              ProgressView()
+            } else {
+              Label(
+                "Show my current location",
+                systemImage: locationState.isLocationAvailable
+                  ? "location.fill" : "location"
+              )
+              .font(.headline)
+              .frame(width: 40, height: 40)
+              .background(.regularMaterial, in: Circle())
+              .padding(.trailing)
+              .contentTransition(
+                .symbolEffect(.replace, options: .default)
+              )
+              .labelStyle(.iconOnly)
+            }
+          }
+        }
+
+        Spacer()
+      }
+
+    }
+
+    .alert(
+      "Enable Location Access",
+      isPresented: $showLocationPermissionAlert
+    ) {
+      Button("Allow Location") {
+        LocationManager.shared.requestLocationPermission()
+      }
+      Button("Not Now", role: .cancel) {}
+    } message: {
+      Text(
+        "MetroParking uses your location to find nearby parking facilities and show accurate distances. This helps you find the best parking options."
+      )
+    }
+    .alert(
+      "Location Access Needed",
+      isPresented: $showLocationSettingsAlert
+    ) {
+      Button("Open Settings") {
+        if let settingsURL = URL(
+          string: UIApplication.openSettingsURLString
+        ) {
+          UIApplication.shared.open(settingsURL)
+        }
+      }
+      Button("Cancel", role: .cancel) {}
+    } message: {
+      Text(
+        "Location access was previously denied. To find nearby parking, please enable location access in Settings → MetroParking → Location."
+      )
     }
   }
 }
@@ -322,20 +415,22 @@ struct MainView: View {
 
   var body: some View {
     ScrollView(.vertical, showsIndicators: false) {
-      VStack(alignment: .leading, spacing: 24) {
+      VStack(alignment: .leading) {
         PinnedFacility()
         RecentFacility()
+          .padding(.top)
       }
-      .foregroundStyle(.foreground)
     }
   }
 
   @ViewBuilder
   func PinnedFacility() -> some View {
 
-    Text("Pinned")
-      .font(.headline)
-      .foregroundStyle(.primary)
+    VStack(alignment: .leading) {
+      Text("Pinned")
+        .font(.headline)
+        .foregroundStyle(.primary)
+    }
 
     HStack(alignment: .center) {
       if pinnedFacilities.isEmpty {
@@ -362,17 +457,18 @@ struct MainView: View {
 
   @ViewBuilder
   func RecentFacility() -> some View {
-    Text("Recents")
-      .font(.headline)
-      .foregroundStyle(.primary)
+    VStack(alignment: .leading) {
+      Text("Recents")
+        .font(.headline)
 
-    LazyVStack(alignment: .leading) {
-      ForEach(recentFacilities, id: \.facilityId) { facility in
-        ParkingListCardView(
-          facility: facility,
-          mapState: mapState,
-          sheetState: sheetState
-        )
+      LazyVStack(alignment: .leading) {
+        ForEach(recentFacilities, id: \.facilityId) { facility in
+          ParkingListCardView(
+            facility: facility,
+            mapState: mapState,
+            sheetState: sheetState
+          )
+        }
       }
     }
   }

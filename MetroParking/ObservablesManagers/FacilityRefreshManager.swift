@@ -81,7 +81,9 @@ extension FacilityRefreshManager {
     lastRefreshTime = Date()
 
     print("🎉 Initial occupancy load complete!")
-    print("📊 Stats: \(refreshStats.successCount) success, \(refreshStats.failureCount) failed")
+    print(
+      "📊 Stats: \(refreshStats.successCount) success, \(refreshStats.failureCount) failed"
+    )
   }
 
   func startAutoRefresh() {
@@ -110,22 +112,28 @@ extension FacilityRefreshManager {
     let favourites = getFavouriteFacilities()
 
     if favourites.isEmpty {
-      print("⭐ No favorite facilities to load")
+      print("⭐ No favourite facilities to load")
       return
     }
 
-    print("⭐ Loading occupancy for \(favourites.count) favorite facilities...")
+    print(
+      "⭐ Loading occupancy for \(favourites.count) favourite facilities..."
+    )
     initialLoadProgress = .loadingFavourites(0, favourites.count)
 
     for (index, facility) in favourites.enumerated() {
       await loadOccupancyForFacility(facility, context: "favourite")
-      initialLoadProgress = .loadingFavourites(index + 1, favourites.count)
+      initialLoadProgress = .loadingFavourites(
+        index + 1,
+        favourites.count
+      )
     }
   }
 
   private func loadNearest() async {
-    let sydneyCBD = (lat: -33.8688, lon: 151.2093)  // Default
-    let nearest5 = getNearestFacilities(to: sydneyCBD, limit: 5)
+    let userLoc = LocationManager.shared.userLocation
+    let userLocation = (latitude: userLoc.latitude, longitude: userLoc.longitude)
+    let nearest5 = getNearestFacilities(to: userLocation, limit: 5)
       .filter { !$0.isFavourite }
 
     if nearest5.isEmpty {
@@ -144,23 +152,35 @@ extension FacilityRefreshManager {
 
   private func loadRemaining() async {
     let favourites = Set(getFavouriteFacilities().map { $0.facilityId })
-    let sydneyCBD = (lat: -33.8688, lon: 151.2093)
-    let nearest5Ids = Set(getNearestFacilities(to: sydneyCBD, limit: 5).map { $0.facilityId })
+    let userLoc = LocationManager.shared.userLocation
+    let userLocation = (latitude: userLoc.latitude, longitude: userLoc.longitude)
+    let nearest5Ids = Set(
+      getNearestFacilities(to: userLocation, limit: 5).map { $0.facilityId }
+    )
 
     let remaining = getAllFacilities()
-      .filter { !favourites.contains($0.facilityId) && !nearest5Ids.contains($0.facilityId) }
+      .filter {
+        !favourites.contains($0.facilityId)
+          && !nearest5Ids.contains($0.facilityId)
+      }
 
     if remaining.isEmpty {
       print("🔄 No remaining facilities to load")
       return
     }
 
-    print("🔄 Loading occupancy for \(remaining.count) remaining facilities...")
+    print(
+      "🔄 Loading occupancy for \(remaining.count) remaining facilities..."
+    )
     initialLoadProgress = .loadingRemaining(0, remaining.count)
 
     /// Load remaining facilities with longer delays to avoid rate limits
     for (index, facility) in remaining.enumerated() {
-      await loadOccupancyForFacility(facility, context: "remaining", withDelay: 1.0)
+      await loadOccupancyForFacility(
+        facility,
+        context: "remaining",
+        withDelay: 1.0
+      )
       initialLoadProgress = .loadingRemaining(index + 1, remaining.count)
     }
   }
@@ -172,7 +192,10 @@ extension FacilityRefreshManager {
   private func scheduleNextRefresh() {
     let interval = currentAppState.refreshInterval
 
-    refreshTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) {
+    refreshTimer = Timer.scheduledTimer(
+      withTimeInterval: interval,
+      repeats: false
+    ) {
       [weak self] _ in
       Task { @MainActor in
         await self?.performRefreshCycle()
@@ -196,7 +219,9 @@ extension FacilityRefreshManager {
       return
     }
 
-    print("🔄 Refresh cycle: updating \(facilitiesToRefresh.count) facilities")
+    print(
+      "🔄 Refresh cycle: updating \(facilitiesToRefresh.count) facilities"
+    )
     isRefreshing = true
 
     for facility in facilitiesToRefresh {
@@ -214,18 +239,15 @@ extension FacilityRefreshManager {
     let favourites = getFavouriteFacilities()
 
     if !favourites.isEmpty {
-      print("⭐ Refreshing \(favourites.count) favorite facilities")
+      print("⭐ Refreshing \(favourites.count) favourite facilities")
       return favourites
     }
 
-    // If no favourites, get the nearest 5 facilities that are updated
-    // For now using Sydney CBD as default location
-    // TODO: Get user's actual location
-    let sydneyCBD = (lat: -33.8688, lon: 151.2093)
-    let defaultLocation = sydneyCBD
+    let userLoc = LocationManager.shared.userLocation
+    let defaultLocation = (latitude: userLoc.latitude, longitude: userLoc.longitude)
     let nearest = getNearestFacilities(to: defaultLocation, limit: 5)
 
-    print("📍 No favorites found, refreshing 5 nearest facilities")
+    print("📍 No favourites found, refreshing 5 nearest facilities")
     return nearest
   }
 }
@@ -241,7 +263,9 @@ extension FacilityRefreshManager {
     await rateLimitedDelay()
 
     do {
-      let response = try await ParkingAPIService.shared.fetchFacility(id: facility.facilityId)
+      let response = try await ParkingAPIService.shared.fetchFacility(
+        id: facility.facilityId
+      )
 
       // Update facility with API response
       await MainActor.run {
@@ -263,7 +287,9 @@ extension FacilityRefreshManager {
       refreshStats.failureCount += 1
       refreshStats.lastFailureTime = Date()
 
-      print("❌ [\(context)] Failed to load \(facility.name): \(error.localizedDescription)")
+      print(
+        "❌ [\(context)] Failed to load \(facility.name): \(error.localizedDescription)"
+      )
     }
 
     // Additional delay to avoid rate limiting
@@ -319,41 +345,11 @@ extension FacilityRefreshManager {
   }
 
   private func getNearestFacilities(
-    to userLocation: (lat: Double, lon: Double),
-    limit: Int = 5
+    to userLocation: (latitude: Double, longitude: Double), limit: Int
   ) -> [ParkingFacility] {
-    guard let context = modelContext else { return [] }
-
-    let descriptor = FetchDescriptor<ParkingFacility>()
-
-    do {
-      let allFacilities = try context.fetch(descriptor)
-
-      // Sort by distance and take the closest ones
-      return
-        allFacilities
-        .sorted { facility1, facility2 in
-          let dist1 = facility1.distanceFrom(
-            latitude: userLocation.lat, longitude: userLocation.lon)
-          let dist2 = facility2.distanceFrom(
-            latitude: userLocation.lat, longitude: userLocation.lon)
-          return dist1 < dist2
-        }
-        .prefix(limit)
-        .map { $0 }
-    } catch {
-      print("❌ Failed to fetch nearest facilities: \(error)")
-      return []
-    }
-  }
-
-  private func calculateDistance(
-    from: (lat: Double, lon: Double),
-    to: (lat: Double, lon: Double)
-  ) -> Double {
-    let latDiff = from.lat - to.lat
-    let lonDiff = from.lon - to.lon
-    return sqrt(latDiff * latDiff + lonDiff * lonDiff)
+    let allFacilities = getAllFacilities()
+    let sorted = LocationManager.shared.sortFacilitiesByDistance(allFacilities)
+    return Array(sorted.prefix(limit))
   }
 
   private func saveContext() {
@@ -455,9 +451,11 @@ enum InitialLoadProgress {
     case .loadingFavourites(let current, let total):
       return total > 0 ? Double(current) / Double(total) * 0.3 : 0.3
     case .loadingNearest(let current, let total):
-      return 0.3 + (total > 0 ? Double(current) / Double(total) * 0.3 : 0.3)
+      return 0.3
+        + (total > 0 ? Double(current) / Double(total) * 0.3 : 0.3)
     case .loadingRemaining(let current, let total):
-      return 0.6 + (total > 0 ? Double(current) / Double(total) * 0.4 : 0.4)
+      return 0.6
+        + (total > 0 ? Double(current) / Double(total) * 0.4 : 0.4)
     case .completed:
       return 1.0
     }

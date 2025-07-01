@@ -350,12 +350,16 @@ struct BackgroundView: View {
             if locationState.isRefreshing {
               ProgressView()
             } else {
-              Image(systemName: locationState.isLocationAvailable ? "location.fill" : "location")
-                .font(.headline)
-                .frame(width: 40, height: 40)
-                .background(.regularMaterial, in: Circle())
-                .padding(.trailing)
-                .contentTransition(.symbolEffect(.replace, options: .default))
+              Label(
+                "Show my current location",
+                systemImage: locationState.isLocationAvailable ? "location.fill" : "location"
+              )
+              .font(.headline)
+              .frame(width: 40, height: 40)
+              .background(.regularMaterial, in: Circle())
+              .padding(.trailing)
+              .contentTransition(.symbolEffect(.replace, options: .default))
+              .labelStyle(.iconOnly)
             }
           }
         }

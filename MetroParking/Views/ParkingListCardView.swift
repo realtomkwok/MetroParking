@@ -10,13 +10,16 @@ import SwiftUI
 struct ParkingListCardView: View {
 
   @Environment(\.modelContext) private var modelContext
+  @ObservedObject private var locationManager = LocationManager.shared
 
   let facility: ParkingFacility
   let mapState: MapStateManager
   let sheetState: SheetStateManager
 
-  // TODO: Replace value with real distance
-  let distance = Measurement(value: 5.2, unit: UnitLength.kilometers)
+  private var actualDistance: Measurement<UnitLength> {
+    let distance = locationManager.distanceToFacility(facility)
+    return Measurement(value: distance, unit: UnitLength.kilometers)
+  }
 
   // TODO: Update indicator
 
@@ -48,7 +51,7 @@ struct ParkingListCardView: View {
             }
 
             HStack(alignment: .center) {
-              Text("\(distance.formatted()) away")
+              Text("\(actualDistance.formatted()) away")
             }
             .font(.callout)
             .foregroundStyle(Color(.secondaryLabel))

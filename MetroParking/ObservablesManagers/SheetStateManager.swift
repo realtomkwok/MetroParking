@@ -26,6 +26,19 @@ enum SheetState: CaseIterable {
       return .large
     }
   }
+
+  var height: CGFloat {
+    switch self {
+    case .minimised:
+      return 0.1
+    case .compact:
+      return 0.4
+    case .expanded:
+      return 0.3
+    case .fullScreen:
+      return 1
+    }
+  }
 }
 
 @MainActor
@@ -34,19 +47,18 @@ class SheetStateManager: ObservableObject {
   @Published var sheetState: SheetState = .expanded
   @Published var currentDetent: PresentationDetent = .medium
 
+  @Published var currentDetentHeight: CGFloat = 0.5
+
   @Published var showingFacilityDetail = false
   @Published var selectedFacilityForDetail: ParkingFacility?
 
   /// Set the height of sheet
-  func setSheetState(_ newState: SheetState, animated: Bool = true) {
+  func setSheetState(_ newState: SheetState) {
     sheetState = newState
 
-    if animated {
-      withAnimation(.easeInOut(duration: 0.3)) {
-        currentDetent = newState.detent
-      }
-    } else {
+    withAnimation(.snappy(duration: 0.3)) {
       currentDetent = newState.detent
+      currentDetentHeight = newState.height
     }
   }
 

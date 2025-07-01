@@ -69,6 +69,8 @@ struct ContentView: View {
   @StateObject private var mapStateManager = MapStateManager()
   @StateObject private var sheetStateManager = SheetStateManager()
 
+  @ObservedObject private var locationManager = LocationManager()
+
   /// UI State
   @State private var presentSheet = true
   @State private var hasInitialised = false
@@ -77,7 +79,8 @@ struct ContentView: View {
     ZStack {
       BackgroundView(
         mapState: mapStateManager,
-        sheetState: sheetStateManager
+        sheetState: sheetStateManager,
+        locationState: locationManager
       )
       .sheet(isPresented: $presentSheet) {
 
@@ -192,6 +195,7 @@ struct ForegroundView: View {
   @ViewBuilder
   func Topbar() -> some View {
     HStack(alignment: .center) {
+      /// Menu (select views)
       Menu {
         ForEach(ScreenView.allCases) { screen in
           Button(action: {
@@ -217,6 +221,7 @@ struct ForegroundView: View {
 
       Spacer()
 
+      /// Topbar trailing buttons
       HStack(alignment: .center, spacing: 8) {
         Button {
           Task {
@@ -268,13 +273,19 @@ struct ForegroundView: View {
 struct BackgroundView: View {
   @ObservedObject var mapState: MapStateManager
   @ObservedObject var sheetState: SheetStateManager
+  @ObservedObject var locationState: LocationManager
+
   @Query var allFacilities: [ParkingFacility]
+  @State private var showLocationPermissionAlert = false
+  @State private var showLocationSettingsAlert = false
 
   var body: some View {
     VStack {
       Map(
         position: $mapState.cameraPosition
       ) {
+        UserAnnotation()
+
         ForEach(allFacilities, id: \.facilityId) { facility in
 
           Annotation(
@@ -296,7 +307,6 @@ struct BackgroundView: View {
           }
 
         }
-
       }
       .mapStyle(
         .standard(
@@ -308,9 +318,82 @@ struct BackgroundView: View {
       )
       .mapControls {
         MapScaleView()
-        MapUserLocationButton()
         MapCompass()
       }
+    }
+    .overlay(alignment: .trailing) {
+      VStack {
+        Button {
+          switch locationState.authorisationStatus {
+          case .notDetermined:
+            showLocationPermissionAlert = true
+          case .restricted, .denied:
+            showLocationSettingsAlert = true
+          case .authorizedAlways, .authorizedWhenInUse:
+
+            let newRegion =
+              locationState.getNearestFacilitiesRegion(
+                facilities: allFacilities,
+                count: 5,
+                paddingFactor: 1
+              )
+
+            withAnimation(.snappy(duration: 1.5)) {
+              mapState.cameraPosition = .region(newRegion)
+            }
+
+          @unknown default:
+            locationState.requestLocationPermission()
+          }
+        } label: {
+          VStack(alignment: .center) {
+            if locationState.isRefreshing {
+              ProgressView()
+            } else {
+              Image(systemName: locationState.isLocationAvailable ? "location.fill" : "location")
+                .font(.headline)
+                .frame(width: 40, height: 40)
+                .background(.regularMaterial, in: Circle())
+                .padding(.trailing)
+                .contentTransition(.symbolEffect(.replace, options: .default))
+            }
+          }
+        }
+
+        Spacer()
+      }
+
+    }
+
+    .alert(
+      "Enable Location Access",
+      isPresented: $showLocationPermissionAlert
+    ) {
+      Button("Allow Location") {
+        LocationManager.shared.requestLocationPermission()
+      }
+      Button("Not Now", role: .cancel) {}
+    } message: {
+      Text(
+        "MetroParking uses your location to find nearby parking facilities and show accurate distances. This helps you find the best parking options."
+      )
+    }
+    .alert(
+      "Location Access Needed",
+      isPresented: $showLocationSettingsAlert
+    ) {
+      Button("Open Settings") {
+        if let settingsURL = URL(
+          string: UIApplication.openSettingsURLString
+        ) {
+          UIApplication.shared.open(settingsURL)
+        }
+      }
+      Button("Cancel", role: .cancel) {}
+    } message: {
+      Text(
+        "Location access was previously denied. To find nearby parking, please enable location access in Settings → MetroParking → Location."
+      )
     }
   }
 }

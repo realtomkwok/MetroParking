@@ -82,14 +82,14 @@ struct FacilityDetailView: View {
       .buttonBorderShape(.circle)
       .foregroundStyle(.secondary)
     }
+    .frame(height: 56)
     .fontWeight(.bold)
-    .frame(width: .infinity, height: 56)
   }
 }
 
 #Preview {
   FacilityDetailView(
-    facility: PreviewHelper.availableFacility(),
+    facility: PreviewHelper.fullFacility(),
     onDismiss: {
       print("Should close this view")
     }

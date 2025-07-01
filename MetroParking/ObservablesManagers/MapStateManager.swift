@@ -14,10 +14,8 @@ class MapStateManager: ObservableObject {
 
   /// Properties
   @Published var cameraPosition: MapCameraPosition = .region(
-    MKCoordinateRegion(
-		center: CLLocationCoordinate2D(latitude: -33.8688 - 0.1, longitude: 151.2093 - 0.1),
-      span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
-    ))
+    LocationManager.shared.getAllFacilitiesRegion()
+  )
   @Published var selectedFacility: ParkingFacility? = nil
 
   /// Callback for notifying the facility is focused
@@ -27,7 +25,7 @@ class MapStateManager: ObservableObject {
   private let animationDuration: TimeInterval = 2
 
   /// Calculate offset to position facility above the sheet
-  let latitudeOffset = 0.004  // Moves center down so facility appears higher
+  private let latitudeOffset = 0.02  // Moves centre down so facility appears higher
 
 }
 
@@ -36,16 +34,28 @@ extension MapStateManager {
 
   /// Create a new region centred on the facility
   func focusOnFacility(_ facility: ParkingFacility) {
-    let newRegion = MKCoordinateRegion(
-      center: CLLocationCoordinate2D(
-        latitude: facility.latitude - latitudeOffset,
-        longitude: facility.longitude
-      ),
-      span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+
+    let facilityCoordinate = CLLocationCoordinate2D(
+      latitude: facility.latitude,
+      longitude: facility.longitude
     )
 
+    let newRegion = LocationManager.shared.calculateRegion(
+      for: [facilityCoordinate],
+      paddingFactor: 1.0,
+      minimumSpan: 0.01,
+      maximumSpan: 0.02
+    )
+
+    let offsetCentre = CLLocationCoordinate2D(
+      latitude: newRegion.center.latitude - latitudeOffset,
+      longitude: newRegion.center.longitude
+    )
+
+    let finalRegion = MKCoordinateRegion(center: offsetCentre, span: newRegion.span)
+
     withAnimation(.snappy(duration: animationDuration)) {
-      cameraPosition = .region(newRegion)
+      cameraPosition = .region(finalRegion)
       selectedFacility = facility
     }
 
@@ -56,9 +66,8 @@ extension MapStateManager {
 
   /// Zoom out to show all facilities
   func showAllFacilities() {
-    let allFacilitiesRegion = MKCoordinateRegion(
-      center: CLLocationCoordinate2D(latitude: -33.8688, longitude: 151.2093),  // TODO: Replace this with user's current location
-	  span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5))
+    let allFacilitiesRegion = LocationManager.shared
+      .getAllFacilitiesRegion()
 
     withAnimation(.snappy(duration: animationDuration)) {
       cameraPosition = .region(allFacilitiesRegion)

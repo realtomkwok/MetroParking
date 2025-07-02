@@ -17,7 +17,7 @@ enum ScreenView: String, CaseIterable, Identifiable {
 
   var displayName: String {
     switch self {
-    case .pinned: "Pinned & Recents"
+    case .pinned: "Pins & Recents"
     case .all: "All Parking"
     }
   }
@@ -129,6 +129,8 @@ struct ForegroundView: View {
 
   @State private var selectedScreen: ScreenView = .pinned
   @State private var showMoreMenu: Bool = false
+  @State private var isScrolled = false
+  @State private var initialPosition: CGFloat?
 
   /// Refresh manager
   @ObservedObject private var refreshManager = FacilityRefreshManager.shared
@@ -137,118 +139,137 @@ struct ForegroundView: View {
   @Query private var allFacilities: [ParkingFacility]
 
   var body: some View {
-    VStack(alignment: .leading) {
-      Topbar()
-      selectedScreen.destinationView(
-        mapState: mapState,
-        sheetState: sheetState
+    ScrollView {
+      /// Track scroll position with GeometryReader
+      GeometryReader { proxy in
+        Color.clear
+          .onChange(of: proxy.frame(in: .global).minY) {
+            _,
+            newValue in
+            // Store initial position on first read
+            if initialPosition == nil {
+              initialPosition = newValue
+            }
+
+            // Show background after scrolling 30 points from initial position
+            if let initial = initialPosition {
+              isScrolled = newValue < (initial - 30)
+            }
+          }
+      }
+      .frame(height: 0)
+
+      LazyVStack(alignment: .leading, pinnedViews: .sectionHeaders) {
+        Section {
+          selectedScreen.destinationView(
+            mapState: mapState,
+            sheetState: sheetState
+          )
+        } header: {
+          TopBar(showBackground: isScrolled) {
+            /// Menu (select views)
+            HStack(alignment: .center) {
+              Menu {
+                ForEach(ScreenView.allCases) { screen in
+                  Button(action: {
+                    selectedScreen = screen
+                  }) {
+                    HStack {
+                      Text(screen.displayName)
+                      Image(systemName: screen.iconName)
+                    }
+                  }
+                }
+              } label: {
+                HStack(alignment: .center) {
+                  Text(selectedScreen.displayName)
+                    .font(.title)
+                    .multilineTextAlignment(.leading)
+                    .tracking(-0.4)
+                  //							.fixedSize(horizontal: true, vertical: false)
+                  Image(systemName: "chevron.down")
+                    .font(.callout)
+                }
+              }
+
+            }
+          } trailingContent: {
+            /// Topbar trailing buttons
+            HStack(alignment: .center, spacing: 8) {
+              Spacer()
+
+              Button {
+                Task {
+                  await refreshManager
+                    .performInitialOccupancyLoad()
+                }
+              } label: {
+                Label("Refresh", systemImage: "arrow.clockwise")
+                  .fontWeight(.semibold)
+                  .symbolEffect(
+                    .rotate.clockwise.byLayer,
+                    options: .repeat(.continuous),
+                    isActive: refreshManager.isRefreshing
+                  )
+                  .frame(minWidth: 24, minHeight: 24)
+                  .foregroundStyle(.secondary)
+              }
+              .disabled(refreshManager.isRefreshing)
+              .buttonBorderShape(.circle)
+              .buttonStyle(.bordered)
+              .foregroundStyle(.primary)
+              .controlSize(.regular)
+
+              Button {
+                // TODO: Show menu for more info
+                /*@START_MENU_TOKEN@*//*@PLACEHOLDER=Action@*/
+                /*@END_MENU_TOKEN@*/
+              } label: {
+                Label("More", systemImage: "ellipsis")
+                  .fontWeight(.semibold)
+                  .symbolEffect(
+                    .wiggle.byLayer,
+                    options: .nonRepeating,
+                    isActive: showMoreMenu
+                  )
+                  .frame(minWidth: 24, minHeight: 24)
+              }
+              .buttonBorderShape(.circle)
+              .buttonStyle(.bordered)
+              .foregroundStyle(.primary)
+              .controlSize(.regular)
+
+            }
+          }
+        }
+      }
+      .sheet(
+        isPresented: $sheetState.showingFacilityDetail,
+        onDismiss: {
+          mapState.showAllFacilities()
+        },
+        content: {
+          if let facility = sheetState.selectedFacilityForDetail {
+            FacilityDetailView(
+              facility: facility,
+              onDismiss: {
+                sheetState.hideFacilityDetail()
+                mapState.showAllFacilities()
+              }
+            )
+            .presentationDetents(
+              [.fraction(0.2), .medium, .large],
+              selection: $sheetState.currentDetent
+            )
+            .presentationBackground(.thinMaterial)
+            .presentationDragIndicator(.visible)
+            //					.presentationCornerRadius(24)
+            .presentationBackgroundInteraction(.enabled)
+          }
+        }
       )
     }
-    .padding(.horizontal)
-    .sheet(
-      isPresented: $sheetState.showingFacilityDetail,
-      onDismiss: {
-        mapState.showAllFacilities()
-      },
-      content: {
-        if let facility = sheetState.selectedFacilityForDetail {
-          FacilityDetailView(
-            facility: facility,
-            onDismiss: {
-              sheetState.hideFacilityDetail()
-              mapState.showAllFacilities()
-            }
-          )
-          .presentationDetents(
-            [.fraction(0.2), .medium, .large],
-            selection: $sheetState.currentDetent
-          )
-          .presentationBackground(.regularMaterial)
-          .presentationDragIndicator(.visible)
-          //					.presentationCornerRadius(24)
-          .presentationBackgroundInteraction(.enabled)
-        }
-      }
-    )
   }
-
-  @ViewBuilder
-  func Topbar() -> some View {
-    HStack(alignment: .center) {
-      /// Menu (select views)
-      Menu {
-        ForEach(ScreenView.allCases) { screen in
-          Button(action: {
-            selectedScreen = screen
-          }) {
-            HStack {
-              Text(screen.displayName)
-              Image(systemName: screen.iconName)
-            }
-          }
-        }
-      } label: {
-        HStack {
-          Text(selectedScreen.displayName)
-            .font(.title)
-            .fontWeight(.medium)
-            .tracking(-0.4)
-          Image(systemName: "chevron.down")
-            .font(.callout)
-            .fontWeight(.medium)
-        }
-      }
-
-      Spacer()
-
-      /// Topbar trailing buttons
-      HStack(alignment: .center) {
-        Button {
-          Task {
-            await refreshManager.performInitialOccupancyLoad()
-          }
-        } label: {
-          Label("Refresh", systemImage: "arrow.clockwise")
-            .fontWeight(.semibold)
-            .symbolEffect(
-              .rotate.clockwise.byLayer,
-              options: .repeat(.continuous),
-              isActive: refreshManager.isRefreshing
-            )
-            .frame(minWidth: 20, minHeight: 20)
-            .foregroundStyle(.secondary)
-        }
-        .disabled(refreshManager.isRefreshing)
-        .buttonBorderShape(.circle)
-        .buttonStyle(.bordered)
-        .foregroundStyle(.primary)
-
-        Button {
-          // TODO: Show menu for more info
-          /*@START_MENU_TOKEN@*//*@PLACEHOLDER=Action@*/
-          /*@END_MENU_TOKEN@*/
-        } label: {
-          Label("More", systemImage: "ellipsis")
-            .fontWeight(.semibold)
-            .symbolEffect(
-              .wiggle.byLayer,
-              options: .nonRepeating,
-              isActive: showMoreMenu
-            )
-            .frame(minWidth: 20, minHeight: 20)
-        }
-        .buttonBorderShape(.circle)
-        .buttonStyle(.bordered)
-        .foregroundStyle(.primary)
-      }
-      // To align with other components
-      .offset(x: 4)
-    }
-    .frame(height: 56)
-    .padding(.top)
-    .foregroundStyle(.foreground)
-  }
-
 }
 
 struct BackgroundView: View {
@@ -417,11 +438,10 @@ struct PinnedAndRecents: View {
   @ViewBuilder
   func PinnedFacility() -> some View {
 
-    VStack(alignment: .leading) {
-      Text("Pinned")
-        .font(.headline)
-        .foregroundStyle(.primary)
-    }
+    Text("Pinned")
+      .font(.headline)
+      .foregroundStyle(.primary)
+      .padding(.horizontal)
 
     HStack(alignment: .center) {
       if pinnedFacilities.isEmpty {
@@ -451,6 +471,7 @@ struct PinnedAndRecents: View {
     VStack(alignment: .leading) {
       Text("Recents")
         .font(.headline)
+        .padding(.horizontal)
 
       LazyVStack(alignment: .leading) {
         ForEach(recentlyVisitedFacilities, id: \.facilityId) {
@@ -473,17 +494,16 @@ struct AllFacilitiesView: View {
   @Query private var allFacilities: [ParkingFacility]
 
   var body: some View {
-    ScrollView(.vertical, showsIndicators: false) {
-      LazyVStack(alignment: .listRowSeparatorLeading) {
-        ForEach(allFacilities, id: \.facilityId) { facility in
-          ParkingListCardView(
-            facility: facility,
-            mapState: mapState,
-            sheetState: sheetState
-          )
-        }
+    VStack {
+      ForEach(allFacilities, id: \.facilityId) { facility in
+        ParkingListCardView(
+          facility: facility,
+          mapState: mapState,
+          sheetState: sheetState
+        )
       }
     }
+    .padding(.horizontal)
   }
 }
 

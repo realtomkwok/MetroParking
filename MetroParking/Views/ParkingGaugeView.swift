@@ -26,6 +26,7 @@ struct ParkingGauge: View {
         VStack(spacing: -12) {
           ParkingProgressGauge(
             availableSpaces: facility.currentAvailableSpots,
+            displayAvailableSpots: facility.displayAvailableSpots,
             totalSpaces: facility.totalSpaces,
             availabilityStatus: facility.availabilityStatus,
           )

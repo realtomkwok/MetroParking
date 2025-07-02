@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ParkingProgressGauge: View {
   let availableSpaces: Int
+  let displayAvailableSpots: String
   let totalSpaces: Int
   let availabilityStatus: AvailabilityStatus
 
@@ -22,7 +23,7 @@ struct ParkingProgressGauge: View {
   var body: some View {
     Gauge(value: occupancyProgress, in: 0...1) {
     } currentValueLabel: {
-      Text("\(availableSpaces)")
+      Text("\(displayAvailableSpots)")
         .contentTransition(.numericText(value: Double(availableSpaces)))
     } minimumValueLabel: {
       EmptyView()
@@ -56,6 +57,7 @@ struct ParkingProgressGauge: View {
     ) { facility in
       ParkingProgressGauge(
         availableSpaces: Int(facility.currentAvailableSpots),
+        displayAvailableSpots: facility.displayAvailableSpots,
         totalSpaces: facility.totalSpaces,
         availabilityStatus: facility.availabilityStatus,
       )

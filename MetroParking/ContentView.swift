@@ -31,23 +31,17 @@ enum ScreenView: String, CaseIterable, Identifiable {
 
   @ViewBuilder
   func destinationView(
-    all: [ParkingFacility],
-    pinned: [ParkingFacility],
-    recents: [ParkingFacility],
     mapState: MapStateManager,
     sheetState: SheetStateManager
   ) -> some View {
     switch self {
     case .pinned:
-      MainView(
-        pinnedFacilities: pinned,
-        recentFacilities: recents,
+      PinnedAndRecents(
         mapState: mapState,
         sheetState: sheetState
       )
     case .all:
       AllFacilitiesView(
-        facilities: all,
         mapState: mapState,
         sheetState: sheetState
       )
@@ -84,7 +78,7 @@ struct ContentView: View {
         sheetState: sheetStateManager,
         locationState: locationManager
       )
-	  .sheet(isPresented: $presentSheet) {
+      .sheet(isPresented: $presentSheet) {
 
         ForegroundView(
           mapState: mapStateManager,
@@ -141,27 +135,11 @@ struct ForegroundView: View {
 
   /// SwiftData Queries
   @Query private var allFacilities: [ParkingFacility]
-  // For pinned facilities
-  @Query(
-    filter: #Predicate<ParkingFacility> { $0.isFavourite == true },
-    animation: .snappy
-  )
-  private var pinnedFacilities: [ParkingFacility]
-  // For recently visited facilities
-  @Query(
-    filter: #Predicate<ParkingFacility> { $0.lastVisited != nil },
-    sort: [SortDescriptor(\ParkingFacility.lastVisited, order: .reverse)],
-    animation: .snappy
-  )
-  private var recentlyVisitedFacilities: [ParkingFacility]
 
   var body: some View {
     VStack(alignment: .leading) {
       Topbar()
       selectedScreen.destinationView(
-        all: allFacilities,
-        pinned: pinnedFacilities,
-        recents: recentlyVisitedFacilities,
         mapState: mapState,
         sheetState: sheetState
       )
@@ -224,7 +202,7 @@ struct ForegroundView: View {
       Spacer()
 
       /// Topbar trailing buttons
-      HStack(alignment: .center, spacing: 8) {
+      HStack(alignment: .center) {
         Button {
           Task {
             await refreshManager.performInitialOccupancyLoad()
@@ -270,6 +248,7 @@ struct ForegroundView: View {
     .padding(.top)
     .foregroundStyle(.foreground)
   }
+
 }
 
 struct BackgroundView: View {
@@ -407,11 +386,23 @@ struct BackgroundView: View {
   }
 }
 
-struct MainView: View {
-  let pinnedFacilities: [ParkingFacility]
-  let recentFacilities: [ParkingFacility]
+struct PinnedAndRecents: View {
   let mapState: MapStateManager
   let sheetState: SheetStateManager
+
+  /// For pinned facilities
+  @Query(
+    filter: #Predicate<ParkingFacility> { $0.isFavourite == true },
+    animation: .snappy
+  )
+  private var pinnedFacilities: [ParkingFacility]
+  /// For recently visited facilities
+  @Query(
+    filter: #Predicate<ParkingFacility> { $0.lastVisited != nil },
+    sort: [SortDescriptor(\ParkingFacility.lastVisited, order: .reverse)],
+    animation: .snappy
+  )
+  private var recentlyVisitedFacilities: [ParkingFacility]
 
   var body: some View {
     ScrollView(.vertical, showsIndicators: false) {
@@ -462,7 +453,8 @@ struct MainView: View {
         .font(.headline)
 
       LazyVStack(alignment: .leading) {
-        ForEach(recentFacilities, id: \.facilityId) { facility in
+        ForEach(recentlyVisitedFacilities, id: \.facilityId) {
+          facility in
           ParkingListCardView(
             facility: facility,
             mapState: mapState,
@@ -475,14 +467,15 @@ struct MainView: View {
 }
 
 struct AllFacilitiesView: View {
-  let facilities: [ParkingFacility]
   let mapState: MapStateManager
   let sheetState: SheetStateManager
+
+  @Query private var allFacilities: [ParkingFacility]
 
   var body: some View {
     ScrollView(.vertical, showsIndicators: false) {
       LazyVStack(alignment: .listRowSeparatorLeading) {
-        ForEach(facilities, id: \.facilityId) { facility in
+        ForEach(allFacilities, id: \.facilityId) { facility in
           ParkingListCardView(
             facility: facility,
             mapState: mapState,
@@ -496,5 +489,10 @@ struct AllFacilitiesView: View {
 
 #Preview("Normal App State") {
   ContentView()
+    .modelContainer(PreviewHelper.previewContainer(withSamplePins: true))
+}
+
+#Preview("Foreground Sheet") {
+  ForegroundView(mapState: MapStateManager(), sheetState: SheetStateManager())
     .modelContainer(PreviewHelper.previewContainer(withSamplePins: true))
 }

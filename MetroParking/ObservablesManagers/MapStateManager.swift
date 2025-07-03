@@ -25,7 +25,7 @@ class MapStateManager: ObservableObject {
   private let animationDuration: TimeInterval = 2
 
   /// Calculate offset to position facility above the sheet
-  private let latitudeOffset = 0.02  // Moves centre down so facility appears higher
+  private let latitudeOffset = 0.002  // Moves centre down so facility appears higher
 
 }
 
@@ -43,8 +43,8 @@ extension MapStateManager {
     let newRegion = LocationManager.shared.calculateRegion(
       for: [facilityCoordinate],
       paddingFactor: 1.0,
-      minimumSpan: 0.01,
-      maximumSpan: 0.02
+      minimumSpan: 0.001,
+      maximumSpan: 0.002
     )
 
     let offsetCentre = CLLocationCoordinate2D(

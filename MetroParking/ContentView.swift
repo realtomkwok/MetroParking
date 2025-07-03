@@ -483,6 +483,8 @@ struct PinnedAndRecents: View {
           )
         }
       }
+      .padding(.horizontal)
+
     }
   }
 }

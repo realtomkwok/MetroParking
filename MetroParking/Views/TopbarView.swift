@@ -51,7 +51,7 @@ struct TopBar<LeadingContent: View, TrailingContent: View>: View {
     .background {
       if showBackground {
         Rectangle()
-          .fill(.thinMaterial)
+          .fill(.ultraThinMaterial)
       }
     }
     .animation(.smooth(duration: 0.2), value: showBackground)

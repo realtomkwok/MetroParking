@@ -9,46 +9,6 @@ import MapKit
 import SwiftData
 import SwiftUI
 
-enum ScreenView: String, CaseIterable, Identifiable {
-  case pinned
-  case all
-
-  var id: String { self.rawValue }
-
-  var displayName: String {
-    switch self {
-    case .pinned: "Pins & Recents"
-    case .all: "All Parking"
-    }
-  }
-
-  var iconName: String {
-    switch self {
-    case .pinned: "star"
-    case .all: "parkingsign.square"
-    }
-  }
-
-  @ViewBuilder
-  func destinationView(
-    mapState: MapStateManager,
-    sheetState: SheetStateManager
-  ) -> some View {
-    switch self {
-    case .pinned:
-      PinnedAndRecents(
-        mapState: mapState,
-        sheetState: sheetState
-      )
-    case .all:
-      AllFacilitiesView(
-        mapState: mapState,
-        sheetState: sheetState
-      )
-    }
-  }
-}
-
 struct ContentView: View {
   @Namespace var namespace
 
@@ -123,12 +83,54 @@ struct ContentView: View {
   }
 }
 
+enum ScreenView: String, CaseIterable, Identifiable {
+  case pinned
+  case all
+
+  var id: String { self.rawValue }
+
+  var displayName: String {
+    switch self {
+    case .pinned: "Pins & Recents"
+    case .all: "All Parking"
+    }
+  }
+
+  var iconName: String {
+    switch self {
+    case .pinned: "star"
+    case .all: "parkingsign.square"
+    }
+  }
+
+  @ViewBuilder
+  func destinationView(
+    mapState: MapStateManager,
+    sheetState: SheetStateManager
+  ) -> some View {
+    switch self {
+    case .pinned:
+      PinnedAndRecents(
+        mapState: mapState,
+        sheetState: sheetState
+      )
+    case .all:
+      AllFacilitiesView(
+        mapState: mapState,
+        sheetState: sheetState
+      )
+    }
+  }
+}
+
 struct ForegroundView: View {
   @ObservedObject var mapState: MapStateManager
   @ObservedObject var sheetState: SheetStateManager
 
   @State private var selectedScreen: ScreenView = .pinned
   @State private var showMoreMenu: Bool = false
+
+  /// Tracking scroll position and dynamically change the background of Topbar
   @State private var isScrolled = false
   @State private var initialPosition: CGFloat?
 
@@ -143,7 +145,7 @@ struct ForegroundView: View {
       /// Track scroll position with GeometryReader
       GeometryReader { proxy in
         Color.clear
-          .onChange(of: proxy.frame(in: .global).minY) {
+          .onChange(of: proxy.frame(in: .named("scroll")).minY) {
             _,
             newValue in
             // Store initial position on first read
@@ -269,6 +271,111 @@ struct ForegroundView: View {
         }
       )
     }
+    .coordinateSpace(name: "scroll")
+  }
+}
+
+struct PinnedAndRecents: View {
+  let mapState: MapStateManager
+  let sheetState: SheetStateManager
+
+  /// For pinned facilities
+  @Query(
+    filter: #Predicate<ParkingFacility> { $0.isFavourite == true },
+    animation: .snappy
+  )
+  private var pinnedFacilities: [ParkingFacility]
+  /// For recently visited facilities
+  @Query(
+    filter: #Predicate<ParkingFacility> { $0.lastVisited != nil },
+    sort: [SortDescriptor(\ParkingFacility.lastVisited, order: .reverse)],
+    animation: .snappy
+  )
+  private var recentlyVisitedFacilities: [ParkingFacility]
+
+  var body: some View {
+    ScrollView(.vertical, showsIndicators: false) {
+      VStack(alignment: .leading) {
+        PinnedFacility()
+        RecentFacility()
+          .padding(.top)
+      }
+    }
+  }
+
+  @ViewBuilder
+  func PinnedFacility() -> some View {
+
+    Text("Pinned")
+      .font(.headline)
+      .foregroundStyle(.primary)
+      .padding(.horizontal)
+
+    HStack(alignment: .center) {
+      if pinnedFacilities.isEmpty {
+        // TODO: Reword
+        Text("No pinned parking yet")
+      } else {
+        // TODO: Resize each gauge to match the one with the widest text
+        // https://developer.apple.com/videos/play/wwdc2022/10056/
+        ScrollView(.horizontal, showsIndicators: false) {
+          LazyHStack(alignment: .center, spacing: 0) {
+            ForEach(pinnedFacilities, id: \.facilityId) {
+              facility in
+              ParkingGauge(
+                facility: facility,
+                mapState: mapState,
+                sheetState: sheetState
+              )
+            }
+            .safeAreaPadding(.leading)
+          }
+        }
+      }
+    }
+    .frame(maxWidth: .infinity, minHeight: 64)
+  }
+
+  @ViewBuilder
+  func RecentFacility() -> some View {
+    VStack(alignment: .leading) {
+      Text("Recents")
+        .font(.headline)
+        .padding(.horizontal)
+
+      LazyVStack(alignment: .leading) {
+        ForEach(recentlyVisitedFacilities, id: \.facilityId) {
+          facility in
+          ParkingListCardView(
+            facility: facility,
+            mapState: mapState,
+            sheetState: sheetState
+          )
+        }
+      }
+      .padding(.horizontal)
+
+    }
+  }
+}
+
+struct AllFacilitiesView: View {
+  let mapState: MapStateManager
+  let sheetState: SheetStateManager
+
+  @Query private var allFacilities: [ParkingFacility]
+
+  var body: some View {
+    VStack {
+      ForEach(allFacilities, id: \.facilityId) { facility in
+        ParkingListCardView(
+          facility: facility,
+          mapState: mapState,
+          sheetState: sheetState
+        )
+      }
+    }
+    .padding(.horizontal)
   }
 }
 
@@ -407,108 +514,6 @@ struct BackgroundView: View {
   }
 }
 
-struct PinnedAndRecents: View {
-  let mapState: MapStateManager
-  let sheetState: SheetStateManager
-
-  /// For pinned facilities
-  @Query(
-    filter: #Predicate<ParkingFacility> { $0.isFavourite == true },
-    animation: .snappy
-  )
-  private var pinnedFacilities: [ParkingFacility]
-  /// For recently visited facilities
-  @Query(
-    filter: #Predicate<ParkingFacility> { $0.lastVisited != nil },
-    sort: [SortDescriptor(\ParkingFacility.lastVisited, order: .reverse)],
-    animation: .snappy
-  )
-  private var recentlyVisitedFacilities: [ParkingFacility]
-
-  var body: some View {
-    ScrollView(.vertical, showsIndicators: false) {
-      VStack(alignment: .leading) {
-        PinnedFacility()
-        RecentFacility()
-          .padding(.top)
-      }
-    }
-  }
-
-  @ViewBuilder
-  func PinnedFacility() -> some View {
-
-    Text("Pinned")
-      .font(.headline)
-      .foregroundStyle(.primary)
-      .padding(.horizontal)
-
-    HStack(alignment: .center) {
-      if pinnedFacilities.isEmpty {
-        // TODO: Reword
-        Text("No pinned parking yet")
-      } else {
-        ScrollView(.horizontal, showsIndicators: false) {
-          HStack(alignment: .center, spacing: 0) {
-            ForEach(pinnedFacilities, id: \.facilityId) {
-              facility in
-              ParkingGauge(
-                facility: facility,
-                mapState: mapState,
-                sheetState: sheetState
-              )
-            }
-            .padding(.horizontal, 8)
-          }
-        }
-      }
-    }
-    .frame(maxWidth: .infinity, minHeight: 64)
-  }
-
-  @ViewBuilder
-  func RecentFacility() -> some View {
-    VStack(alignment: .leading) {
-      Text("Recents")
-        .font(.headline)
-        .padding(.horizontal)
-
-      LazyVStack(alignment: .leading) {
-        ForEach(recentlyVisitedFacilities, id: \.facilityId) {
-          facility in
-          ParkingListCardView(
-            facility: facility,
-            mapState: mapState,
-            sheetState: sheetState
-          )
-        }
-      }
-      .padding(.horizontal)
-
-    }
-  }
-}
-
-struct AllFacilitiesView: View {
-  let mapState: MapStateManager
-  let sheetState: SheetStateManager
-
-  @Query private var allFacilities: [ParkingFacility]
-
-  var body: some View {
-    VStack {
-      ForEach(allFacilities, id: \.facilityId) { facility in
-        ParkingListCardView(
-          facility: facility,
-          mapState: mapState,
-          sheetState: sheetState
-        )
-      }
-    }
-    .padding(.horizontal)
-  }
-}
-
 #Preview("Normal App State") {
   ContentView()
     .modelContainer(PreviewHelper.previewContainer(withSamplePins: true))
@@ -517,4 +522,12 @@ struct AllFacilitiesView: View {
 #Preview("Foreground Sheet") {
   ForegroundView(mapState: MapStateManager(), sheetState: SheetStateManager())
     .modelContainer(PreviewHelper.previewContainer(withSamplePins: true))
+}
+
+#Preview("All Facilities") {
+  AllFacilitiesView(
+    mapState: MapStateManager(),
+    sheetState: SheetStateManager()
+  )
+  .modelContainer(PreviewHelper.previewContainer(withSamplePins: true))
 }

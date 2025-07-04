@@ -54,7 +54,7 @@ final class ParkingFacility {
   var lastFailureDate: Date?
 
   var displayName: String {
-    return name.removePrefix("Park&Ride - ")
+	  return name.removePrefix("Park&Ride - ").localizedCapitalized
   }
 
   private var _cachedOccupancy: Int = 0

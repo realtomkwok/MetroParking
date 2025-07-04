@@ -176,21 +176,22 @@ struct ForegroundView: View {
                   Button(action: {
                     selectedScreen = screen
                   }) {
-                    HStack {
+					  HStack {
                       Text(screen.displayName)
                       Image(systemName: screen.iconName)
                     }
                   }
                 }
               } label: {
-                HStack(alignment: .center) {
-                  Text(selectedScreen.displayName)
-                    .font(.title)
-                    .multilineTextAlignment(.leading)
-                    .tracking(-0.4)
-                  //							.fixedSize(horizontal: true, vertical: false)
-                  Image(systemName: "chevron.down")
-                    .font(.callout)
+				  HStack(alignment: .center) {
+					  Text(selectedScreen.displayName)
+						.font(.title)
+						.lineLimit(1)
+						.multilineTextAlignment(.leading)
+						.tracking(-0.4)
+					  Image(systemName: "chevron.down")
+						.font(.callout)
+					  Spacer()
                 }
               }
 
@@ -198,7 +199,6 @@ struct ForegroundView: View {
           } trailingContent: {
             /// Topbar trailing buttons
             HStack(alignment: .center, spacing: 8) {
-              Spacer()
 
               Button {
                 Task {

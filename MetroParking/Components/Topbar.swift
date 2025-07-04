@@ -9,51 +9,52 @@ import SwiftUI
 
 struct TopBar<LeadingContent: View, TrailingContent: View>: View {
 
-  private let leadingContent: () -> LeadingContent
-  private let trailingContent: () -> TrailingContent
+	private let leadingContent: () -> LeadingContent
+	private let trailingContent: () -> TrailingContent
 
-  private let showBackground: Bool
+	private let showBackground: Bool
 
-  init(
-    showBackground: Bool = true,
-    @ViewBuilder leadingContent: @escaping () -> LeadingContent,
-    @ViewBuilder trailingContent: @escaping () -> TrailingContent
-  ) {
-    self.showBackground = showBackground
-    self.leadingContent = leadingContent
-    self.trailingContent = trailingContent
-  }
+	init(
+		showBackground: Bool = true,
+		@ViewBuilder leadingContent: @escaping () -> LeadingContent,
+		@ViewBuilder trailingContent: @escaping () -> TrailingContent
+	) {
+		self.showBackground = showBackground
+		self.leadingContent = leadingContent
+		self.trailingContent = trailingContent
+	}
 
-  var body: some View {
-    Grid {
-      GridRow(alignment: .center) {
-        /// Leading content
-        HStack {
-          leadingContent()
-            .foregroundStyle(.foreground)
-          Spacer()
+	var body: some View {
 
-        }
-        .gridColumnAlignment(.leading)
-        .gridCellColumns(2)
+		/// Leading content
+		HStack(alignment: .center) {
+			leadingContent()
+				.foregroundStyle(.foreground)
+			Spacer()
+			/// Trailing content (usually 1–2 buttons)
 
-        /// Trailing content (usually 1–2 buttons)
-        trailingContent()
-          .gridColumnAlignment(.trailing)
-          .gridCellColumns(1)
-      }
-      //		  .padding(.top)
-    }
-    .fontWeight(.semibold)
-    .frame(height: 56)
-    .frame(maxWidth: .infinity)
-    .padding()
-    .background {
-      if showBackground {
-        Rectangle()
-          .fill(.ultraThinMaterial)
-      }
-    }
-    .animation(.smooth(duration: 0.2), value: showBackground)
-  }
+			trailingContent()
+		}
+		.fontWeight(.semibold)
+		.frame(maxWidth: .infinity)
+		.padding()
+		.background {
+			if showBackground {
+				Rectangle()
+					.fill(.ultraThinMaterial)
+			}
+		}
+		.animation(.smooth(duration: 0.2), value: showBackground)
+		.overlay(
+			Group {
+
+				Rectangle()
+					.frame(height: 0.5)
+					.foregroundStyle(.quaternary)
+					.padding(.leading, 16)
+					.ignoresSafeArea()
+			},
+			alignment: .bottom
+		)
+	}
 }

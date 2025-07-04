@@ -40,7 +40,7 @@ struct ParkingGauge: View {
           } else {
             Text("spaces")
               .textCase(.uppercase)
-              .font(.caption)
+              .font(.caption2)
               .offset(y: 8)
           }
         }
@@ -52,9 +52,6 @@ struct ParkingGauge: View {
           Text(facility.displayName)
             .font(.callout)
             .multilineTextAlignment(.center)
-            .lineLimit(2)
-            .frame(maxWidth: .infinity)
-          Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: 48)
       }

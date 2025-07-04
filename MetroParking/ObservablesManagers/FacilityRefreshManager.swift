@@ -102,7 +102,6 @@ extension FacilityRefreshManager {
     refreshTimer = nil
     timerForCleanup = nil
   }
-
 }
 
 /// Call APIs and load data according to the priority

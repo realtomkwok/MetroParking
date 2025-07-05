@@ -191,6 +191,38 @@ extension FacilityRefreshManager {
   }
 }
 
+/// Manually refresh one facility
+extension FacilityRefreshManager {
+
+  /// Refresh a single facility if data is stale
+  func refreshFacilityIfNeeded(_ facility: ParkingFacility) async {
+    let timeSinceLastRefresh = facility.timeSinceLastRefresh
+    let shouldRefresh = timeSinceLastRefresh > 30.0 || !facility.isOccupancyCacheValid
+
+    if shouldRefresh {
+      print("🔄 Refreshing \(facility.name) in detail view (age: \(Int(timeSinceLastRefresh))s)")
+      await refreshSingleFacility(facility)
+    }
+  }
+
+  /// Force refresh a single facility (for manual refresh button)
+  func refreshSingleFacility(_ facility: ParkingFacility) async {
+    guard !isRefreshing else { return }
+
+    print("🔄 Force refreshing \(facility.name)")
+    isRefreshing = true
+
+    // Reuse existing loadOccupancyForFacility function
+    await loadOccupancyForFacility(facility, context: "detail-view")
+
+    // Reuse existing saveContext function
+    saveContext()
+
+    isRefreshing = false
+    lastRefreshTime = Date()
+  }
+}
+
 /// Ongoing refresh cycle
 extension FacilityRefreshManager {
 

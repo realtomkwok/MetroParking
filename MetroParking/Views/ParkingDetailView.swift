@@ -18,6 +18,7 @@ struct ParkingDetailView: View {
   let onDismiss: () -> Void
 
   /// ETA Services
+  @ObservedObject private var refreshManager = FacilityRefreshManager.shared
   @ObservedObject private var etaService = ETAService.shared
   @ObservedObject private var locationManager = LocationManager.shared
 
@@ -71,8 +72,7 @@ struct ParkingDetailView: View {
                       {
 
                         Text(
-                          "Direction not available"
-                            .localizedCapitalized
+                          "ETA Unavailable"
                         )
                       }
 
@@ -88,7 +88,7 @@ struct ParkingDetailView: View {
                 .font(.headline)
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.capsule)
-                .disabled(!locationManager.isLocationAvailable)
+                .disabled(locationManager.isLocationAvailable == false)
                 .labelStyle(.titleAndIcon)
                 .controlSize(.extraLarge)
                 .animation(
@@ -206,7 +206,7 @@ struct ParkingDetailView: View {
               }
 
               GridRow {
-                // TODO: Stats for nerd (rest of information)
+                /// Stats for nerd (rest of information)
                 StatList(facility: facility)
                   .gridCellColumns(2)
               }
@@ -270,12 +270,12 @@ struct ParkingDetailView: View {
       }
     }
     .onAppear {
-      // TODO: Should refresh when in view
       facility.markAsVisited()
       try? modelContext.save()
 
-      // Calculate ETA when view appears
+      /// Refresh and Calculate ETA when view appears
       Task {
+        await refreshManager.refreshFacilityIfNeeded(facility)
         await calculateETAIfNeeded()
       }
     }

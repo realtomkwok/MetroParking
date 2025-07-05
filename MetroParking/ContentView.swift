@@ -255,7 +255,7 @@ struct ForegroundView: View {
         },
         content: {
           if let facility = sheetState.selectedFacilityForDetail {
-            FacilityDetailView(
+            ParkingDetailView(
               facility: facility,
               onDismiss: {
                 sheetState.hideFacilityDetail()

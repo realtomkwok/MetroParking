@@ -125,7 +125,7 @@ class FacilityDataManager: ObservableObject {
 
     let descriptor = FetchDescriptor<ParkingFacility>()
 
-    withAnimation(.spring) {
+    withAnimation(.snappy) {
       do {
         let facilities = try context.fetch(descriptor)
         for facility in facilities {

@@ -47,15 +47,25 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     let facilities = ParkingFacility.getAllStaticFacilities()
 
     let coordinates = facilities.map {
-      CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+      CLLocationCoordinate2D(
+        latitude: $0.latitude,
+        longitude: $0.longitude
+      )
     }
 
     guard !coordinates.isEmpty else {
-      return CLLocationCoordinate2D(latitude: -33.8688, longitude: 151.2093)
+      return CLLocationCoordinate2D(
+        latitude: -33.8688,
+        longitude: 151.2093
+      )
     }
 
-    let avgLat = coordinates.reduce(0) { $0 + $1.latitude } / Double(coordinates.count)
-    let avgLon = coordinates.reduce(0) { $0 + $1.longitude } / Double(coordinates.count)
+    let avgLat =
+      coordinates.reduce(0) { $0 + $1.latitude }
+      / Double(coordinates.count)
+    let avgLon =
+      coordinates.reduce(0) { $0 + $1.longitude }
+      / Double(coordinates.count)
 
     return CLLocationCoordinate2D(latitude: avgLat, longitude: avgLon)
 
@@ -204,11 +214,16 @@ extension LocationManager {
     }
   }
 
-  func calculateCentre(from coordinates: [CLLocationCoordinate2D]) -> CLLocationCoordinate2D {
+  func calculateCentre(from coordinates: [CLLocationCoordinate2D])
+    -> CLLocationCoordinate2D
+  {
 
     /// Calculate centre point from coordinates
     guard !coordinates.isEmpty else {
-      return CLLocationCoordinate2D(latitude: -33.8688, longitude: 151.2093)  // Sydney fallback
+      return CLLocationCoordinate2D(
+        latitude: -33.8688,
+        longitude: 151.2093
+      )  // Sydney fallback
     }
 
     let latitudes = coordinates.map { $0.latitude }
@@ -227,7 +242,9 @@ extension LocationManager {
   ) -> CLLocationCoordinate2D {
     let centre = calculateCentre(from: coordinates)
     return CLLocationCoordinate2D(
-      latitude: centre.latitude - latitudeOffset, longitude: centre.longitude)
+      latitude: centre.latitude - latitudeOffset,
+      longitude: centre.longitude
+    )
   }
 
   /// Get region for user location + nearest N facilities
@@ -361,6 +378,36 @@ extension LocationManager {
       "Location access is required for this feature. Please enable it in Settings."
     print("📍 Need to direct user to Settings")
     // TODO: Present actual settings alert in UI
+  }
+}
+
+extension LocationManager {
+
+  /// Calculate ETA to facility using the ETA service
+  func calculateETAToFacility(_ facility: ParkingFacility) async {
+    guard isLocationAvailable else { return }
+
+    await ETAService.shared.calculateETA(
+      from: userLocation,
+      to: facility
+    )
+  }
+
+  /// Get estimated driving time based on distance (rough calculation)
+  func estimatedDrivingTime(to facility: ParkingFacility) -> TimeInterval {
+    let distance = distanceToFacility(facility)  // in km
+
+    // Rough estimate: 30 km/h average speed in urban areas
+    let averageSpeed: Double = 30.0  // km/h
+    let timeInHours = distance / averageSpeed
+
+    return timeInHours * 3600  // Convert to seconds
+  }
+
+  /// Get formatted estimated driving time
+  func formattedEstimatedDrivingTime(to facility: ParkingFacility) -> String {
+    let timeInterval = estimatedDrivingTime(to: facility)
+    return ETAService.shared.formatETA(timeInterval)
   }
 }
 

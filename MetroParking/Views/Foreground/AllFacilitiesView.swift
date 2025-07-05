@@ -29,11 +29,11 @@ enum FacilitySortOption: String, CaseIterable, Identifiable {
 
   var systemImage: String {
     switch self {
-    case .distance: return "location.circle"
-    case .availability: return "chart.bar.fill"
+    case .distance: return "location"
+    case .availability: return "gauge.with.needle"
     case .name: return "textformat.abc"
     case .suburb: return "map"
-    case .totalSpaces: return "square.grid.3x3"
+    case .totalSpaces: return "square.grid.2x2"
     }
   }
 }
@@ -109,10 +109,11 @@ struct AllFacilitiesView: View {
             /// Show sort direction
             if selectedSortOption == option {
               Image(systemName: sortAscending ? "chevron.up" : "chevron.down")
-                .font(.caption2)
+                .font(.caption)
                 .foregroundStyle(.secondary)
             }
           }
+          .font(.body)
           .fontWeight(.medium)
           .buttonBorderShape(.capsule)
           .buttonStyle(.bordered)

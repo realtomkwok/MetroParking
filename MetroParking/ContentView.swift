@@ -195,6 +195,7 @@ struct ForegroundView: View {
                     .font(.callout)
                   Spacer()
                 }
+                .foregroundStyle(.primary)
               }
 
             }
@@ -354,7 +355,7 @@ struct BackgroundView: View {
             locationState.requestLocationPermission()
           }
         } label: {
-          VStack(alignment: .center) {
+          VStack(alignment: .center, spacing: 8) {
             if locationState.isRefreshing {
               ProgressView()
             } else {

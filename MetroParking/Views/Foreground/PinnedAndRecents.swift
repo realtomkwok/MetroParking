@@ -46,13 +46,13 @@ struct PinnedAndRecents: View {
 
       VStack {
         if pinnedFacilities.isEmpty {
-          // TODO: Reword
-          VStack(alignment: .center, spacing: 4) {
-            Image(systemName: "questionmark.app.fill")
+          VStack(alignment: .center, spacing: 8) {
+            Image(systemName: "questionmark.circle")
+              .font(.largeTitle)
             Text("No pinned parking yet")
           }
-          .foregroundStyle(.secondary)
           .font(.body)
+          .foregroundStyle(.secondary)
           .frame(maxHeight: .infinity)
         } else {
           // TODO: Resize each gauge to match the one with the widest text

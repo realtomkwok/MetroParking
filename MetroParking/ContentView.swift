@@ -42,7 +42,8 @@ struct ContentView: View {
 
         ForegroundView(
           mapState: mapStateManager,
-          sheetState: sheetStateManager
+          sheetState: sheetStateManager,
+          locationState: locationManager
         )
         .presentationCornerRadius(24)
         .presentationBackground(.thinMaterial)
@@ -106,7 +107,7 @@ enum ScreenView: String, CaseIterable, Identifiable {
   @ViewBuilder
   func destinationView(
     mapState: MapStateManager,
-    sheetState: SheetStateManager
+    sheetState: SheetStateManager,
   ) -> some View {
     switch self {
     case .pinned:
@@ -126,6 +127,7 @@ enum ScreenView: String, CaseIterable, Identifiable {
 struct ForegroundView: View {
   @ObservedObject var mapState: MapStateManager
   @ObservedObject var sheetState: SheetStateManager
+  @ObservedObject var locationState: LocationManager
 
   @State private var selectedScreen: ScreenView = .pinned
   @State private var showMoreMenu: Bool = false
@@ -165,7 +167,7 @@ struct ForegroundView: View {
         Section {
           selectedScreen.destinationView(
             mapState: mapState,
-            sheetState: sheetState
+            sheetState: sheetState,
           )
         } header: {
           TopBar(showBackground: isScrolled) {
@@ -176,22 +178,22 @@ struct ForegroundView: View {
                   Button(action: {
                     selectedScreen = screen
                   }) {
-					  HStack {
+                    HStack {
                       Text(screen.displayName)
                       Image(systemName: screen.iconName)
                     }
                   }
                 }
               } label: {
-				  HStack(alignment: .center) {
-					  Text(selectedScreen.displayName)
-						.font(.title)
-						.lineLimit(1)
-						.multilineTextAlignment(.leading)
-						.tracking(-0.4)
-					  Image(systemName: "chevron.down")
-						.font(.callout)
-					  Spacer()
+                HStack(alignment: .center) {
+                  Text(selectedScreen.displayName)
+                    .font(.title)
+                    .lineLimit(1)
+                    .multilineTextAlignment(.leading)
+                    .tracking(-0.4)
+                  Image(systemName: "chevron.down")
+                    .font(.callout)
+                  Spacer()
                 }
               }
 
@@ -267,115 +269,12 @@ struct ForegroundView: View {
             .presentationDragIndicator(.visible)
             //					.presentationCornerRadius(24)
             .presentationBackgroundInteraction(.enabled)
+
           }
         }
       )
     }
     .coordinateSpace(name: "scroll")
-  }
-}
-
-struct PinnedAndRecents: View {
-  let mapState: MapStateManager
-  let sheetState: SheetStateManager
-
-  /// For pinned facilities
-  @Query(
-    filter: #Predicate<ParkingFacility> { $0.isFavourite == true },
-    animation: .snappy
-  )
-  private var pinnedFacilities: [ParkingFacility]
-  /// For recently visited facilities
-  @Query(
-    filter: #Predicate<ParkingFacility> { $0.lastVisited != nil },
-    sort: [SortDescriptor(\ParkingFacility.lastVisited, order: .reverse)],
-    animation: .snappy
-  )
-  private var recentlyVisitedFacilities: [ParkingFacility]
-
-  var body: some View {
-    ScrollView(.vertical, showsIndicators: false) {
-      VStack(alignment: .leading) {
-        PinnedFacility()
-        RecentFacility()
-          .padding(.top)
-      }
-    }
-  }
-
-  @ViewBuilder
-  func PinnedFacility() -> some View {
-
-    Text("Pinned")
-      .font(.headline)
-      .foregroundStyle(.primary)
-      .padding(.horizontal)
-
-    HStack(alignment: .center) {
-      if pinnedFacilities.isEmpty {
-        // TODO: Reword
-        Text("No pinned parking yet")
-      } else {
-        // TODO: Resize each gauge to match the one with the widest text
-        // https://developer.apple.com/videos/play/wwdc2022/10056/
-        ScrollView(.horizontal, showsIndicators: false) {
-          LazyHStack(alignment: .center, spacing: 0) {
-            ForEach(pinnedFacilities, id: \.facilityId) {
-              facility in
-              ParkingGauge(
-                facility: facility,
-                mapState: mapState,
-                sheetState: sheetState
-              )
-            }
-            .safeAreaPadding(.leading)
-          }
-        }
-      }
-    }
-    .frame(maxWidth: .infinity, minHeight: 64)
-  }
-
-  @ViewBuilder
-  func RecentFacility() -> some View {
-    VStack(alignment: .leading) {
-      Text("Recents")
-        .font(.headline)
-        .padding(.horizontal)
-
-      LazyVStack(alignment: .leading) {
-        ForEach(recentlyVisitedFacilities, id: \.facilityId) {
-          facility in
-          ParkingListCardView(
-            facility: facility,
-            mapState: mapState,
-            sheetState: sheetState
-          )
-        }
-      }
-      .padding(.horizontal)
-
-    }
-  }
-}
-
-struct AllFacilitiesView: View {
-  let mapState: MapStateManager
-  let sheetState: SheetStateManager
-
-  @Query private var allFacilities: [ParkingFacility]
-
-  var body: some View {
-    VStack {
-      ForEach(allFacilities, id: \.facilityId) { facility in
-        ParkingListCardView(
-          facility: facility,
-          mapState: mapState,
-          sheetState: sheetState
-        )
-      }
-    }
-    .padding(.horizontal)
   }
 }
 
@@ -516,18 +415,14 @@ struct BackgroundView: View {
 
 #Preview("Normal App State") {
   ContentView()
-    .modelContainer(PreviewHelper.previewContainer(withSamplePins: true))
+    .modelContainer(PreviewHelper.previewContainer(withSamplePins: false))
 }
 
 #Preview("Foreground Sheet") {
-  ForegroundView(mapState: MapStateManager(), sheetState: SheetStateManager())
-    .modelContainer(PreviewHelper.previewContainer(withSamplePins: true))
-}
-
-#Preview("All Facilities") {
-  AllFacilitiesView(
+  ForegroundView(
     mapState: MapStateManager(),
-    sheetState: SheetStateManager()
+    sheetState: SheetStateManager(),
+    locationState: LocationManager()
   )
-  .modelContainer(PreviewHelper.previewContainer(withSamplePins: true))
+  .modelContainer(PreviewHelper.previewContainer(withSamplePins: false))
 }

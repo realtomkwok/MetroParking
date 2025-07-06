@@ -85,9 +85,7 @@ struct ParkingListCardView: View {
 
           HStack(alignment: .center) {
             Text(
-              facility.lastUpdated == .distantPast
-                ? "--"
-                : "updated \(facility.lastUpdated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))"
+              facility.formattedLastUpdated
             )
           }
           .font(.callout)
@@ -103,7 +101,9 @@ struct ParkingListCardView: View {
               .foregroundStyle(Color(.label))
               .contentTransition(
                 .numericText(
-                  value: Double(facility.currentAvailableSpots)
+                  value: Double(
+                    facility.currentAvailableSpots
+                  )
                 )
               )
             Text("spaces")

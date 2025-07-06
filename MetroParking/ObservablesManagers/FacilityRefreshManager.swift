@@ -294,7 +294,7 @@ extension FacilityRefreshManager {
 /// Core API
 extension FacilityRefreshManager {
 
-  private func loadOccupancyForFacility(
+  func loadOccupancyForFacility(
     _ facility: ParkingFacility,
     context: String,
     withDelay delay: Double = 0.5
@@ -337,7 +337,7 @@ extension FacilityRefreshManager {
     }
   }
 
-  private func rateLimitedDelay() async {
+  func rateLimitedDelay() async {
     let timeSinceLastCall = Date().timeIntervalSince(lastAPICall)
     if timeSinceLastCall < minimumAPIInterval {
       let waitTime = minimumAPIInterval - timeSinceLastCall

@@ -108,9 +108,12 @@ struct AllFacilitiesView: View {
 
             /// Show sort direction
             if selectedSortOption == option {
-              Image(systemName: sortAscending ? "chevron.up" : "chevron.down")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+              Image(
+                systemName: sortAscending
+                  ? "chevron.up" : "chevron.down"
+              )
+              .font(.caption)
+              .foregroundStyle(.secondary)
             }
           }
           .font(.body)
@@ -118,7 +121,9 @@ struct AllFacilitiesView: View {
           .buttonBorderShape(.capsule)
           .buttonStyle(.bordered)
           .controlSize(.regular)
-          .foregroundStyle(selectedSortOption == option ? .blue : .secondary)
+          .foregroundStyle(
+            selectedSortOption == option ? .blue : .secondary
+          )
           .tint(selectedSortOption == option ? .accentColor : .none)
         }
       }
@@ -290,16 +295,17 @@ struct ComputedSortedFacilities: View {
     _ facility1: ParkingFacility,
     _ facility2: ParkingFacility
   ) -> Bool {
-    let available1 = facility1.currentAvailableSpots
-    let available2 = facility2.currentAvailableSpots
+    let percentage1 = facility1.availabilityPercentage
+    let percentage2 = facility2.availabilityPercentage
 
-    // Handle invalid data (-1 values)
-    if available1 == -1 && available2 == -1 {
-      return facility1.name < facility2.name
+    // Handle invalid data (-1 values) - put them at the end
+    if percentage1 < 0 && percentage2 < 0 {
+      return facility1.name < facility2.name  // Fallback to name sorting
     }
-    if available1 == -1 { return false }
-    if available2 == -1 { return true }
+    if percentage1 < 0 { return false }  // facility1 goes to end
+    if percentage2 > 0 { return true }  // facility2 goes to end
 
-    return available1 > available2
+    // Sort by available spots - MORE available spots first
+    return percentage1 > percentage2
   }
 }

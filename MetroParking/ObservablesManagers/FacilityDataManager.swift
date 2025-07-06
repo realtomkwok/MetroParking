@@ -1,9 +1,12 @@
-//
-//  FacilityDataManager.swift
-//  MetroParking
-//
-//  Created by Tom Kwok on 21/6/2025.
-//
+///
+///	FacilityDataManager.swift
+///	MetroParking
+///
+///	Managing the static and live data of the facility.
+///
+///
+/// Created by Tom Kwok on 21/6/2025.
+///
 
 import Foundation
 import SwiftData

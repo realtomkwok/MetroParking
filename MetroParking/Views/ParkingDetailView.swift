@@ -24,7 +24,7 @@ struct ParkingDetailView: View {
 
   private var occupancyProgress: Double {
     guard facility.totalSpaces > 0 else { return 0 }
-    return Double(facility.currentOccupancy) / Double(facility.totalSpaces)
+    return facility.occupancyPercentage
   }
 
   var body: some View {
@@ -41,18 +41,26 @@ struct ParkingDetailView: View {
               GridRow {
                 /// Drive  there
                 Button {
-                  locationManager.isLocationAvailable ? openInMaps() : nil
+                  locationManager.isLocationAvailable
+                    ? openInMaps() : nil
                 } label: {
                   HStack {
                     Spacer()
 
                     Image(
-                      systemName: (etaService.etaError == nil)
-                        ? "car.fill" : "exclamationmark.triangle.fill"
+                      systemName: (etaService.etaError
+                        == nil)
+                        ? "car.fill"
+                        : "exclamationmark.triangle.fill"
                     )
                     .contentTransition(
                       .symbolEffect(
-                        .replace.magic(fallback: .offUp.byLayer), options: .nonRepeating))
+                        .replace.magic(
+                          fallback: .offUp.byLayer
+                        ),
+                        options: .nonRepeating
+                      )
+                    )
 
                     if etaService.isCalculatingETA {
                       // TODO: Too large
@@ -88,7 +96,9 @@ struct ParkingDetailView: View {
                 .font(.headline)
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.capsule)
-                .disabled(locationManager.isLocationAvailable == false)
+                .disabled(
+                  locationManager.isLocationAvailable == false
+                )
                 .labelStyle(.titleAndIcon)
                 .controlSize(.extraLarge)
                 .animation(
@@ -225,7 +235,7 @@ struct ParkingDetailView: View {
                 .font(.title2)
                 .lineLimit(1)
                 Text(
-                  "updated \(facility.lastUpdated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))"
+                  facility.formattedLastUpdated
                 )
                 .font(.subheadline)
                 .fontWeight(.regular)
@@ -308,7 +318,8 @@ struct ParkingDetailView: View {
 
     // Open in Maps with driving directions
     let launchOptions = [
-      MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving
+      MKLaunchOptionsDirectionsModeKey:
+        MKLaunchOptionsDirectionsModeDriving
     ]
 
     mapItem.openInMaps(launchOptions: launchOptions)

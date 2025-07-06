@@ -24,7 +24,7 @@ struct ParkingDetailView: View {
 
   private var occupancyProgress: Double {
     guard facility.totalSpaces > 0 else { return 0 }
-	  return facility.occupancyPercentage
+    return facility.occupancyPercentage
   }
 
   var body: some View {
@@ -235,9 +235,7 @@ struct ParkingDetailView: View {
                 .font(.title2)
                 .lineLimit(1)
                 Text(
-                  facility.lastUpdated == .distantPast
-                    ? "--"
-                    : "updated \(facility.lastUpdated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))"
+                  facility.formattedLastUpdated
                 )
                 .font(.subheadline)
                 .fontWeight(.regular)

@@ -103,6 +103,12 @@ final class ParkingFacility {
     return retrievalFailures > 0
   }
 
+  var formattedLastUpdated: String {
+    return lastUpdated == .distantPast
+      ? "--"
+      : "updated \(lastUpdated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))"
+  }
+
   init(from apiResponse: ParkingAPIResponse) {
     self.facilityId = apiResponse.facilityId
     self.name = apiResponse.facilityName

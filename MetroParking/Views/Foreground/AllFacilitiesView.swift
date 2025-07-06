@@ -303,7 +303,7 @@ struct ComputedSortedFacilities: View {
       return facility1.name < facility2.name  // Fallback to name sorting
     }
     if percentage1 < 0 { return false }  // facility1 goes to end
-    if percentage2 > 0 { return true }  // facility2 goes to end
+    if percentage2 < 0 { return true }  // facility2 goes to end
 
     // Sort by available spots - MORE available spots first
     return percentage1 > percentage2

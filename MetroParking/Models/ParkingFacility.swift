@@ -54,7 +54,7 @@ final class ParkingFacility {
   var lastFailureDate: Date?
 
   var displayName: String {
-	  return name.removePrefix("Park&Ride - ").localizedCapitalized
+    return name.removePrefix("Park&Ride - ").localizedCapitalized
   }
 
   private var _cachedOccupancy: Int = 0
@@ -115,7 +115,8 @@ final class ParkingFacility {
     self.totalSpaces = Int(apiResponse.spots) ?? 0
 
     let dateFormatter = ISO8601DateFormatter()
-    self.lastUpdated = dateFormatter.date(from: apiResponse.messageDate) ?? Date()
+    self.lastUpdated =
+      dateFormatter.date(from: apiResponse.messageDate) ?? Date()
     self.lastVisited = nil
 
     self.isFavourite = false
@@ -147,7 +148,9 @@ extension ParkingFacility {
 
   func classifyRefreshGroup() {
     // Based on API docs - these facilities have 15s update frequency
-    let highFrequencyNames = ["Kiama", "Mona Vale", "Warriewood", "Dee Why", "Gordon Henry St"]
+    let highFrequencyNames = [
+      "Kiama", "Mona Vale", "Warriewood", "Dee Why", "Gordon Henry St",
+    ]
 
     for facility in highFrequencyNames {
       if name.contains(facility) {
@@ -161,7 +164,7 @@ extension ParkingFacility {
 
   func updateFromAPI(_ apiResponse: ParkingAPIResponse) {
     // Update occupancy cache
-    self.currentOccupancy = Int(apiResponse.occupancy.total ?? "0") ?? 0
+    self.currentOccupiedSpots = Int(apiResponse.occupancy.total ?? "0") ?? 0
 
     // Update persistent data
     self.lastUpdated = Date()
@@ -178,29 +181,39 @@ extension ParkingFacility {
 
   func scheduleNextRefresh(appState: AppState = .active) {
     let baseInterval =
-      appState == .active ? refreshGroup.activeInterval : refreshGroup.backgroundInterval
+      appState == .active
+      ? refreshGroup.activeInterval : refreshGroup.backgroundInterval
 
     // Apply favourite priority (50% faster refresh)
     let priorityMultiplier = isFavourite ? 0.5 : 1.0
 
     // Apply exponential backoff for failures
     let failureMultiplier =
-      retrievalFailures > 0 ? pow(2.0, Double(min(retrievalFailures, 4))) : 1.0
+      retrievalFailures > 0
+      ? pow(2.0, Double(min(retrievalFailures, 4))) : 1.0
 
-    let finalInterval = baseInterval * priorityMultiplier * failureMultiplier
+    let finalInterval =
+      baseInterval * priorityMultiplier * failureMultiplier
     self.nextScheduledRefresh = Date().addingTimeInterval(finalInterval)
 
-    print("📅 \(name): Next refresh in \(Int(finalInterval))s (failures: \(retrievalFailures))")
+    print(
+      "📅 \(name): Next refresh in \(Int(finalInterval))s (failures: \(retrievalFailures))"
+    )
   }
 
   func markRefreshFailed() {
     retrievalFailures += 1
     lastFailureDate = Date()
 
-    let backoffInterval: TimeInterval = min(pow(2.0, Double(retrievalFailures)) * 120, 1800)  //?
+    let backoffInterval: TimeInterval = min(
+      pow(2.0, Double(retrievalFailures)) * 120,
+      1800
+    )  //?
     self.nextScheduledRefresh = Date().addingTimeInterval(backoffInterval)
 
-    print("❌ \(name): Failure #\(retrievalFailures), retry in \(Int(backoffInterval/60))min")
+    print(
+      "❌ \(name): Failure #\(retrievalFailures), retry in \(Int(backoffInterval/60))min"
+    )
   }
 
   func markAsVisited() {
@@ -208,9 +221,10 @@ extension ParkingFacility {
   }
 }
 
+/// Occupancy and availability
 extension ParkingFacility {
 
-  var currentOccupancy: Int {
+  var currentOccupiedSpots: Int {
     get {
       if isOccupancyCacheValid {
         return _cachedOccupancy
@@ -242,5 +256,39 @@ extension ParkingFacility {
 
   var hasValidSpotData: Bool {
     return currentAvailableSpots >= 0
+  }
+
+  var availabilityPercentage: Double {
+    guard totalSpaces > 0 else { return 0.0 }
+    guard currentAvailableSpots >= 0 else { return -1.0 }
+
+    return Double(currentAvailableSpots) / Double(totalSpaces)
+  }
+
+  var formattedAvailabilityPercentage: String {
+    let percentage = availabilityPercentage
+
+    if percentage < 0 {
+      return "--"
+    }
+
+    return String(format: "%.0f%%", percentage * 100)
+  }
+
+  var occupancyPercentage: Double {
+    guard totalSpaces > 0 else { return 0.0 }
+    guard isOccupancyCacheValid else { return -1.0 }
+
+    return Double(currentOccupiedSpots) / Double(totalSpaces)
+  }
+
+  var formattedOccupancyPercentage: String {
+    let percentage = occupancyPercentage
+
+    if percentage < 0 {
+      return "--"
+    }
+
+    return String(format: "%.0f%%", percentage * 100)
   }
 }

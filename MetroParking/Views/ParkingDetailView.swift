@@ -24,7 +24,7 @@ struct ParkingDetailView: View {
 
   private var occupancyProgress: Double {
     guard facility.totalSpaces > 0 else { return 0 }
-    return Double(facility.currentOccupiedSpots) / Double(facility.totalSpaces)
+	  return facility.occupancyPercentage
   }
 
   var body: some View {

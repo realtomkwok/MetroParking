@@ -14,7 +14,7 @@ struct ParkingGauge: View {
 
   private var occupancyProgress: Double {
     guard facility.totalSpaces > 0 else { return 0 }
-    return Double(facility.currentOccupancy) / Double(facility.totalSpaces)
+    return max(0, facility.occupancyPercentage)
   }
 
   var body: some View {

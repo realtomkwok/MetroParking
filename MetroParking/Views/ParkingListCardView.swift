@@ -65,7 +65,7 @@ struct ParkingListCardView: View {
             .fontWeight(.semibold)
             .fontDesign(.rounded)
             .textCase(.uppercase)
-			// Ditch 4px padding?
+            // Ditch 4px padding?
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .blendMode(.hardLight)
@@ -85,7 +85,7 @@ struct ParkingListCardView: View {
 
           HStack(alignment: .center) {
             Text(
-              "updated \(facility.lastUpdated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))"
+              facility.formattedLastUpdated
             )
           }
           .font(.callout)
@@ -101,7 +101,9 @@ struct ParkingListCardView: View {
               .foregroundStyle(Color(.label))
               .contentTransition(
                 .numericText(
-                  value: Double(facility.currentAvailableSpots)
+                  value: Double(
+                    facility.currentAvailableSpots
+                  )
                 )
               )
             Text("spaces")

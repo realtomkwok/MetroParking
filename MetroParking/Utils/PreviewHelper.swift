@@ -40,7 +40,7 @@ extension PreviewHelper {
 
     /// Simulate 20% occupancy
     let occupancy = Int(Double(facility.totalSpaces) * 0.2)
-    facility.currentOccupancy = occupancy
+    facility.currentOccupiedSpots = occupancy
 
     return facility
   }
@@ -51,7 +51,7 @@ extension PreviewHelper {
 
     /// Simulate 95% occupancy
     let occupancy = Int(Double(facility.totalSpaces) * 0.95)
-    facility.currentOccupancy = occupancy
+    facility.currentOccupiedSpots = occupancy
 
     return facility
   }
@@ -60,7 +60,7 @@ extension PreviewHelper {
   static func fullFacility() -> ParkingFacility {
     let facility = ParkingFacility(from: largeFacility)
 
-    facility.currentOccupancy = facility.totalSpaces
+    facility.currentOccupiedSpots = facility.totalSpaces
 
     return facility
   }
@@ -107,12 +107,13 @@ extension PreviewHelper {
     if index < patterns.count {
       let occupancyRatio = patterns[index]
       if occupancyRatio > 0 {
-        facility.currentOccupancy = Int(Double(facility.totalSpaces) * occupancyRatio)
+        facility.currentOccupiedSpots = Int(Double(facility.totalSpaces) * occupancyRatio)
       }
       // If occupancyRatio is 0, don't set occupancy (no data state) ?
     } else {
       // For additional facilities beyond the pattern, use random
-      facility.currentOccupancy = Int(Double(facility.totalSpaces) * Double.random(in: 0.1...0.9))
+      facility.currentOccupiedSpots = Int(
+        Double(facility.totalSpaces) * Double.random(in: 0.1...0.9))
 
     }
   }
@@ -179,7 +180,7 @@ extension PreviewHelper {
 
           // Set realistic occupancy data
           if occupancyRatio > 0 {
-            facility.currentOccupancy = Int(Double(facility.totalSpaces) * occupancyRatio)
+            facility.currentOccupiedSpots = Int(Double(facility.totalSpaces) * occupancyRatio)
           }
         }
       }

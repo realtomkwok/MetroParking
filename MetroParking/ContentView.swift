@@ -157,7 +157,7 @@ struct ForegroundView: View {
 
             // Show background after scrolling 30 points from initial position
             if let initial = initialPosition {
-              isScrolled = newValue < (initial - 30)
+              isScrolled = newValue < (initial)
             }
           }
       }
@@ -227,8 +227,7 @@ struct ForegroundView: View {
 
               Button {
                 // TODO: Show menu for more info
-                /*@START_MENU_TOKEN@*//*@PLACEHOLDER=Action@*/
-                /*@END_MENU_TOKEN@*/
+
               } label: {
                 Label("More", systemImage: "ellipsis")
                   .fontWeight(.semibold)

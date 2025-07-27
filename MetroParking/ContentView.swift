@@ -379,37 +379,37 @@ struct BackgroundView: View {
       }
 
     }
-
-    .alert(
-      "Enable Location Access",
-      isPresented: $showLocationPermissionAlert
-    ) {
-      Button("Allow Location") {
-        LocationManager.shared.requestLocationPermission()
-      }
-      Button("Not Now", role: .cancel) {}
-    } message: {
-      Text(
-        "MetroParking uses your location to find nearby parking facilities and show accurate distances. This helps you find the best parking options."
-      )
-    }
-    .alert(
-      "Location Access Needed",
-      isPresented: $showLocationSettingsAlert
-    ) {
-      Button("Open Settings") {
-        if let settingsURL = URL(
-          string: UIApplication.openSettingsURLString
-        ) {
-          UIApplication.shared.open(settingsURL)
-        }
-      }
-      Button("Cancel", role: .cancel) {}
-    } message: {
-      Text(
-        "Location access was previously denied. To find nearby parking, please enable location access in Settings → MetroParking → Location."
-      )
-    }
+    //
+    //    .alert(
+    //      "Enable Location Access",
+    //      isPresented: $showLocationPermissionAlert
+    //    ) {
+    //      Button("Allow Location") {
+    //        LocationManager.shared.requestLocationPermission()
+    //      }
+    //      Button("Not Now", role: .cancel) {}
+    //    } message: {
+    //      Text(
+    //        "MetroParking uses your location to find nearby parking facilities and show accurate distances. This helps you find the best parking options."
+    //      )
+    //    }
+    //    .alert(
+    //      "Location Access Needed",
+    //      isPresented: $showLocationSettingsAlert
+    //    ) {
+    //      Button("Open Settings") {
+    //        if let settingsURL = URL(
+    //          string: UIApplication.openSettingsURLString
+    //        ) {
+    //          UIApplication.shared.open(settingsURL)
+    //        }
+    //      }
+    //      Button("Cancel", role: .cancel) {}
+    //    } message: {
+    //      Text(
+    //        "Location access was previously denied. To find nearby parking, please enable location access in Settings → MetroParking → Location."
+    //      )
+    //    }
   }
 }
 

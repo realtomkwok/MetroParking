@@ -146,8 +146,15 @@ the [TfNSW Car Park API Documentation](https://opendata.transport.nsw.gov.au/dat
 repository.
 
 ## License
+This project is licensed under the GNU General Public License v3.0 - see the LICENSE file for details.
 
-TBD.
+## Commercial Use
+This open source version is available under GPL v3. The app is also available for purchase on the App Store. If you create derivative works, they must also be distributed under GPL v3.
+
+## Copyright
+Copyright (C) 2025 Tom Kwok
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
 ## Acknowledgments
 

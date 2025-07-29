@@ -44,13 +44,28 @@ struct AllFacilitiesView: View {
 
   @ObservedObject private var locationManager = LocationManager.shared
 
-  // Sorting state
+  /// Sorting state
   @State private var selectedSortOption: FacilitySortOption = .distance
   @State private var sortAscending: Bool = true
 
+  /// Search
+  @State private var searchText: String = ""
+
+  private var searchPredicate: Predicate<ParkingFacility>? {
+    guard !searchText.trimmingCharacters(in: .whitespaces).isEmpty else {
+      return nil
+    }
+
+    let trimmedSearch = searchText.trimmingCharacters(in: .whitespaces)
+    return #Predicate<ParkingFacility> { facility in
+      facility.name.localizedStandardContains(trimmedSearch)
+        || facility.suburb.localizedStandardContains(trimmedSearch)
+    }
+  }
+
   @Query private var allFacilities: [ParkingFacility]
 
-  // Animation namespace
+  /// Animation namespace
   @Namespace private var sortTransition
 
   var body: some View {
@@ -58,13 +73,14 @@ struct AllFacilitiesView: View {
     LazyVStack(
       alignment: .leading,
       spacing: 16,
-      pinnedViews: .sectionHeaders
+      //			pinnedViews: .sectionHeaders
     ) {
       Section {
         /// Single dynamic facility list
-        QuerySortedFacilities(
+        FacilityListView(
           sortOption: selectedSortOption,
           ascending: sortAscending,
+          searchPredicate: searchPredicate,
           mapState: mapState,
           sheetState: sheetState,
           sortTransition: sortTransition
@@ -79,15 +95,19 @@ struct AllFacilitiesView: View {
           value: sortAscending
         )
       } header: {
-        sortingToolbar
+        VStack {
+          SearchBar(text: $searchText)
+            .frame(maxWidth: .infinity)
+          SortingToolbar
+        }
+        .safeAreaPadding(.horizontal)
       }
-
     }
 
   }
 
   /// Sorting toolbar
-  private var sortingToolbar: some View {
+  private var SortingToolbar: some View {
     ScrollView(.horizontal) {
       LazyHStack(alignment: .center, spacing: 8) {
         ForEach(FacilitySortOption.allCases, id: \.id) { option in
@@ -129,83 +149,113 @@ struct AllFacilitiesView: View {
       }
     }
     .scrollIndicators(.hidden)
-    .safeAreaPadding(.horizontal)
   }
-}
 
-struct QuerySortedFacilities: View {
-  let sortOption: FacilitySortOption
-  let ascending: Bool
-  let mapState: MapStateManager
-  let sheetState: SheetStateManager
-  let sortTransition: Namespace.ID
+  /// Search bar
+  struct SearchBar: UIViewRepresentable {
+    @Binding var text: String
+    var placeholder: String = "Search facilities or suburbs..."
 
-  var body: some View {
-    Group {
-      switch sortOption {
-      case .distance, .availability:
-        ComputedSortedFacilities(
-          sortOption: sortOption,
-          ascending: ascending,
-          mapState: mapState,
-          sheetState: sheetState,
-          sortTransition: sortTransition
-        )
-      case .name:
-        FacilityQueryView(
-          sort: [
-            SortDescriptor(
-              \ParkingFacility.name,
-              order: ascending ? .forward : .reverse
-            )
-          ],
-          mapState: mapState,
-          sheetState: sheetState,
-          sortTransition: sortTransition
-        )
-      case .suburb:
-        FacilityQueryView(
-          sort: [
-            SortDescriptor(
-              \ParkingFacility.name,
-              order: ascending ? .forward : .reverse
-            ),
-            SortDescriptor(
-              \ParkingFacility.suburb,
-              order: ascending ? .forward : .reverse
-            ),
-          ],
-          mapState: mapState,
-          sheetState: sheetState,
-          sortTransition: sortTransition
-        )
-      case .totalSpaces:
-        FacilityQueryView(
-          sort: [
-            SortDescriptor(
-              \ParkingFacility.totalSpaces,
-              order: ascending ? .forward : .reverse
-            ),
-            SortDescriptor(\ParkingFacility.name, order: .forward),
-          ],
-          mapState: mapState,
-          sheetState: sheetState,
-          sortTransition: sortTransition
-        )
+    func makeUIView(context: Context) -> UISearchBar {
+      let searchBar = UISearchBar()
+      searchBar.delegate = context.coordinator
+      searchBar.placeholder = placeholder
+      searchBar.searchBarStyle = .minimal
+      searchBar.enablesReturnKeyAutomatically = false
+      searchBar.isTranslucent = true
+      return searchBar
+    }
+
+    func updateUIView(_ uiView: UISearchBar, context: Context) {
+      uiView.text = text
+    }
+
+    func makeCoordinator() -> Coordinator {
+      Coordinator(self)
+    }
+
+    class Coordinator: NSObject, UISearchBarDelegate {
+      let parent: SearchBar
+
+      init(_ parent: SearchBar) {
+        self.parent = parent
+      }
+
+      func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        parent.text = searchText
+      }
+
+      func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
       }
     }
   }
 }
 
-struct FacilityQueryView: View {
+struct FacilityListView: View {
+  let sortOption: FacilitySortOption
+  let ascending: Bool
+  let searchPredicate: Predicate<ParkingFacility>?
+  let mapState: MapStateManager
+  let sheetState: SheetStateManager
+  let sortTransition: Namespace.ID
+
+  var body: some View {
+    if usesComputedSorting {
+      ComputedSortedFacilities(
+        sortOption: sortOption,
+        ascending: ascending,
+        searchPredicate: searchPredicate,
+        mapState: mapState,
+        sheetState: sheetState,
+        sortTransition: sortTransition
+      )
+    } else {
+      DatabaseSortedFacilities(
+        filter: searchPredicate,
+        sort: sortDescriptors,
+        mapState: mapState,
+        sheetState: sheetState,
+        sortTransition: sortTransition
+      )
+    }
+  }
+
+  private var usesComputedSorting: Bool {
+    sortOption == .distance || sortOption == .availability
+  }
+
+  private var sortDescriptors: [SortDescriptor<ParkingFacility>] {
+    let order: SortOrder = ascending ? .forward : .reverse
+
+    switch sortOption {
+    case .name:
+      return [SortDescriptor(\.name, order: order)]
+    case .suburb:
+      return [
+        SortDescriptor(\.suburb, order: order),
+        SortDescriptor(\.name, order: .forward),
+      ]
+    case .totalSpaces:
+      return [
+        SortDescriptor(\.totalSpaces, order: order),
+        SortDescriptor(\.name, order: .forward),
+      ]
+    default:
+      return [SortDescriptor(\.name, order: .forward)]
+    }
+  }
+}
+
+struct DatabaseSortedFacilities: View {
   let mapState: MapStateManager
   let sheetState: SheetStateManager
   let sortTransition: Namespace.ID
 
   @Query private var facilities: [ParkingFacility]
 
-  /// Sort only
   init(
+    filter: Predicate<ParkingFacility>? = nil,
     sort: [SortDescriptor<ParkingFacility>],
     mapState: MapStateManager,
     sheetState: SheetStateManager,
@@ -215,21 +265,16 @@ struct FacilityQueryView: View {
     self.sheetState = sheetState
     self.sortTransition = sortTransition
 
-    self._facilities = Query(sort: sort)
-  }
-
-  /// Sort and filter
-  init(
-    filter: Predicate<ParkingFacility>,
-    sort: [SortDescriptor<ParkingFacility>],
-    mapState: MapStateManager,
-    sheetState: SheetStateManager,
-    sortTransition: Namespace.ID
-  ) {
-    self.mapState = mapState
-    self.sheetState = sheetState
-    self.sortTransition = sortTransition
-    self._facilities = Query(filter: filter, sort: sort)
+    /// Sort descriptors 3
+    if let filter = filter {
+      self._facilities = Query(
+        filter: filter,
+        sort: sort,
+        animation: .snappy
+      )
+    } else {
+      self._facilities = Query(sort: sort, animation: .snappy)
+    }
   }
 
   var body: some View {
@@ -248,12 +293,36 @@ struct FacilityQueryView: View {
 struct ComputedSortedFacilities: View {
   let sortOption: FacilitySortOption
   let ascending: Bool
+  let searchPredicate: Predicate<ParkingFacility>?
   let mapState: MapStateManager
   let sheetState: SheetStateManager
   let sortTransition: Namespace.ID
 
   @Query private var allFacilities: [ParkingFacility]
   @ObservedObject private var locationManager = LocationManager.shared
+
+  init(
+    sortOption: FacilitySortOption,
+    ascending: Bool,
+    searchPredicate: Predicate<ParkingFacility>?,
+    mapState: MapStateManager,
+    sheetState: SheetStateManager,
+    sortTransition: Namespace.ID
+  ) {
+    self.sortOption = sortOption
+    self.ascending = ascending
+    self.searchPredicate = searchPredicate
+    self.mapState = mapState
+    self.sheetState = sheetState
+    self.sortTransition = sortTransition
+    self.locationManager = locationManager
+
+    if let predicate = searchPredicate {
+      self._allFacilities = Query(filter: predicate, animation: .snappy)
+    } else {
+      self._allFacilities = Query()
+    }
+  }
 
   var body: some View {
     ForEach(sortedFacilities, id: \.facilityId) { facility in

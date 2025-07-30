@@ -96,9 +96,9 @@ struct AllFacilitiesView: View {
         )
       } header: {
         VStack {
+          SortingToolbar
           SearchBar(text: $searchText)
             .frame(maxWidth: .infinity)
-          SortingToolbar
         }
         .safeAreaPadding(.horizontal)
       }
@@ -181,7 +181,10 @@ struct AllFacilitiesView: View {
         self.parent = parent
       }
 
-      func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+      func searchBar(
+        _ searchBar: UISearchBar,
+        textDidChange searchText: String
+      ) {
         parent.text = searchText
       }
 

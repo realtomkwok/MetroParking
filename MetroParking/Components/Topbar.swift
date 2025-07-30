@@ -51,7 +51,6 @@ struct TopBar<LeadingContent: View, TrailingContent: View>: View {
         Rectangle()
           .frame(height: 0.5)
           .foregroundStyle(.quaternary)
-          //					.safeAreaPadding(.horizontal)
           .ignoresSafeArea()
       },
       alignment: .bottom

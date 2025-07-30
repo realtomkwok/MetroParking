@@ -135,7 +135,7 @@ struct ForegroundView: View {
   @ObservedObject var locationState: LocationManager
 
   @State private var selectedScreen: ScreenView = .pinned
-  @State private var showMoreMenu: Bool = false
+  @State private var showSettingsSheet: Bool = false
 
   /// Tracking scroll position and dynamically change the background of Topbar
   @State private var isScrolled = false
@@ -206,7 +206,7 @@ struct ForegroundView: View {
             }
           } trailingContent: {
             /// Topbar trailing buttons
-            HStack(alignment: .center, spacing: 8) {
+            HStack(spacing: 16) {
 
               Button {
                 Task {
@@ -221,9 +221,10 @@ struct ForegroundView: View {
                     options: .repeat(.continuous),
                     isActive: refreshManager.isRefreshing
                   )
-                  .frame(minWidth: 24, minHeight: 24)
+                  .frame(width: 24, height: 24)
                   .foregroundStyle(.secondary)
               }
+              .frame(width: 36, height: 36)
               .disabled(refreshManager.isRefreshing)
               .buttonBorderShape(.circle)
               .buttonStyle(.bordered)
@@ -231,24 +232,23 @@ struct ForegroundView: View {
               .controlSize(.regular)
 
               Button {
-                // TODO: Show menu for more info
-                /*@START_MENU_TOKEN@*//*@PLACEHOLDER=Action@*/
-                /*@END_MENU_TOKEN@*/
+                showSettingsSheet = true
               } label: {
-                Label("More", systemImage: "ellipsis")
+                Label("More", systemImage: "gear")
                   .fontWeight(.semibold)
                   .symbolEffect(
                     .wiggle.byLayer,
                     options: .nonRepeating,
-                    isActive: showMoreMenu
+                    isActive: showSettingsSheet
                   )
-                  .frame(minWidth: 24, minHeight: 24)
+                  .frame(width: 24, height: 24)
+                  .foregroundStyle(.secondary)
               }
+              .frame(width: 36, height: 36)
               .buttonBorderShape(.circle)
               .buttonStyle(.bordered)
               .foregroundStyle(.primary)
               .controlSize(.regular)
-
             }
           }
         }
@@ -281,6 +281,12 @@ struct ForegroundView: View {
       )
     }
     .coordinateSpace(name: "scroll")
+    .sheet(isPresented: $showSettingsSheet) {
+      SettingsView()
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(.thinMaterial)
+    }
   }
 }
 

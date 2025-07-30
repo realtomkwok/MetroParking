@@ -283,7 +283,7 @@ struct ForegroundView: View {
     .coordinateSpace(name: "scroll")
     .sheet(isPresented: $showSettingsSheet) {
       SettingsView()
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .presentationBackground(.thinMaterial)
     }

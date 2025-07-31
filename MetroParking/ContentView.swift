@@ -109,17 +109,22 @@ enum ScreenView: String, CaseIterable, Identifiable {
     mapState: MapStateManager,
     sheetState: SheetStateManager,
   ) -> some View {
-    switch self {
-    case .pinned:
-      PinnedAndRecents(
-        mapState: mapState,
-        sheetState: sheetState
-      )
-    case .all:
-      AllFacilitiesView(
-        mapState: mapState,
-        sheetState: sheetState
-      )
+    VStack(spacing: 8) {
+      Spacer()
+      switch self {
+      case .pinned:
+
+        PinnedAndRecents(
+          mapState: mapState,
+          sheetState: sheetState
+        )
+
+      case .all:
+        AllFacilitiesView(
+          mapState: mapState,
+          sheetState: sheetState
+        )
+      }
     }
   }
 }
@@ -130,7 +135,7 @@ struct ForegroundView: View {
   @ObservedObject var locationState: LocationManager
 
   @State private var selectedScreen: ScreenView = .pinned
-  @State private var showMoreMenu: Bool = false
+  @State private var showSettingsSheet: Bool = false
 
   /// Tracking scroll position and dynamically change the background of Topbar
   @State private var isScrolled = false
@@ -201,7 +206,7 @@ struct ForegroundView: View {
             }
           } trailingContent: {
             /// Topbar trailing buttons
-            HStack(alignment: .center, spacing: 8) {
+            HStack(spacing: 16) {
 
               Button {
                 Task {
@@ -216,9 +221,10 @@ struct ForegroundView: View {
                     options: .repeat(.continuous),
                     isActive: refreshManager.isRefreshing
                   )
-                  .frame(minWidth: 24, minHeight: 24)
+                  .frame(width: 24, height: 24)
                   .foregroundStyle(.secondary)
               }
+              .frame(width: 36, height: 36)
               .disabled(refreshManager.isRefreshing)
               .buttonBorderShape(.circle)
               .buttonStyle(.bordered)
@@ -226,23 +232,23 @@ struct ForegroundView: View {
               .controlSize(.regular)
 
               Button {
-                // TODO: Show menu for more info
-
+                showSettingsSheet = true
               } label: {
-                Label("More", systemImage: "ellipsis")
+                Label("More", systemImage: "gear")
                   .fontWeight(.semibold)
                   .symbolEffect(
                     .wiggle.byLayer,
                     options: .nonRepeating,
-                    isActive: showMoreMenu
+                    isActive: showSettingsSheet
                   )
-                  .frame(minWidth: 24, minHeight: 24)
+                  .frame(width: 24, height: 24)
+                  .foregroundStyle(.secondary)
               }
+              .frame(width: 36, height: 36)
               .buttonBorderShape(.circle)
               .buttonStyle(.bordered)
               .foregroundStyle(.primary)
               .controlSize(.regular)
-
             }
           }
         }
@@ -275,6 +281,12 @@ struct ForegroundView: View {
       )
     }
     .coordinateSpace(name: "scroll")
+    .sheet(isPresented: $showSettingsSheet) {
+      SettingsView()
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(.thickMaterial)
+    }
   }
 }
 
@@ -374,41 +386,8 @@ struct BackgroundView: View {
             }
           }
         }
-
         Spacer()
       }
-
-    }
-
-    .alert(
-      "Enable Location Access",
-      isPresented: $showLocationPermissionAlert
-    ) {
-      Button("Allow Location") {
-        LocationManager.shared.requestLocationPermission()
-      }
-      Button("Not Now", role: .cancel) {}
-    } message: {
-      Text(
-        "MetroParking uses your location to find nearby parking facilities and show accurate distances. This helps you find the best parking options."
-      )
-    }
-    .alert(
-      "Location Access Needed",
-      isPresented: $showLocationSettingsAlert
-    ) {
-      Button("Open Settings") {
-        if let settingsURL = URL(
-          string: UIApplication.openSettingsURLString
-        ) {
-          UIApplication.shared.open(settingsURL)
-        }
-      }
-      Button("Cancel", role: .cancel) {}
-    } message: {
-      Text(
-        "Location access was previously denied. To find nearby parking, please enable location access in Settings → MetroParking → Location."
-      )
     }
   }
 }

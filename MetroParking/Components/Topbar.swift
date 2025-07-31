@@ -27,7 +27,7 @@ struct TopBar<LeadingContent: View, TrailingContent: View>: View {
   var body: some View {
 
     /// Leading content
-    HStack(alignment: .center) {
+    HStack {
       leadingContent()
         .foregroundStyle(.foreground)
       Spacer()
@@ -51,7 +51,6 @@ struct TopBar<LeadingContent: View, TrailingContent: View>: View {
         Rectangle()
           .frame(height: 0.5)
           .foregroundStyle(.quaternary)
-          //					.safeAreaPadding(.horizontal)
           .ignoresSafeArea()
       },
       alignment: .bottom

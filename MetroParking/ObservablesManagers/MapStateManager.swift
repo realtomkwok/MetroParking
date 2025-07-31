@@ -54,7 +54,7 @@ extension MapStateManager {
 
     let finalRegion = MKCoordinateRegion(center: offsetCentre, span: newRegion.span)
 
-    withAnimation(.snappy(duration: animationDuration)) {
+    withAnimation(.easeOut(duration: animationDuration)) {
       cameraPosition = .region(finalRegion)
       selectedFacility = facility
     }
@@ -69,7 +69,7 @@ extension MapStateManager {
     let allFacilitiesRegion = LocationManager.shared
       .getAllFacilitiesRegion()
 
-    withAnimation(.snappy(duration: animationDuration)) {
+    withAnimation(.easeInOut(duration: animationDuration)) {
       cameraPosition = .region(allFacilitiesRegion)
       selectedFacility = nil
     }

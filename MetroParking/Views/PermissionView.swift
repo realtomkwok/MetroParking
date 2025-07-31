@@ -48,7 +48,13 @@ struct PermissionView: View {
 
         Button(action: {
           locationManager.requestLocationPermission()
-          dismiss()
+          Task {
+            while locationManager.authorisationStatus == .notDetermined {
+              try? await Task.sleep(nanoseconds: 500_000_000)
+            }
+
+            dismiss()
+          }
         }) {
           Text(buttonText)
             .fontWeight(.semibold)
@@ -80,9 +86,11 @@ struct PermissionView: View {
       }
     }
     .onAppear {
+      let animationDelay: UInt64 = 1_000_000_000
+
       Task {
         // Wait for 1 second
-        try? await Task.sleep(nanoseconds: 1_000_000_000)  // 1 second in nanoseconds
+        try? await Task.sleep(nanoseconds: animationDelay)  // 1 second in nanoseconds
 
         // Trigger the animation by changing the state
         withAnimation(.snappy) {

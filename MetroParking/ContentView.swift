@@ -345,10 +345,8 @@ struct BackgroundView: View {
       VStack {
         Button {
           switch locationState.authorisationStatus {
-          case .notDetermined:
+          case .notDetermined, .restricted, .denied:
             showLocationPermissionAlert = true
-          case .restricted, .denied:
-            showLocationSettingsAlert = true
           case .authorizedAlways, .authorizedWhenInUse:
 
             let newRegion =
@@ -363,7 +361,7 @@ struct BackgroundView: View {
             }
 
           @unknown default:
-            locationState.requestLocationPermission()
+            showLocationPermissionAlert = true
           }
         } label: {
           VStack(alignment: .center, spacing: 8) {
@@ -371,7 +369,7 @@ struct BackgroundView: View {
               ProgressView()
             } else {
               Label(
-                "Show my current location",
+                "Current Location",
                 systemImage: locationState.isLocationAvailable
                   ? "location.fill" : "location"
               )
@@ -385,6 +383,12 @@ struct BackgroundView: View {
               .labelStyle(.iconOnly)
             }
           }
+        }
+        .sheet(isPresented: $showLocationPermissionAlert) {
+          PermissionView()
+            .presentationDetents([.medium])
+            .presentationBackgroundInteraction(.disabled)
+
         }
         Spacer()
       }

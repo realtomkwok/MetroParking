@@ -24,7 +24,7 @@ struct ParkingDetailView: View {
 
   @State private var isDirectionAvailable =
     LocationManager.shared
-    .isLocationAvailable && ETAService.shared.etaError == nil
+		.isLocationAvailable && ETAService.shared.etaError != nil
 
   private var occupancyProgress: Double {
     guard facility.totalSpaces > 0 else { return 0 }

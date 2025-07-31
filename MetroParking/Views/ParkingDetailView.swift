@@ -215,14 +215,10 @@ struct ParkingDetailView: View {
                 // TODO: Forecast and trend
               }
 
-              GridRow {
-                /// Stats for nerd (rest of information)
-                StatList(facility: facility)
-                  .gridCellColumns(2)
-              }
             }
             .padding()
 
+            StatList(facility: facility)
             Spacer()
 
           } header: {
@@ -242,7 +238,7 @@ struct ParkingDetailView: View {
                 .foregroundStyle(.secondary)
               }
             } trailingContent: {
-              HStack(alignment: .center) {
+              HStack(spacing: 16) {
                 Button {
                   facility.isFavourite = !facility.isFavourite
                 } label: {
@@ -262,6 +258,7 @@ struct ParkingDetailView: View {
                     )
                   )
                 }
+                .frame(width: 36, height: 36)
 
                 Button {
                   onDismiss()
@@ -270,6 +267,8 @@ struct ParkingDetailView: View {
                   Label("Close", systemImage: "xmark")
                     .frame(width: 24, height: 24)
                 }
+                .frame(width: 36, height: 36)
+
               }
               .buttonStyle(.bordered)
               .buttonBorderShape(.circle)
@@ -350,97 +349,50 @@ struct StatList: View {
           ("Facility ID", facility.facilityId),
           ("TSN", facility.tsn),
           ("TfNSW Facility ID", facility.tfnswFacilityId),
-          (
-            "Last Visited",
-            "\(facility.lastVisited?.formatted(.dateTime.month().day().hour().minute()) ?? "--")"
-          ),
         ]
       ),
     ]
   }
 
   var body: some View {
-    LazyVStack(alignment: .leading) {
+    LazyVStack(alignment: .leading, spacing: 12) {
       ForEach(Array(stats.enumerated()), id: \.offset) { index, section in
-        StatsSection(
-          title: section.title,
-          icon: section.icon,
-          stats: section.items
+        VStack(alignment: .leading, spacing: 16) {
+          // Section Header
+          Label(section.title, systemImage: section.icon)
+            .font(.footnote)
+            .fontWeight(.semibold)
+            .tracking(0.4)
+            .textCase(.uppercase)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal)
+
+          // Section Items
+          ForEach(Array(section.items.enumerated()), id: \.offset) {
+            itemIndex,
+            item in
+            HStack {
+              Text(item.label)
+              Spacer()
+              Text(item.value)
+                .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 4)
+          }
+        }
+        .padding(.vertical)
+        .background(.thickMaterial)
+        .clipShape(
+          RoundedRectangle(
+            cornerRadius: 24,
+            style: .continuous
+          )
         )
       }
     }
-  }
-}
+    .padding(.horizontal)
 
-struct StatsSection: View {
-  let title: String
-  let icon: String
-  let stats: [(label: String, value: String)]
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 0) {
-      // Section header
-      HStack(alignment: .center) {
-        Label(title, systemImage: icon)
-          .font(.caption)
-          .fontWeight(.semibold)
-          .tracking(0.4)
-          .textCase(.uppercase)
-          .foregroundStyle(.secondary)
-      }
-      .padding()
-
-      // Grid with proper alignment
-      Grid(
-        alignment: .topLeading,
-        horizontalSpacing: 16,
-        verticalSpacing: 0
-      ) {
-        ForEach(Array(stats.enumerated()), id: \.offset) {
-          index,
-          stat in
-          GridRow {
-            // Label column
-            Text(stat.label)
-              .font(.body)
-              .foregroundColor(.primary)
-              .multilineTextAlignment(.leading)
-              .gridColumnAlignment(.leading)
-              .frame(maxWidth: .infinity, alignment: .leading)
-
-            // Value column
-            Text(stat.value)
-              .font(.body)
-              .foregroundColor(.secondary)
-              .multilineTextAlignment(.trailing)
-              .gridColumnAlignment(.trailing)
-              .frame(maxWidth: .infinity, alignment: .trailing)
-          }
-          .padding(.vertical, 12)
-          .overlay(
-            // Add separator line except for last row
-            Group {
-              if index < stats.count - 1 {
-                Rectangle()
-                  .frame(height: 0.5)
-                  .foregroundColor(Color(.separator))
-                  .padding(.leading, 16)
-              }
-            },
-            alignment: .bottom
-          )
-        }
-      }
-      .padding(.horizontal, 16)
-
-    }
-    .background(.thickMaterial)
-    .clipShape(
-      RoundedRectangle(
-        cornerRadius: 24,
-        style: .continuous
-      )
-    )
   }
 }
 
@@ -509,7 +461,7 @@ struct InfoCard<Content: View>: View {
     VStack(alignment: .leading) {
       HStack(alignment: .center) {
         Label(headingText, systemImage: headingIcon)
-          .font(.caption)
+          .font(.footnote)
           .fontWeight(.semibold)
           .tracking(0.4)
           .textCase(.uppercase)

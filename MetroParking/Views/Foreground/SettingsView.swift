@@ -10,6 +10,7 @@ import SwiftUI
 
 enum SettingType {
   case navigation(SettingItem, AnyView)
+  case webLink(SettingItem, URL)
   case toggle(SettingItem, Binding<Bool>)
   case info(SettingItem, String)
 }
@@ -34,6 +35,9 @@ struct SettingsView: View {
   @State private var notificationsEnabled = true
   @State private var darkModeEnabled = false
 
+  @State private var showingWebView = false
+  @State private var webViewUrl: URL?
+
   private var settingSections: [SettingSection] {
     [
       SettingSection(
@@ -41,8 +45,8 @@ struct SettingsView: View {
         items: [
           .navigation(
             SettingItem(
-              title: "Favourites",
-              icon: "heart.fill",
+              title: "Pinned Parking",
+              icon: "star.fill",
             ),
             AnyView(FavouritesSettings())
           ),
@@ -58,15 +62,54 @@ struct SettingsView: View {
               title: "Live Activities",
               icon: "clock.badge",
             ),
-            // TODO: Live Activity
-            AnyView(NotificationSettings())
+            AnyView(LiveActivitiesSettings())
           ),
           .navigation(
             SettingItem(
-              title: "Widget",
+              title: "Widgets",
               icon: "square.grid.2x2.fill",
             ),
-            AnyView(NotificationSettings())
+            AnyView(WidgetSettings())
+          ),
+        ]
+      ),
+
+      SettingSection(
+        title: "Premium",
+        items: [
+          .navigation(
+            SettingItem(
+              title: "Premium",
+              icon: "star.hexagon.fill"
+            ),
+            AnyView(PremiumSettings())
+          )
+        ]
+      ),
+
+      SettingSection(
+        title: "Help",
+        items: [
+          .webLink(
+            SettingItem(
+              title: "Frequently Asked Questions",
+              icon: "questionmark.circle.fill",
+            ),
+            URL.safe("https://tomkwok.xyz")
+          ),
+          .webLink(
+            SettingItem(
+              title: "Terms of Use",
+              icon: "info.circle.text.page.fill",
+            ),
+            URL.safe("https://tomkwok.xyz")
+          ),
+          .webLink(
+            SettingItem(
+              title: "Privacy Policy",
+              icon: "shield.lefthalf.filled",
+            ),
+            URL.safe("https://tomkwok.xyz")
           ),
         ]
       ),
@@ -76,23 +119,16 @@ struct SettingsView: View {
         items: [
           .navigation(
             SettingItem(
-              title: "FAQ",
-              icon: "questionmark",
+              title: "About Developer",
+              icon: "hand.wave.fill"
             ),
-            AnyView(NotificationSettings())
-          ),
-          .navigation(
-            SettingItem(
-              title: "Tip Jar",
-              icon: "app.gift.fill",
-            ),
-            AnyView(NotificationSettings())
-          ),
+            AnyView(AboutDeveloperView())
+          )
         ]
       ),
 
       SettingSection(
-        title: "About",
+        title: "Version",
         items: [
           .info(
             SettingItem(
@@ -130,18 +166,20 @@ struct SettingsView: View {
 
                 SettingRow(
                   item: section.items[itemIndex],
-                  globalIndex: globalIndex
+                  globalIndex: globalIndex,
+                  onWebLinkTap: { url in
+                    webViewUrl = url
+                    showingWebView = true
+                  }
                 )
               }
             }
           }
 
           Section {
-            VStack(alignment: .center) {
-              Text("Hellojdkfjkdfjkdfj")
-            }
-            .frame(maxWidth: .infinity, alignment: .center)
 
+          } footer: {
+            Footer()
           }
         }
         .scrollContentBackground(.hidden)
@@ -167,6 +205,11 @@ struct SettingsView: View {
             .controlSize(.regular)
           }
         }
+        .sheet(isPresented: $showingWebView) {
+          if let url = webViewUrl {
+            SafariView(url: url)
+          }
+        }
       }
     }
   }
@@ -175,6 +218,7 @@ struct SettingsView: View {
 struct SettingRow: View {
   let item: SettingType
   let globalIndex: Int
+  let onWebLinkTap: ((URL) -> Void)?
 
   let colours: [Color] = [
     .red, .orange, .yellow, .green, .teal, .blue, .indigo, .purple, .pink,
@@ -211,6 +255,32 @@ struct SettingRow: View {
           }
         }
       )
+    case .webLink(let setting, let url):
+      Button(action: {
+        onWebLinkTap?(url)
+      }) {
+        Label {
+          Text(setting.title)
+            .foregroundStyle(.primary)
+        } icon: {
+          Image(systemName: setting.icon)
+            .font(.system(size: 20))
+            .fontWeight(.bold)
+            .imageScale(.small)
+            .foregroundStyle(.white)
+            .background(
+              RoundedRectangle(
+                cornerRadius: 8,
+                style: .continuous
+              )
+              .frame(width: 28, height: 28)
+              .foregroundColor(
+                colours[globalIndex % colours.count]
+              )
+            )
+        }
+      }
+      .foregroundStyle(.primary)
     case .info(let setting, let value):
       HStack {
         Label {
@@ -246,12 +316,14 @@ struct NotificationSettings: View {
   }
 }
 
-/// Favourites
+/// Pinned Parking
 struct FavouritesSettings: View {
   @Query(
     filter: #Predicate<ParkingFacility> { facility in
       facility.isFavourite == true
-    }) private var favourites: [ParkingFacility]
+    }
+
+  ) private var favourites: [ParkingFacility]
 
   var body: some View {
     List {
@@ -260,11 +332,93 @@ struct FavouritesSettings: View {
       }
       .onDelete(perform: unfavouriteFacility)
     }
+    .toolbar {
+      EditButton()
+    }
   }
 
   private func unfavouriteFacility(at offsets: IndexSet) {
     for index in offsets {
       favourites[index].isFavourite = false
+    }
+  }
+}
+
+/// Live Activities
+struct LiveActivitiesSettings: View {
+
+  var body: some View {
+    Text("Live Activities")
+  }
+}
+
+/// Widgets
+struct WidgetSettings: View {
+
+  var body: some View {
+    Text("Widget")
+  }
+}
+
+/// FAQ
+struct FaqView: View {
+  var body: some View {
+    Text("Faq")
+  }
+}
+
+/// Premium
+struct PremiumSettings: View {
+  var body: some View {
+    Text("Premium")
+  }
+}
+
+/// Developer
+struct AboutDeveloperView: View {
+
+  var body: some View {
+    VStack(alignment: .listRowSeparatorLeading, spacing: 16) {
+      Image(systemName: "info.bubble.fill")
+        .font(.title)
+        .symbolRenderingMode(.palette)
+        .foregroundStyle(Color.white, Color.secondary)
+      Text(
+        "Car park data provided by NSW Government through Transport for NSW Open Data Program. We acknowledge the NSW Government's commitment to making transport data freely available to support innovation and improve customer experiences."
+      )
+      .font(.footnote)
+      .foregroundStyle(.secondary)
+    }
+  }
+}
+
+struct Footer: View {
+  @State private var showingApiSite = false
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      Text(
+        "Car park data provided by NSW Government through Transport for NSW Open Data Program. We acknowledge the NSW Government's commitment to making transport data freely available to support innovation and improve customer experiences."
+      )
+      .font(.footnote)
+      Button {
+        showingApiSite = true
+      } label: {
+        HStack {
+          Image(systemName: "arrow.up.right.square.fill")
+          Text("Car Park API")
+        }
+      }
+      .controlSize(.mini)
+      .buttonBorderShape(.automatic)
+      .sheet(isPresented: $showingApiSite) {
+        SafariView(
+          url: URL(
+            string:
+              "https://data.nsw.gov.au/data/dataset/2-car-park-api"
+          )!
+        )
+      }
     }
   }
 }

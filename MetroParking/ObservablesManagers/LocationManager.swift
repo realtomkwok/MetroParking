@@ -31,7 +31,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
   private let locationManager = CLLocationManager()
 
   /// Distance caching
-  @Published private var cachedDistances: [String: Double] = [:]
+  private var cachedDistances: [String: Double] = [:]
   private var cacheValidLocation: CLLocationCoordinate2D?
   private let cacheValidityDistance: Double = 100.0  // metres
 
@@ -98,7 +98,9 @@ extension LocationManager {
 
   /// Call this when user explicitly wants to use location features
   func requestLocationPermission() {
-    print("User requested location permission")
+    print(
+      "📍 User requested location permission. Current status: \(authorisationStatus)"
+    )
 
     switch authorisationStatus {
     case .notDetermined:
@@ -377,10 +379,18 @@ extension LocationManager {
     errorMsg =
       "Location access is required for this feature. Please enable it in Settings."
     print("📍 Need to direct user to Settings")
-    // TODO: Present actual settings alert in UI
+    // Actually open Settings
+    Task { @MainActor in
+      if let settingsURL = URL(
+        string: UIApplication.openSettingsURLString
+      ) {
+        await UIApplication.shared.open(settingsURL)
+      }
+    }
   }
 }
 
+/// ETA
 extension LocationManager {
 
   /// Calculate ETA to facility using the ETA service

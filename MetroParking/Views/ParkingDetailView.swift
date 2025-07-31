@@ -22,6 +22,10 @@ struct ParkingDetailView: View {
   @ObservedObject private var etaService = ETAService.shared
   @ObservedObject private var locationManager = LocationManager.shared
 
+  @State private var isDirectionAvailable =
+    LocationManager.shared
+		.isLocationAvailable && ETAService.shared.etaError != nil
+
   private var occupancyProgress: Double {
     guard facility.totalSpaces > 0 else { return 0 }
     return facility.occupancyPercentage
@@ -63,9 +67,8 @@ struct ParkingDetailView: View {
                     )
 
                     if etaService.isCalculatingETA {
-                      // TODO: Too large
                       ProgressView()
-                        .frame(width: 16, height: 16)
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
                     } else if let eta = etaService
                       .formattedETA
@@ -96,9 +99,7 @@ struct ParkingDetailView: View {
                 .font(.headline)
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.capsule)
-                .disabled(
-                  locationManager.isLocationAvailable == false
-                )
+                .disabled(!isDirectionAvailable)
                 .labelStyle(.titleAndIcon)
                 .controlSize(.extraLarge)
                 .animation(

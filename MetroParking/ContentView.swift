@@ -285,7 +285,7 @@ struct ForegroundView: View {
       SettingsView()
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
-        .presentationBackground(.thinMaterial)
+        .presentationBackground(.thickMaterial)
     }
   }
 }

@@ -268,7 +268,7 @@ struct DatabaseSortedFacilities: View {
     self.sheetState = sheetState
     self.sortTransition = sortTransition
 
-    /// Sort descriptors 3
+    /// Sort descriptors
     if let filter = filter {
       self._facilities = Query(
         filter: filter,
@@ -318,7 +318,6 @@ struct ComputedSortedFacilities: View {
     self.mapState = mapState
     self.sheetState = sheetState
     self.sortTransition = sortTransition
-    self.locationManager = locationManager
 
     if let predicate = searchPredicate {
       self._allFacilities = Query(filter: predicate, animation: .snappy)

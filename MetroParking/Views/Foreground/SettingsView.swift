@@ -88,7 +88,7 @@ struct SettingsView: View {
       ),
 
       SettingSection(
-        title: "Help",
+        title: "Help & Support",
         items: [
           .webLink(
             SettingItem(
@@ -135,14 +135,14 @@ struct SettingsView: View {
               title: "Version",
               icon: "arrow.down.app.fill"
             ),
-            "1.0.0"
+			Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "--"
           ),
           .info(
             SettingItem(
               title: "Build",
               icon: "numbers.rectangle.fill"
             ),
-            "123"
+			Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "--"
           ),
         ]
       ),
@@ -378,7 +378,7 @@ struct PremiumSettings: View {
 struct AboutDeveloperView: View {
 
   var body: some View {
-    VStack(alignment: .listRowSeparatorLeading, spacing: 16) {
+    VStack(alignment: .leading, spacing: 16) {
       Image(systemName: "info.bubble.fill")
         .font(.title)
         .symbolRenderingMode(.palette)

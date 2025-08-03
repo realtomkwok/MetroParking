@@ -1,0 +1,21 @@
+name: Update Parking Insights
+on:
+  schedule:
+    - cron: '0 2 * * 0'  # Weekly Sunday 2AM
+  workflow_dispatch:     # Manual trigger
+
+jobs:
+  update-insights:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        facility_id: ["6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "486", "487", "488", "489", "490"]
+      max-parallel: 3
+    steps:
+      - name: Update facility ${{ matrix.facility_id }}
+        run: |
+          curl -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/gen-parking-trend" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"facility_id": "${{ matrix.facility_id }}", "days": 30}' \
+            --max-time 300

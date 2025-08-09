@@ -285,7 +285,9 @@ extension ParkingFacility {
     guard totalSpaces > 0 else { return 0.0 }
     guard isOccupancyCacheValid else { return -1.0 }
 
-    return Double(currentOccupiedSpots) / Double(totalSpaces)
+	  let occupancy = Double(currentOccupiedSpots) / Double(totalSpaces)
+	
+	  return max(0, occupancy)
   }
 
   var formattedOccupancyPercentage: String {

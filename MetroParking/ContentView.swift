@@ -234,7 +234,7 @@ struct ForegroundView: View {
               Button {
                 showSettingsSheet = true
               } label: {
-                Label("More", systemImage: "gear")
+                Label("More", systemImage: "ellipsis")
                   .fontWeight(.semibold)
                   .symbolEffect(
                     .wiggle.byLayer,

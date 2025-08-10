@@ -149,6 +149,11 @@ struct AllFacilitiesView: View {
       }
     }
     .scrollIndicators(.hidden)
+	.scrollDisabled(false)
+	.simultaneousGesture(
+		DragGesture()
+			.onChanged { _ in }
+	)
   }
 
   /// Search bar
@@ -366,8 +371,8 @@ struct ComputedSortedFacilities: View {
     _ facility1: ParkingFacility,
     _ facility2: ParkingFacility
   ) -> Bool {
-    let percentage1 = facility1.availabilityPercentage
-    let percentage2 = facility2.availabilityPercentage
+    let percentage1 = facility1.occupancy
+    let percentage2 = facility2.occupancy
 
     // Handle invalid data (-1 values) - put them at the end
     if percentage1 < 0 && percentage2 < 0 {
@@ -380,3 +385,4 @@ struct ComputedSortedFacilities: View {
     return percentage1 > percentage2
   }
 }
+

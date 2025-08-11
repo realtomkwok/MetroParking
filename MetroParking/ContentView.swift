@@ -234,7 +234,7 @@ struct ForegroundView: View {
               Button {
                 showSettingsSheet = true
               } label: {
-                Label("More", systemImage: "gear")
+                Label("More", systemImage: "ellipsis")
                   .fontWeight(.semibold)
                   .symbolEffect(
                     .wiggle.byLayer,
@@ -271,7 +271,7 @@ struct ForegroundView: View {
               [.fraction(0.2), .medium, .large],
               selection: $sheetState.currentDetent
             )
-            .presentationBackground(.thinMaterial)
+						.presentationBackground(.regularMaterial)
             .presentationDragIndicator(.visible)
             //					.presentationCornerRadius(24)
             .presentationBackgroundInteraction(.enabled)
@@ -280,6 +280,7 @@ struct ForegroundView: View {
         }
       )
     }
+	.fontDesign(.rounded)
     .coordinateSpace(name: "scroll")
     .sheet(isPresented: $showSettingsSheet) {
       SettingsView()

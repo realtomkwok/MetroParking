@@ -280,6 +280,7 @@ struct ForegroundView: View {
         }
       )
     }
+	.fontDesign(.rounded)
     .coordinateSpace(name: "scroll")
     .sheet(isPresented: $showSettingsSheet) {
       SettingsView()

@@ -23,13 +23,14 @@ struct ParkingDetailView: View {
 	@ObservedObject private var locationManager = LocationManager.shared
 
 	private var isDirectionAvailable: Bool {
-		locationManager.isLocationAvailable &&
-		(etaService.etaError == nil || etaService.etaError?.isEmpty == true)
+		locationManager.isLocationAvailable
+			&& (etaService.etaError == nil
+				|| etaService.etaError?.isEmpty == true)
 	}
 
 	private var occupancyProgress: Double {
 		guard facility.totalSpaces > 0 else { return 0 }
-		return facility.occupancyPercentage
+		return facility.occupancy
 	}
 
 	var body: some View {
@@ -50,8 +51,6 @@ struct ParkingDetailView: View {
 										? openInMaps() : nil
 								} label: {
 									HStack {
-										Spacer()
-
 										Image(
 											systemName: (etaService.etaError
 												== nil)
@@ -82,19 +81,14 @@ struct ParkingDetailView: View {
 											if error
 												== "Unable to calculate ETA"
 											{
-
-												Text(
-													"ETA Unavailable"
-												)
+												Text("ETA Unavailable")
 											}
 
 										} else {
 											Text("Direction")
 										}
-
-										Spacer()
-
 									}
+									.frame(maxWidth: .infinity)
 
 								}
 								.font(.headline)
@@ -215,12 +209,18 @@ struct ParkingDetailView: View {
 							}
 
 							GridRow {
-								// TODO: Forecast and trend
-								ParkingTrendChart(
-									facilityId: facility.facilityId
-								)
+								/// Historical trend view
+								InfoCard(
+									headingIcon: "chart.bar.xaxis",
+									headingText: "Popular Times"
+								) {
+									ParkingTrendChart(
+										facilityId: facility.facilityId
+									)
+									.padding(.horizontal)
+									.padding(.bottom)
+								}
 								.gridCellColumns(2)
-
 							}
 
 						}

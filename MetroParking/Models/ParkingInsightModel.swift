@@ -57,8 +57,17 @@ struct CacheStatus: Codable {
 }
 
 extension HourlyPattern {
-	var occupancyPercentage: Double {
-		avgOccupancyRate
+	var occupancyStatus: String {
+		switch avgOccupancyRate {
+			case 0.0..<0.3:
+				return "Low"
+			case 0.3..<0.7:
+				return "Moderate"
+			case 0.7..<0.9:
+				return "Almost Full"
+			default:
+				return "Full"
+		}
 	}
 
 	var dayName: String {
@@ -71,7 +80,7 @@ extension FacilityInsights {
 	var peakHoursText: String {
 		peakHours.map { String(format: "%02d:00", $0) }.joined(separator: ", ")
 	}
-	
+
 	var bestTimeText: String {
 		bestTimes.map { String(format: "%02d:00", $0) }.joined(separator: ", ")
 	}

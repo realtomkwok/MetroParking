@@ -278,7 +278,6 @@ struct ParkingTrendChart: View {
 		}
 		.task {
 			await dataService.fetchData(facilityId: facilityId)
-			print(hourlyData)
 		}
 	}
 }

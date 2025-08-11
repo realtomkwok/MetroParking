@@ -75,8 +75,8 @@ async function processWithTimeout(facilityId: string, timeoutMs = 60000) {
 
 Deno.serve(async (req) => {
 		const supabase = createClient(
-				Deno.env.get("TFNSW_API_BASE_URL")!,
-				Deno.env.get("TFNSW_API_KEY")!,
+				Deno.env.get("SUPABASE_URL")!,
+				Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 		)
 		
 		const results = []

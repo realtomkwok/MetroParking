@@ -271,7 +271,7 @@ struct ForegroundView: View {
               [.fraction(0.2), .medium, .large],
               selection: $sheetState.currentDetent
             )
-            .presentationBackground(.thinMaterial)
+						.presentationBackground(.regularMaterial)
             .presentationDragIndicator(.visible)
             //					.presentationCornerRadius(24)
             .presentationBackgroundInteraction(.enabled)

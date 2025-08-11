@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
 				const updateData: any = {
 						facility_id: facilityId,
 						status,
-						last_api_fetch: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+						last_api_fetch: new Date().toISOString(),
 						days_cached: days,
 				}
 				

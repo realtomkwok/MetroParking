@@ -25,7 +25,7 @@ struct ParkingDetailView: View {
 	private var isDirectionAvailable: Bool {
 		locationManager.isLocationAvailable
 			&& (etaService.etaError == nil
-				|| etaService.etaError?.isEmpty == true)
+				&& etaService.etaError?.isEmpty == true)
 	}
 
 	private var occupancyProgress: Double {
@@ -370,7 +370,7 @@ struct StatList: View {
 				VStack(alignment: .leading, spacing: 16) {
 					// Section Header
 					Label(section.title, systemImage: section.icon)
-						.font(.footnote)
+						.font(.subheadline)
 						.fontWeight(.semibold)
 						.tracking(0.4)
 						.textCase(.uppercase)
@@ -381,14 +381,18 @@ struct StatList: View {
 					ForEach(Array(section.items.enumerated()), id: \.offset) {
 						itemIndex,
 						item in
-						HStack {
-							Text(item.label)
-							Spacer()
-							Text(item.value)
-								.foregroundStyle(.secondary)
+						VStack {
+							HStack {
+								Text(item.label)
+								Spacer()
+								Text(item.value)
+									.foregroundStyle(.secondary)
+							}
+							.padding(.vertical, 4)
+
+							Divider()
 						}
 						.padding(.horizontal)
-						.padding(.vertical, 4)
 					}
 				}
 				.padding(.vertical)
@@ -423,7 +427,7 @@ struct FacilityLookAroundView: View {
 							.edgesIgnoringSafeArea(.all)
 					}
 			} else {
-				ProgressView("Loading street imagery…")
+				ProgressView("Loading Street View")
 					.foregroundStyle(.secondary)
 					// TODO: If loading time over 30(15?) seconds, error msg should appear
 					.task { await loadScene() }  // runs only once
@@ -471,7 +475,7 @@ struct InfoCard<Content: View>: View {
 		VStack(alignment: .leading) {
 			HStack(alignment: .center) {
 				Label(headingText, systemImage: headingIcon)
-					.font(.footnote)
+					.font(.subheadline)
 					.fontWeight(.semibold)
 					.tracking(0.4)
 					.textCase(.uppercase)

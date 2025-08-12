@@ -286,3 +286,37 @@ extension ParkingFacility {
 		}
 	}
 }
+
+enum RefreshTier {
+	// 15s API Updates (for Gordon, Kiama, Mona Vale and Warrieswood - as the API provides
+	case realTime
+	// 10 min
+		e standard
+	/// 30 min (for rarely used ones)
+		e background
+			nly when user views
+		e onDemand
+}
+		
+	tension ParkingFacility {
+	var refreshTier: RefreshTier {
+		/// High-frequencies
+		if name.contains("Gordon") || name.contains("Kiama")
+			|| name.contains("Mona Vale") || name.contains("Warriewood")
+		{
+			return isFavourite ? .realTime : .standard
+		}
+
+		/// User engagement
+		if isFavourite { return .standard }
+		if let lastVisited, lastVisited.timeIntervalSinceNow > -86400 {  // 24h
+			return .standard
+		}
+
+		/// Size-based priority (busy facilities need fresher data)
+		// TODO: Should align with the insights stored in Supabase
+		if totalSpaces > 1000 { return .standard }
+		
+		return .background
+	}
+}

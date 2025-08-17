@@ -8,25 +8,8 @@
 //
 
 import Foundation
+import MapKit
 import SwiftData
-
-enum RefreshGroup {
-	case high, standard
-
-	var activeInterval: TimeInterval {
-		switch self {
-		case .high: return 15  // 15 seconds when app active
-		case .standard: return 60  // 60 seconds when app active
-		}
-	}
-
-	var backgroundInterval: TimeInterval {
-		switch self {
-		case .high: return 300  // 5 minutes in background
-		case .standard: return 600  // 10 minutes in background
-		}
-	}
-}
 
 @Model
 final class ParkingFacility {
@@ -47,15 +30,16 @@ final class ParkingFacility {
 	var isFavourite: Bool
 	var notificationThreshold: Int?  // For feature "notify when under X spaces"
 
-	var refreshGroupType: String = "standard"
+	var refreshTierType: String = "standard"
 	var lastRefreshed: Date = Date.distantPast
 	var nextScheduledRefresh: Date = Date.distantPast
 	var retrievalFailures: Int = 0
 	var lastFailureDate: Date?
 
-	var displayName: String {
-		return name.removePrefix("Park&Ride - ").localizedCapitalized
-	}
+	/// Route caching
+	var lastCalculatedDistance: CLLocationDistance?
+	var lastCalculatedTravelTime: TimeInterval?
+	var routingDataAge: Date?
 
 	private var _cachedOccupancy: Int = 0
 	private var _cachedAvailableSpots: Int = 0
@@ -64,6 +48,21 @@ final class ParkingFacility {
 
 	@Relationship(deleteRule: .cascade, inverse: \ParkingZone.facility)
 	var zones: [ParkingZone] = []
+	
+	/// Computed properties
+	var displayName: String {
+		return name.removePrefix("Park&Ride - ").localizedCapitalized
+	}
+	
+	var refreshTier: RefreshTier {
+		switch refreshTierType {
+			case "realTime": return .realTime
+			case "standard": return .standard
+			case "idle": return .idle
+			case "onDemand": return .onDemand
+			default: return .standard
+		}
+	}
 
 	var availabilityStatus: AvailabilityStatus {
 		let available = currentAvailableSpots
@@ -82,10 +81,6 @@ final class ParkingFacility {
 		}
 	}
 
-	var refreshGroup: RefreshGroup {
-		return refreshGroupType == "high" ? .high : .standard
-	}
-
 	var isOccupancyCacheValid: Bool {
 		let cacheAge = Date().timeIntervalSince(_occupancyCacheTime)
 		return cacheAge < (occupancyCacheValidityMinutes * 60)
@@ -102,7 +97,13 @@ final class ParkingFacility {
 	var hasRecentFailures: Bool {
 		return retrievalFailures > 0
 	}
+	
+	var hasValidRoutingData: Bool {
+		guard let age = routingDataAge else { return false }
+		return age.timeIntervalSinceNow > -3600		/// Valid for an hour
+	}
 
+	// TODO: Localisation
 	var formattedLastUpdated: String {
 		return lastUpdated == .distantPast
 			? "--"
@@ -127,8 +128,8 @@ final class ParkingFacility {
 
 		self.isFavourite = false
 		self.notificationThreshold = nil
-
-		self.classifyRefreshGroup()
+		
+		self.classifyRefreshTier()
 	}
 
 	init(from staticInfo: StaticFacilityInfo) {
@@ -145,27 +146,34 @@ final class ParkingFacility {
 		self.isFavourite = false
 		self.lastVisited = nil
 		self.notificationThreshold = nil
-
-		self.classifyRefreshGroup()
+		
+		self.classifyRefreshTier()
 	}
 }
 
+/// Data refresh
 extension ParkingFacility {
-
-	func classifyRefreshGroup() {
-		// Based on API docs - these facilities have 15s update frequency
-		let highFrequencyNames = [
-			"Kiama", "Mona Vale", "Warriewood", "Dee Why", "Gordon Henry St",
+	
+	func classifyRefreshTier() {
+		let highFrequencyFacilities = [
+			"Gordon", "Kiama", "Mona Vale", "Warriewood",
 		]
 
-		for facility in highFrequencyNames {
+		for facility in highFrequencyFacilities {
 			if name.contains(facility) {
-				refreshGroupType = "high"
+				refreshTierType = isFavourite ? "realTime" : "standard"
 				return
 			}
 		}
 
-		refreshGroupType = "standard"
+		if isFavourite {
+			refreshTierType = "standard"
+		} else if totalSpaces > 1000 {
+			refreshTierType = "standard"
+		}  // TODO: Should use the average occupancy?
+		else {
+			refreshTierType = "idle"
+		}
 	}
 
 	func updateFromAPI(_ apiResponse: ParkingAPIResponse) {
@@ -186,24 +194,40 @@ extension ParkingFacility {
 	}
 
 	func scheduleNextRefresh(appState: AppState = .active) {
-		let baseInterval =
-			appState == .active
-			? refreshGroup.activeInterval : refreshGroup.backgroundInterval
+		let baseInterval: TimeInterval =
+			switch refreshTier {
+			case .realTime:
+				appState == .active ? 15 : 60
+			case .standard:
+				appState == .active ? 600 : 1800
+			case .idle:
+				appState == .active ? 1800 : 3600
+			case .onDemand:
+				.infinity
+			}
 
-		// Apply favourite priority (50% faster refresh)
+		guard baseInterval != .infinity else {
+			nextScheduledRefresh = Date.distantFuture
+			return
+		}
+
 		let priorityMultiplier = isFavourite ? 0.5 : 1.0
 
-		// Apply exponential backoff for failures
+		/// Exponential backoff for retries when failed
 		let failureMultiplier =
 			retrievalFailures > 0
-			? pow(2.0, Double(min(retrievalFailures, 4))) : 1.0
+			? pow(
+				2.0,
+				Double(min(retrievalFailures, refreshTier.maxFailureBackoff))
+			)
+			: 1.0
 
 		let finalInterval =
 			baseInterval * priorityMultiplier * failureMultiplier
 		self.nextScheduledRefresh = Date().addingTimeInterval(finalInterval)
 
 		print(
-			"📅 \(name): Next refresh in \(Int(finalInterval))s (failures: \(retrievalFailures))"
+			"📅 \(name) [\(refreshTier)]: Next refresh in \(Int(finalInterval))s (failures: \(retrievalFailures))"
 		)
 	}
 
@@ -211,9 +235,17 @@ extension ParkingFacility {
 		retrievalFailures += 1
 		lastFailureDate = Date()
 
+		let baseBackoffMinutes: Double =
+			switch refreshTier {
+			case .realTime: 2.0  // Quick retry for important data
+			case .standard: 5.0  // Moderate backoff
+			case .idle: 10.0  // Longer backoff for low priority
+			case .onDemand: 2.0  // Quick retry for on-demand data
+			}
+
 		let backoffInterval: TimeInterval = min(
-			pow(2.0, Double(retrievalFailures)) * 120,
-			1800
+			pow(2.0, Double(retrievalFailures)) * baseBackoffMinutes * 60,			// Convert to seconds
+			self.refreshTier.maxBackoffTime
 		)  //?
 		self.nextScheduledRefresh = Date().addingTimeInterval(backoffInterval)
 
@@ -254,7 +286,7 @@ extension ParkingFacility {
 
 	var displayAvailableSpots: String {
 		if currentAvailableSpots == -1 {
-			return "--"
+			return "--"				// TODO: Localisation strings
 		} else {
 			return String(currentAvailableSpots)
 		}
@@ -286,3 +318,127 @@ extension ParkingFacility {
 		}
 	}
 }
+
+/// Route Enhancement
+extension ParkingFacility {
+	
+	func updateRoutingData(distance: CLLocationDistance, travelTime: TimeInterval) {
+		self.lastCalculatedDistance = distance
+		self.lastCalculatedTravelTime = travelTime
+		self.routingDataAge = Date()
+	}
+	
+	func clearStaleRoutingData() {
+		if !hasValidRoutingData {
+			self.lastCalculatedDistance = nil
+			self.lastCalculatedTravelTime = nil
+			self.routingDataAge = nil
+		}
+	}
+}
+
+///// Priority calculation
+//struct FacilityLoadPriority {
+//	let facility: ParkingFacility
+//	let priority: Int
+//	let tier: RefreshTier
+//	
+//	init(
+//		_ facility: ParkingFacility,
+//		userLocation: (latitude: Double, longitude: Double)
+//	) {
+//		self.facility = facility
+//		self.tier = facility.refreshTier
+//		
+//		var score = 0
+//		
+//		if facility.isFavourite { score += 1000 }
+//		if let lastVisited = facility.lastVisited,
+//		   lastVisited.timeIntervalSinceNow > -86400
+//		{
+//			score += 500
+//		}
+//		
+//		if let travelTime = facility.lastCalculatedTravelTime {
+//				/// Prefer travel time over distance for scoring. The closer travel time = the higher priority score
+//			score += max(0, 200 - Int(travelTime / 60))
+//		} else {
+//			let distance = DistanceCalculator.getSimpleDistance(
+//				from: userLocation,
+//				to: (facility.latitude, facility.longitude)
+//			)
+//			
+//			/// Validate distance before converting
+//			/// If invalid distance (e.g. coordinates are invalid - don't add any distance-based score
+//			if distance.isFinite && distance >= 0 {
+//				score += max(0, 100 - Int(distance * 1000))
+//			}
+//		}
+//		
+//		/// Other prioritising factors
+//		/// Large facilities
+//		if facility.totalSpaces > 1000 { score += 200 }
+//		if facility.refreshTier == .realTime { score += 300 }
+//		
+//		self.priority = score
+//	}
+//}
+
+
+/// Supporting type
+enum RefreshTier {
+	case realTime
+	case standard
+	case idle
+	case onDemand
+
+	var refreshInterval: TimeInterval {
+		switch self {
+		case .realTime: return 15
+		/// 15 seconds for updating Gordon, Kiama, Mona Vale, Warriewood
+		case .standard: return 600
+		/// 10 minutes API updates
+		case .idle: return 1800
+		/// 30 minutes fore rarely used facilities
+		case .onDemand: return .infinity
+		///	Only when user views or requests
+		}
+	}
+
+	var maxConcurrency: Int {
+		switch self {
+		case .realTime: return 2
+		case .standard: return 4
+		case .idle: return 6
+		case .onDemand: return 1
+		}
+	}
+
+	var baseDelay: TimeInterval {
+		switch self {
+		case .realTime: return 0.2
+		case .standard: return 0.5
+		case .idle: return 0.8
+		case .onDemand: return 0.3
+		}
+	}
+
+	var maxFailureBackoff: Int {
+		switch self {
+		case .realTime: return 3  // Max 2^3 = 8x backoff
+		case .standard: return 4  // Max 2^4 = 16x backoff
+		case .idle: return 5  // Max 2^5 = 32x backoff
+		case .onDemand: return 2  // Max 2^2 = 4x backoff
+		}
+	}
+
+	var maxBackoffTime: TimeInterval {
+		switch self {
+		case .realTime: return 900  // 15 minutes max
+		case .standard: return 1800  // 30 minutes max
+		case .idle: return 3600  // 1 hour max
+		case .onDemand: return 7200  // 2 hours max
+		}
+	}
+}
+

@@ -78,7 +78,7 @@ struct ContentView: View {
     await dataManager.loadStaticFacilitiesIfNeeded()
 
     /// Start loading occupancy data
-    await refreshManager.performInitialOccupancyLoad()
+    await refreshManager.performLoad()
 
     refreshManager.startAutoRefresh()
   }
@@ -211,7 +211,7 @@ struct ForegroundView: View {
               Button {
                 Task {
                   await refreshManager
-                    .performInitialOccupancyLoad()
+                    .performLoad()
                 }
               } label: {
                 Label("Refresh", systemImage: "arrow.clockwise")

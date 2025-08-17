@@ -1,0 +1,150 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "/ %lld" : {
+
+    },
+    "%" : {
+
+    },
+    "%@" : {
+
+    },
+    "%@ away" : {
+
+    },
+    "%lld" : {
+
+    },
+    "%lld%%" : {
+
+    },
+    "Car Park API" : {
+
+    },
+    "Car park data provided by NSW Government through Transport for NSW Open Data Program. We acknowledge the NSW Government's commitment to making transport data freely available to support innovation and improve customer experiences." : {
+
+    },
+    "Close" : {
+
+    },
+    "Current" : {
+
+    },
+    "Current Location" : {
+
+    },
+    "Direction" : {
+
+    },
+    "Done" : {
+
+    },
+    "ETA Unavailable" : {
+
+    },
+    "Faq" : {
+
+    },
+    "full" : {
+
+    },
+    "Hour" : {
+
+    },
+    "Live Activities" : {
+
+    },
+    "Loading Street View" : {
+
+    },
+    "More" : {
+
+    },
+    "No pinned parking yet" : {
+
+    },
+    "Notification" : {
+
+    },
+    "Occupancy" : {
+
+    },
+    "Pin" : {
+
+    },
+    "pinned" : {
+
+    },
+    "Pinned" : {
+
+    },
+    "Premium" : {
+
+    },
+    "Recents" : {
+
+    },
+    "Refresh" : {
+
+    },
+    "Settings" : {
+
+    },
+    "spaces" : {
+
+    },
+    "Test API Limit Rate" : {
+
+    },
+    "time.lessThanMinute" : {
+      "comment" : "Less than one minute",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "< 1 min"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "< 1分钟"
+          }
+        }
+      }
+    },
+    "time.unknown" : {
+      "comment" : "Unknown time duration",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "—"
+          }
+        }
+      }
+    },
+    "time.zeroDuration" : {
+      "comment" : "Zero duration time",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "0:00"
+          }
+        }
+      }
+    },
+    "Value" : {
+
+    },
+    "Widget" : {
+
+    }
+  },
+  "version" : "1.0"
+}

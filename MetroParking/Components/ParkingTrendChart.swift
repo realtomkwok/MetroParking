@@ -203,7 +203,7 @@ struct ParkingTrendChart: View {
 					AxisMarks(values: [0, 6, 12, 18]) { value in
 						AxisValueLabel {
 							if let hour = value.as(Int.self) {
-								Text(Date.formatHour(hour))
+								Text(TimeFormatter.hour(hour))
 									.font(.caption)
 									.foregroundStyle(.primary)
 							}
@@ -289,7 +289,7 @@ struct ChartTooltipView: View {
 
 	var body: some View {
 		VStack(alignment: .leading) {
-			Text(Date.formatHour(hour))
+			Text(TimeFormatter.hour(hour))
 				.font(.subheadline)
 				.foregroundStyle(.secondary)
 

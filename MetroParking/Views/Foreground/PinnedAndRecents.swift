@@ -18,7 +18,7 @@ struct PinnedAndRecents: View {
 		animation: .snappy
 	)
 	private var pinnedFacilities: [ParkingFacility]
-	/// For recently visited facilities
+	/// For last 10 recently visited facilities
 	@Query(
 		filter: #Predicate<ParkingFacility> { $0.lastVisited != nil },
 		sort: [SortDescriptor(\ParkingFacility.lastVisited, order: .reverse)],
@@ -91,7 +91,7 @@ struct PinnedAndRecents: View {
 				.padding(.horizontal)
 
 			LazyVStack(alignment: .leading) {
-				ForEach(recentlyVisitedFacilities, id: \.facilityId) {
+				ForEach(recentlyVisitedFacilities.suffix(10), id: \.facilityId) {
 					facility in
 					ParkingListCardView(
 						facility: facility,

@@ -25,7 +25,7 @@ struct ParkingDetailView: View {
 	private var isDirectionAvailable: Bool {
 		locationManager.isLocationAvailable
 			&& (etaService.etaError == nil
-				&& etaService.etaError?.isEmpty == true)
+				|| etaService.etaError?.isEmpty == true)
 	}
 
 	private var occupancyProgress: Double {
@@ -134,7 +134,7 @@ struct ParkingDetailView: View {
 											)
 										}
 
-										Gauge(value: occupancyProgress) {
+										Gauge(value: max(0, occupancyProgress)) {
 											Label("Value", systemImage: "car")
 										}
 										.gaugeStyle(.accessoryLinear)
@@ -396,7 +396,7 @@ struct StatList: View {
 					}
 				}
 				.padding(.vertical)
-				.background(.thickMaterial)
+				.background(.background)
 				.clipShape(
 					RoundedRectangle(
 						cornerRadius: 24,
@@ -490,7 +490,7 @@ struct InfoCard<Content: View>: View {
 
 		}
 		.frame(maxWidth: .infinity, minHeight: 184)
-		.background(.thickMaterial)
+		.background(.background)
 		.clipShape(
 			RoundedRectangle(
 				cornerRadius: 24,

@@ -18,10 +18,21 @@ struct PinnedAndRecents: View {
 		animation: .snappy
 	)
 	private var pinnedFacilities: [ParkingFacility]
+
 	/// For last 10 recently visited facilities
+	static var fetchDescriptor: FetchDescriptor<ParkingFacility> {
+		var descriptor = FetchDescriptor<ParkingFacility>(
+			predicate: #Predicate<ParkingFacility> { $0.lastVisited != nil },
+			sortBy: [
+				SortDescriptor(\ParkingFacility.lastVisited, order: .reverse)
+			]
+		)
+		descriptor.fetchLimit = 10
+		return descriptor
+	}
+
 	@Query(
-		filter: #Predicate<ParkingFacility> { $0.lastVisited != nil },
-		sort: [SortDescriptor(\ParkingFacility.lastVisited, order: .reverse)],
+		PinnedAndRecents.fetchDescriptor,
 		animation: .snappy
 	)
 	private var recentlyVisitedFacilities: [ParkingFacility]
@@ -91,7 +102,7 @@ struct PinnedAndRecents: View {
 				.padding(.horizontal)
 
 			LazyVStack(alignment: .leading) {
-				ForEach(recentlyVisitedFacilities.suffix(10), id: \.facilityId) {
+				ForEach(recentlyVisitedFacilities, id: \.facilityId) {
 					facility in
 					ParkingListCardView(
 						facility: facility,

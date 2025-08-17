@@ -94,9 +94,6 @@
     "spaces" : {
 
     },
-    "Test API Limit Rate" : {
-
-    },
     "time.lessThanMinute" : {
       "comment" : "Less than one minute",
       "extractionState" : "manual",

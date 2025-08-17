@@ -18,7 +18,7 @@ class DistanceCalculator {
 		let latDiff = from.latitude - to.latitude
 		let lonDiff = from.longitude - to.longitude
 
-		return sqrt(latDiff + latDiff + lonDiff + lonDiff)
+		return sqrt(latDiff * latDiff + lonDiff * lonDiff)
 	}
 
 	/// Grid-based caching

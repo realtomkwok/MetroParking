@@ -1,5 +1,5 @@
 //
-//  FormatHourHelper.swift
+//  FormatTimeHelper.swift
 //  MetroParking
 //
 //  Created by Tom Kwok on 10/8/2025.

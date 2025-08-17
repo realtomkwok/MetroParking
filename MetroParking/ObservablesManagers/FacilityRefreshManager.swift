@@ -54,7 +54,7 @@ extension FacilityRefreshManager {
 
 	func loadOccupancyForFacility(
 		_ facility: ParkingFacility,
-		context: String,
+		context: String
 	) async {
 
 		await rateLimitedDelay(for: facility)

@@ -24,6 +24,10 @@ struct MetroParkingApp: App {
             fatalError("Could not create ModelContainer: \(error)")
         }
     }()
+    
+    init() {
+        setupConfiguration()
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -35,6 +39,21 @@ struct MetroParkingApp: App {
         }
     }
 	
+    private func setupConfiguration() {
+        do {
+            try Configuration.validateConfiguration()
+            #if DEBUG
+            Configuration.printConfiguration()
+            #endif
+        } catch {
+            print("❌ Configuration error: \(error)")
+            // In production, you might want to show an error screen instead of crashing
+            #if DEBUG
+            fatalError("Configuration validation failed: \(error)")
+            #endif
+        }
+    }
+    
 	private func setupRefreshManager() {
 		let context = sharedModelContainer.mainContext
 		

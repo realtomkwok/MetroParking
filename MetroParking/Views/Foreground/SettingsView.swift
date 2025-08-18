@@ -99,7 +99,7 @@ struct SettingsView: View {
 					),
 					.webLink(
 						SettingItem(
-							title: "Terms of Use",
+							title: "Legal",
 							icon: "info.circle.text.page.fill",
 						),
 						URL.safe("https://tomkwok.xyz")

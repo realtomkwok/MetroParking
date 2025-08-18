@@ -40,6 +40,12 @@ DerivedData/
 timeline.xctimeline
 playground.xcworkspace
 
+# Environment files - keep sensitive data out of version control
+.env
+.env.local
+.env.development
+.env.production
+
 # Swift Package Manager
 # Add this line if you want to avoid checking in source code from Swift Package Manager dependencies.
 # Packages/

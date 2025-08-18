@@ -1,4 +1,5 @@
 # MetroParking
+
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 <img width="1920" height="1080" alt="Cover" src="https://github.com/user-attachments/assets/f2096119-f72c-4883-915f-ee2406b360d9" />
@@ -32,16 +33,28 @@ the [TfNSW Car Park API](https://data.nsw.gov.au/data/dataset/2-car-park-api).
    cd MetroParking
    ```
 
-2. **Configure API credentials**
-   ```bash
-   cp Config.xcconfig.template Config.xcconfig
-   ```
+2. **Configure environment**
 
-   Edit `Config.xcconfig` and add your credentials:
-   ```
-   TFNSW_API_KEY = your_api_key_here
-   DEVELOPMENT_TEAM = your_team_id_here
-   ```
+   Read more about setting up the environment: [Environment Configuration Setup](Docs/ENVIRONMENT_SETUP.md)
+
+    1. **Copy the template:**
+        ```bash
+       cp .env.template .env
+       ```
+    2. **Edit the `.env` file** with your actual values:
+         ```env
+         TFNSW_API_KEY=your_actual_tfnsw_api_key_here
+         CAR_PARK_BASE_URL=https://api.transport.nsw.gov.au/v1
+         SUPABASE_URL=your_actual_supabase_url_here
+         SUPABASE_PUBLISHABLE_KEY=your_actual_supabase_key_here
+         ENVIRONMENT=development
+         ```
+
+    3. **Add the .env file to your Xcode project:**
+        - In Xcode, right-click your project
+        - Select "Add Files to [Project Name]"
+        - Choose the `.env` file
+        - **Important:** Make sure "Add to target" is checked for your main app target
 
 3. **Open in Xcode**
    ```bash
@@ -148,15 +161,21 @@ the [TfNSW Car Park API Documentation](https://opendata.transport.nsw.gov.au/dat
 repository.
 
 ## License
+
 This project is licensed under the GNU General Public License v3.0 - see the LICENSE file for details.
 
 ## Commercial Use
-This open source version is available under GPL v3. The app is also available for purchase on the App Store. If you create derivative works, they must also be distributed under GPL v3.
+
+This open source version is available under GPL v3. The app is also available for purchase on the App Store. If you
+create derivative works, they must also be distributed under GPL v3.
 
 ## Copyright
+
 Copyright (C) 2025 Tom Kwok
 
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
+version.
 
 ## Acknowledgments
 

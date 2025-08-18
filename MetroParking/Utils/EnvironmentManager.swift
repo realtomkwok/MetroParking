@@ -19,10 +19,10 @@ final class EnvironmentManager {
 
 	/// Load environment variables from .env file and system environment
 	private func loadEnvironmentVariables() {
-		// First, load from .env file
+		/// First, load from .env file
 		loadFromDotEnvFile()
 
-		// Then, load from system environment (these override .env values)
+		/// Then, load from system environment (these override .env values)
 		loadFromSystemEnvironment()
 
 		#if DEBUG
@@ -37,7 +37,7 @@ final class EnvironmentManager {
 			return
 		}
 
-		guard let envContent = try? String(contentsOfFile: envPath) else {
+		guard let envContent = try? String(contentsOfFile: envPath, encoding: .utf8) else {
 			print("⚠️ Could not read .env file")
 			return
 		}
@@ -124,7 +124,7 @@ final class EnvironmentManager {
 		let sensitiveKeys = ["TFNSW_API_KEY", "SUPABASE_PUBLISHABLE_KEY"]
 		for key in sensitiveKeys {
 			if let value = environmentVariables[key] {
-				let maskedValue = String(value.prefix(8)) + "***"
+				let maskedValue = String(value.prefix(4)) + "***"
 				print("🔐 \(key): \(maskedValue)")
 			}
 		}

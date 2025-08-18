@@ -38,7 +38,7 @@ enum Configuration {
         } catch {
             // Fallback to Info.plist
             return Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String
-                ?? "https://pdqmcqyfgcyunpnkpdqj.supabase.co"
+			?? "SUPABASE_URL"
         }
     }()
     
@@ -49,7 +49,7 @@ enum Configuration {
         } catch {
             // Fallback to Info.plist
             return Bundle.main.object(forInfoDictionaryKey: "SUPABASE_PUBLISHABLE_KEY") as? String
-                ?? "sb_publishable_qMvDFKa6DuPnTr3VkakIZA_X9b1j8EY"
+                ?? "SUPABASE_PUBLISHABLE_KEY"
         }
     }()
     

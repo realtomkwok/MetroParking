@@ -41,7 +41,7 @@ struct SettingsView: View {
 	private var settingSections: [SettingSection] {
 		[
 			SettingSection(
-				title: "",
+				title: "General",
 				items: [
 					.navigation(
 						SettingItem(
@@ -75,27 +75,27 @@ struct SettingsView: View {
 			),
 
 			SettingSection(
-				title: "Premium",
+				title: "Advanced",
 				items: [
 					.navigation(
 						SettingItem(
-							title: "Premium",
-							icon: "star.hexagon.fill"
+							title: "Advanced",
+							icon: "gearshape.2.fill"
 						),
-						AnyView(PremiumSettings())
+						AnyView(AdvancedSettings())
 					)
 				]
 			),
 
 			SettingSection(
-				title: "Help & Support",
+				title: "Support & Legal",
 				items: [
-					.webLink(
+					.navigation(
 						SettingItem(
-							title: "Frequently Asked Questions",
-							icon: "questionmark.circle.fill",
+							title: "Tips",
+							icon: "lightbulb.fill",
 						),
-						URL.safe("https://tomkwok.xyz")
+						AnyView(TipsSettings())
 					),
 					.webLink(
 						SettingItem(
@@ -371,7 +371,7 @@ struct FaqView: View {
 }
 
 /// Premium
-struct PremiumSettings: View {
+struct AdvancedSettings: View {
 	var body: some View {
 		Text("Premium")
 	}
@@ -392,6 +392,13 @@ struct AboutDeveloperView: View {
 			.font(.footnote)
 			.foregroundStyle(.secondary)
 		}
+	}
+}
+
+struct TipsSettings: View {
+	
+	var body: some View {
+		Text("Tips")
 	}
 }
 

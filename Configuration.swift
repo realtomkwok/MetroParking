@@ -65,7 +65,11 @@ enum Configuration {
         }
 
         logger.info("✅ Car park base URL loaded: \(urlString)")
-        return "https://" + urlString
+        if urlString.hasPrefix("http://") || urlString.hasPrefix("https://") {
+            return urlString
+        } else {
+            return "https://" + urlString
+        }
     }()
 
     // MARK: - Supabase configuration
@@ -85,7 +89,7 @@ enum Configuration {
         }
 
         // Validate Supabase URL format
-        guard let url = URL(string: "https" + urlString),
+        guard let url = URL(string: "https://" + urlString),
             url.host?.contains("supabase") == true
         else {
 
@@ -94,7 +98,11 @@ enum Configuration {
         }
 
         logger.info("✅ Supabase URL loaded")
-        return "https://" + urlString
+        if urlString.hasPrefix("http://") || urlString.hasPrefix("https://") {
+            return urlString
+        } else {
+            return "https://" + urlString
+        }
     }()
 
     static let supabasePublishableKey: String = {
@@ -123,7 +131,7 @@ enum Configuration {
     // MARK: - Debug Helper
 
     static func printConfiguration() {
-        logger.info("🔑 Configuration loaded:")//a
+        logger.info("🔑 Configuration loaded:")
         logger.info("📍 Base URL: \(carParkBaseUrl)")
         logger.info("🔐 API Key: \(tfnswApiKey.prefix(8))...")
 

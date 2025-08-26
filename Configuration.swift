@@ -89,7 +89,7 @@ enum Configuration {
         }
 
         // Validate Supabase URL format
-        guard let url = URL(string: "https://" + urlString),
+        guard let url = URL(string: urlString),
             url.host?.contains("supabase") == true
         else {
 
@@ -98,6 +98,7 @@ enum Configuration {
         }
 
         logger.info("✅ Supabase URL loaded")
+
         if urlString.hasPrefix("http://") || urlString.hasPrefix("https://") {
             return urlString
         } else {
@@ -150,7 +151,7 @@ extension Configuration {
         #if DEBUG
             var issues: [String] = []
 
-            if tfnswApiKey.hasPrefix("YOUR_") || tfnswApiKey.count < 32 {
+            if tfnswApiKey.hasPrefix("YOUR_") || tfnswApiKey.count < 16 {
                 issues.append(
                     "TFNSW_API_KEY appears to be placeholder or too short"
                 )

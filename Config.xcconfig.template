@@ -2,17 +2,22 @@
 //  Config.xcconfig
 //  MetroParking
 //
-//  Created by Tom Kwok on 19/6/2025.
+//  Created by Tom Kwok on 8/21/25.
 //
 
 // Configuration settings file format documentation can be found at:
 // https://developer.apple.com/documentation/xcode/adding-a-build-configuration-file-to-your-project
 
+// Copy this file to Config.xcconfig and fill in your values:
 
-TFNSW_API_KEY = YOUR_TFNSW_API_KEY_HERE
+// TfNSW API Configuration
+TFNSW_API_KEY=
+CAR_PARK_BASE_URL=
 
-CAR_PARK_API_BASE_URL = https://api.transport.nsw.gov.au/v1
+// Supabase Configuration
+SUPABASE_URL=
+SUPABASE_PUBLISHABLE_KEY=
 
-
-
-DEVELOPMENT_TEAM = YOUR_DEVELOPMENT_TEAM_ID_HERE
+// Development/Production Environment
+DEVELOPMENT_TEAM=
+ENVIRONMENT=

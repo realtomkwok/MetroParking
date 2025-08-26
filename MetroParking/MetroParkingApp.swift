@@ -40,18 +40,17 @@ struct MetroParkingApp: App {
     }
 	
     private func setupConfiguration() {
-        do {
-            try Configuration.validateConfiguration()
-            #if DEBUG
-            Configuration.printConfiguration()
-            #endif
-        } catch {
-            print("❌ Configuration error: \(error)")
-            // In production, you might want to show an error screen instead of crashing
-            #if DEBUG
-            fatalError("Configuration validation failed: \(error)")
-            #endif
-        }
+        // Access configuration properties to trigger validation
+        // Each property has built-in validation that will fatalError if invalid
+        _ = Configuration.tfnswApiKey
+        _ = Configuration.carParkBaseUrl
+        _ = Configuration.supabaseUrl
+        _ = Configuration.supabasePublishableKey
+        
+        #if DEBUG
+        Configuration.validateInDebug()
+        Configuration.printConfiguration()
+        #endif
     }
     
 	private func setupRefreshManager() {

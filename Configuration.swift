@@ -58,7 +58,6 @@ enum Configuration {
             ) as? String,
             !urlString.isEmpty
         else {
-
             let fallback = "https://api.transport.nsw.gov.au/v1"
             logger.warning("⚠️ CAR_PARK_BASE_URL missing, using: \(fallback)")
             return fallback
@@ -72,7 +71,7 @@ enum Configuration {
         }
     }()
 
-    // MARK: - Supabase configuration
+    // MARK: - Supabase Endpoint URL
     static let supabaseUrl: String = {
         guard
             let urlString = Bundle.main.object(
@@ -88,14 +87,14 @@ enum Configuration {
             return ""
         }
 
-        // Validate Supabase URL format
-        guard let url = URL(string: urlString),
-            url.host?.contains("supabase") == true
-        else {
-
-            logger.warning("⚠️ Invalid SUPABASE_URL format, disabling analytics")
-            return ""
-        }
+//        // Validate Supabase URL format
+//        guard let url = URL(string: urlString),
+//            url.host?.contains("supabase") == true
+//        else {
+//			
+//            logger.warning("⚠️ Invalid SUPABASE_URL format, disabling analytics. Received: \(urlString)")
+//            return ""
+//        }
 
         logger.info("✅ Supabase URL loaded")
 
@@ -106,6 +105,7 @@ enum Configuration {
         }
     }()
 
+	// MARK: - Supabase publishable key
     static let supabasePublishableKey: String = {
         guard
             let key = Bundle.main.object(
@@ -120,10 +120,10 @@ enum Configuration {
         }
 
         // Validate Supabase key format (starts with specific prefix)
-        guard key.hasPrefix("eyJ") && key.count > 100 else {
-            logger.warning("⚠️ Invalid SUPABASE_PUBLISHABLE_KEY format")
-            return ""
-        }
+//        guard key.hasPrefix("sb_publishable") && key.count > 100 else {
+//            logger.warning("⚠️ Invalid SUPABASE_PUBLISHABLE_KEY format. Received: \(key)")
+//            return ""
+//        }
 
         logger.info("✅ Supabase key loaded")
         return key

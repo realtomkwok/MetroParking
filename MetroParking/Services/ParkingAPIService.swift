@@ -15,7 +15,7 @@ struct APIErrorResponse: Codable {
 	let errorDetails: ErrorDetails?
 
 	var message: String {
-		return errorDetails ?.message ?? "Unknown API error"
+		return errorDetails?.message ?? "Unknown API error"
 	}
 
 	enum CodingKeys: String, CodingKey {
@@ -105,7 +105,7 @@ class ParkingAPIService {
 			Logger.facilityRefresh.debug("📊 Data size: \(data.count) bytes")
 
 			// Check HTTP status
-			if let httpResponse = response as ?HTTPURLResponse {
+			if let httpResponse = response as? HTTPURLResponse {
 				Logger.facilityRefresh.debug(
 					"🌐 HTTP Status: \(httpResponse.statusCode)"
 				)
@@ -171,7 +171,7 @@ class ParkingAPIService {
 			)
 			Logger.facilityData.debug("🔍 Decoding error: \(decodingError)")
 
-			if let decodingError = decodingError as ?DecodingError {
+			if let decodingError = decodingError as? DecodingError {
 				logDecodingError(decodingError, context: "single object")
 			}
 		}
@@ -203,7 +203,7 @@ class ParkingAPIService {
 			Logger.facilityData.warning(
 				"⚠️ Dictionary decode failed for \(facilityId)"
 			)
-			if let decodingError = decodingError as ?DecodingError {
+			if let decodingError = decodingError as? DecodingError {
 				logDecodingError(decodingError, context: "dictionary")
 			}
 		}

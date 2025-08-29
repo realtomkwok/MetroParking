@@ -37,7 +37,6 @@
 		181A64BC2E0FA50600F6BBAC /* App Icon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = "App Icon.icon"; sourceTree = "<group>"; };
 		182A3C0D2E03BC3100E64A38 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		182A3C112E03C13F00E64A38 /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
-		182A3C222E0666D300E64A38 /* GenerateStaticDataArray.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = GenerateStaticDataArray.playground; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.swift; };
 		182A3C282E0833FF00E64A38 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
 		182A3CC82E0EC2E300E64A38 /* MapKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MapKit.framework; path = System/Library/Frameworks/MapKit.framework; sourceTree = SDKROOT; };
 		184036F62DD9F82D009D7FBA /* MetroParking.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MetroParking.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -105,14 +104,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		182A3C212E0666B300E64A38 /* Playgrounds */ = {
-			isa = PBXGroup;
-			children = (
-				182A3C222E0666D300E64A38 /* GenerateStaticDataArray.playground */,
-			);
-			path = Playgrounds;
-			sourceTree = "<group>";
-		};
 		182A3C272E0833FE00E64A38 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -130,7 +121,6 @@
 				182A3C822E0CAE5500E64A38 /* MetroParking */,
 				182A3C112E03C13F00E64A38 /* Configuration.swift */,
 				182A3C0D2E03BC3100E64A38 /* .gitignore */,
-				182A3C212E0666B300E64A38 /* Playgrounds */,
 				184037082DD9F82F009D7FBA /* MetroParkingTests */,
 				184037122DD9F82F009D7FBA /* MetroParkingUITests */,
 				182A3C272E0833FE00E64A38 /* Frameworks */,
@@ -492,11 +482,12 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKExtensionDelegateClassName = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.tomkwok.MetroParking;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -529,11 +520,12 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKExtensionDelegateClassName = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.tomkwok.MetroParking;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

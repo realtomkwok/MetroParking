@@ -11,7 +11,8 @@ struct ParkingAPIResponse: Codable {
 	let tsn: String
 	let spots: String
 	let zones: [ParkingZoneAPI]
-	let parkId: String
+	// Field "ParkID" could be Int too from the response
+	//	let parkId: String
 	let location: ParkingLocationAPI
 	let occupancy: ParkingOccupancyAPI
 	let messageDate: String
@@ -23,7 +24,7 @@ struct ParkingAPIResponse: Codable {
 		case facilityId = "facility_id"
 		case facilityName = "facility_name"
 		case tsn, spots, zones
-		case parkId = "ParkID"
+		//		case parkId = "ParkID"
 		case location, occupancy
 		case messageDate = "MessageDate"
 		case tfnswFacilityId = "tfnsw_facility_id"

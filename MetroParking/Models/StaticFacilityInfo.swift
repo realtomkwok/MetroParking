@@ -20,7 +20,7 @@ struct StaticFacilityInfo {
 }
 
 extension ParkingFacility {
-	
+
 	static let staticFacilityData: [StaticFacilityInfo] = [
 		StaticFacilityInfo(
 			facilityId: "6",
@@ -374,12 +374,69 @@ extension ParkingFacility {
 			tsn: "221010",
 			tfnswFacilityId: "221010TPR001"
 		),
+		StaticFacilityInfo(
+			facilityId: "486",
+			name: "Park&Ride - Ashfield",
+			suburb: "Ashfield",
+			address: "Brown Street",
+			latitude: -33.888104,
+			longitude: 151.126577,
+			totalSpaces: 228,
+			tsn: "213110",
+			tfnswFacilityId: "213110TPR001"
+		),
+		StaticFacilityInfo(
+			facilityId: "487",
+			name: "Park&Ride - Kogarah",
+			suburb: "Kogarah",
+			address: "2 Railway Street",
+			latitude: -33.96369941,
+			longitude: 151.1319494,
+			totalSpaces: 259,
+			tsn: "221710",
+			tfnswFacilityId: "221710TPR001"
+		),
+		StaticFacilityInfo(
+			facilityId: "488",
+			name: "Park&Ride - Seven Hills",
+			suburb: "Seven Hills",
+			address: "Terminus Road",
+			latitude: -33.77304548,
+			longitude: 150.9367514,
+			totalSpaces: 1613,
+			tsn: "214710",
+			tfnswFacilityId: "214710TPR001"
+		),
+
+		StaticFacilityInfo(
+			facilityId: "489",
+			name: "Park&Ride - Manly Vale",
+			suburb: "Manly Vale",
+			address: "84 Kenneth Road",
+			latitude: -33.786536,
+			longitude: 151.267221,
+			totalSpaces: 142,
+			tsn: "2093117",
+			tfnswFacilityId: "2093117TPR001"
+		),
+
+		StaticFacilityInfo(
+			facilityId: "490",
+			name: "Park&Ride - Brookvale",
+			suburb: "Brookvale",
+			address: "612-624 Pittwater Road",
+			latitude: -33.767366,
+			longitude: 151.269667,
+			totalSpaces: 246,
+			tsn: "210020",
+			tfnswFacilityId: "210020TPR001"
+		),
 	]
-	
+
 	static func getAllStaticFacilities() -> [StaticFacilityInfo] {
 		return staticFacilityData
 	}
-	
+
 	static func getFacilitiesSortedByDistance(from userLocation: (lat: Double, lon: Double)) -> [StaticFacilityInfo] {
 		return staticFacilityData.sorted { facility1, facility2 in
 			let dist1 = calculateDistance(
@@ -393,8 +450,9 @@ extension ParkingFacility {
 			return dist1 < dist2
 		}
 	}
-	
-	private static func calculateDistance(from: (lat: Double, lon: Double), to: (lat: Double, lon: Double)) -> Double {
+
+	private static func calculateDistance(from: (lat: Double, lon: Double),
+	to: (lat: Double, lon: Double)) -> Double {
 		// TODO: Should be a viable distance retrieved from MapKit
 		let latDiff = from.lat - to.lat
 		let lonDiff = from.lon - to.lon

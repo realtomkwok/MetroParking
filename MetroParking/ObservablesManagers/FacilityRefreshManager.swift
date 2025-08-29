@@ -8,11 +8,13 @@
 //
 
 import Foundation
+import OSLog
 import SwiftData
 import SwiftUI
 
 @MainActor
 class FacilityRefreshManager: ObservableObject {
+
 	static let shared = FacilityRefreshManager()
 
 	/// Published properties for UI updates
@@ -49,7 +51,7 @@ class FacilityRefreshManager: ObservableObject {
 	}
 }
 
-/// Core API
+// MARK: - Core API
 extension FacilityRefreshManager {
 
 	func loadOccupancyForFacility(
@@ -76,7 +78,9 @@ extension FacilityRefreshManager {
 			refreshStats.successCount += 1
 			refreshStats.lastSuccessTime = Date()
 
-			print(
+			// Report stats
+			//			Logger.facilityRefresh.info(refreshStats.description)
+			Logger.facilityRefresh.info(
 				"✅ [\(context)] \(facility.name): \(facility.currentAvailableSpots)/\(facility.totalSpaces)"
 			)
 		} catch {
@@ -84,7 +88,7 @@ extension FacilityRefreshManager {
 			refreshStats.failureCount += 1
 			refreshStats.lastFailureTime = Date()
 
-			print(
+			Logger.facilityRefresh.error(
 				"❌ [\(context)] Failed to load \(facility.name): \(error.localizedDescription)"
 			)
 		}
@@ -107,7 +111,7 @@ extension FacilityRefreshManager {
 	}
 }
 
-/// SwiftData Queries
+// MARK: - SwiftData Queries
 extension FacilityRefreshManager {
 
 	private func getAllFacilities() -> [ParkingFacility] {
@@ -118,7 +122,9 @@ extension FacilityRefreshManager {
 		do {
 			return try context.fetch(descriptor)
 		} catch {
-			print("❌ Failed to fetch all facilities: \(error)")
+			Logger.facilityRefresh.error(
+				"❌ Failed to fetch all facilities: \(error)"
+			)
 			return []
 		}
 	}
@@ -130,13 +136,15 @@ extension FacilityRefreshManager {
 			do {
 				try context.save()
 			} catch {
-				print("❌ Failed to save context: \(error)")
+				Logger.facilityRefresh.error(
+					"❌ Failed to save context: \(error)"
+				)
 			}
 		}
 	}
 }
 
-/// App lifecycle management
+// MARK: - App lifecycle management
 extension FacilityRefreshManager {
 
 	private func setupAppStateObservers() {
@@ -147,7 +155,7 @@ extension FacilityRefreshManager {
 			queue: .main
 		) { [weak self] _ in
 			Task { @MainActor in
-				print("📱 App became active")
+				Logger.facilityRefresh.notice("📱 App became active")
 				self?.currentAppState = .active
 			}
 		}
@@ -158,26 +166,27 @@ extension FacilityRefreshManager {
 			queue: .main
 		) { [weak self] _ in
 			Task { @MainActor in
-				print("🌙 App entered background")
+				Logger.facilityRefresh.notice("🌙 App entered background")
 				self?.currentAppState = .background
 			}
 		}
 	}
 }
 
-/// Main flow
+// MARK: - Main flow
 extension FacilityRefreshManager {
 
 	func setModelContext(_ context: ModelContext) {
 		self.modelContext = context
-		print("🏭 Refresh manager connected to SwiftData")
+		Logger.facilityRefresh
+			.notice("🏭 Refresh manager connected to SwiftData")
 	}
 
 	/// When the app is opened for the first time, awaked from the background, or the user requests, run this function to load the data immediately
 	func performLoad() async {
 		guard !isRefreshing, modelContext != nil else { return }
 
-		print("🚀 Starting immediate load...")
+		Logger.facilityRefresh.notice("🚀 Starting immediate load...")
 		isRefreshing = true
 		initialLoadProgress = .notStarted
 		var processedCount = 0
@@ -187,7 +196,8 @@ extension FacilityRefreshManager {
 		}
 
 		let favourites = facilities.filter { $0.isFavourite }
-		let recents = facilities
+		let recents =
+			facilities
 			.filter { $0.lastVisited != nil }
 			.sorted { $0.lastVisited! > $1.lastVisited! }
 			.suffix(10)
@@ -214,13 +224,14 @@ extension FacilityRefreshManager {
 				saveContext()
 			}
 		}
-		
+
 		if !recents.isEmpty {
 			for (index, recent) in recents.enumerated() {
 				await loadOccupancyForFacility(recent, context: "recents")
-				
-				initialLoadProgress = .loading(processedCount + index + 1, facilities.count)
-				
+				initialLoadProgress = .loading(
+					processedCount + index + 1,
+					facilities.count
+				)
 				saveContext()
 			}
 		}
@@ -244,29 +255,31 @@ extension FacilityRefreshManager {
 		initialLoadProgress = .completed
 		lastRefreshTime = Date()
 
-		print("✅ Immediate load complete: \(facilities.count) facilities")
+		Logger.facilityRefresh.notice(
+			"✅ Immediate load complete: \( facilities.count ) facilities"
+		)
 
 	}
 
 	func startAutoRefresh() {
 		guard refreshTimer == nil else {
-			print("⏩ Auto-refresh already running")
+			Logger.facilityRefresh.warning("⏩ Auto-refresh already running")
 			return
 		}
 
-		print("🔄 Starting auto-refresh cycle...")
+		Logger.facilityRefresh.notice("🔄 Starting auto-refresh cycle...")
 		scheduleNextRefresh()
 	}
 
 	func stopAutoRefresh() {
-		print("⏹️ Stopping auto-refresh cycle")
+		Logger.facilityRefresh.notice("⏹️ Stopping auto-refresh cycle")
 		refreshTimer?.invalidate()
 		refreshTimer = nil
 		timerForCleanup = nil
 	}
 }
 
-/// Manually refresh one facility
+// MARK: - Manually refresh one facility
 extension FacilityRefreshManager {
 
 	/// Refresh a single facility if data is stale
@@ -276,7 +289,7 @@ extension FacilityRefreshManager {
 			timeSinceLastRefresh > 30.0 || !facility.isOccupancyCacheValid
 
 		if shouldRefresh {
-			print(
+			Logger.facilityRefresh.info(
 				"🔄 Refreshing \(facility.name) in detail view (age: \(Int(timeSinceLastRefresh))s)"
 			)
 			await refreshSingleFacility(facility)
@@ -287,7 +300,7 @@ extension FacilityRefreshManager {
 	func refreshSingleFacility(_ facility: ParkingFacility) async {
 		guard !isRefreshing else { return }
 
-		print("🔄 Force refreshing \(facility.name)")
+		Logger.facilityRefresh.info("🔄 Force refreshing \( facility.name )")
 		isRefreshing = true
 
 		// Reuse existing loadOccupancyForFacility function
@@ -301,7 +314,7 @@ extension FacilityRefreshManager {
 	}
 }
 
-/// Ongoing refresh cycle
+// MARK: - Ongoing refresh cycle
 extension FacilityRefreshManager {
 
 	private func scheduleNextRefresh() {
@@ -323,18 +336,19 @@ extension FacilityRefreshManager {
 
 	private func performRefreshCycle() async {
 		guard !isRefreshing else {
-			print("⏩ Refresh cycle skipped - already refreshing")
+			Logger.facilityRefresh
+				.notice("⏩ Refresh cycle skipped - already refreshing")
 			return
 		}
 
 		let facilitiesToRefresh = selectFacilitiesToRefresh()
 
 		if facilitiesToRefresh.isEmpty {
-			print("✅ No facilities due for refresh")
+			Logger.facilityRefresh.notice("✅ No facilities due for refresh")
 			return
 		}
 
-		print(
+		Logger.facilityRefresh.notice(
 			"🔄 Refresh cycle: updating \(facilitiesToRefresh.count) facilities"
 		)
 		isRefreshing = true
@@ -358,7 +372,7 @@ extension FacilityRefreshManager {
 		isRefreshing = false
 		lastRefreshTime = Date()
 
-		print("✅ Refresh cycle complete")
+		Logger.facilityRefresh.notice("✅ Refresh cycle complete")
 	}
 
 	private func selectFacilitiesToRefresh() -> [ParkingFacility] {
@@ -377,7 +391,33 @@ extension FacilityRefreshManager {
 	}
 }
 
-/// Supporting types
+// MARK: - Debug extension FacilityRefreshManager {
+
+private func debugFacility(_ facilityId: String) async {
+	do {
+		Logger.facilityRefresh.info("🔍 Debug testing facility \( facilityId )")
+		let result = try await ParkingAPIService.shared.fetchFacility(
+			id: facilityId
+		)
+		Logger.facilityRefresh.info(
+			"✅ Debug success for \( facilityId ): \( result.occupancy.total ?? "unknown") total spaces"
+		)
+	} catch {
+		Logger.facilityRefresh.error(
+			"❌ Debug failed for \( facilityId ): \( error.localizedDescription)"
+		)
+	}
+}
+
+func runDiagnostics() async {
+	let facilities = ["486", "487", "488", "489", "490"]  // Ashfield, ... for facility in facilities
+	for facility in facilities {
+		await debugFacility(facility)
+		try? await Task.sleep(nanoseconds: 1_000_000_000)
+	}
+}
+
+// MARK: - Supporting types
 enum AppState {
 	case active
 	case background

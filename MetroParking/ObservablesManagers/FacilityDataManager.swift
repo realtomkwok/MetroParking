@@ -9,153 +9,163 @@
 ///
 
 import Foundation
+import OSLog
 import SwiftData
 import SwiftUI
+
 
 @MainActor
 class FacilityDataManager: ObservableObject {
 
-  @Published var isLoadingStaticData = false
-  @Published var staticDataLoadTime: Date?
+	@Published var isLoadingStaticData = false
+	@Published var staticDataLoadTime: Date?
 
-  private var modelContext: ModelContext?
+	private var modelContext: ModelContext?
 
-  func setModelContext(_ context: ModelContext) {
-    self.modelContext = context
-    print("📊 FacilityDataManager connected to SwiftData")
-  }
+	func setModelContext(_ context: ModelContext) {
+		self.modelContext = context
+		Logger.facilityData.notice("📊 FacilityDataManager connected to SwiftData")
+	}
 
-  /// ONLY handles loading static facility metadata into SwiftData
-  func loadStaticFacilitiesIfNeeded() async {
-    guard let context = modelContext else {
-      print("❌ No ModelContext available")
-      return
-    }
+	// ONLY handles loading static facility metadata into SwiftData
 
-    if await hasExistingFacilities() {
-      print("✅ Facilities already loaded")
-      return
-    }
+	func loadStaticFacilitiesIfNeeded() async {
+		guard let context = modelContext else {
+			Logger.facilityData.warning("No ModelContext available")
+			return
+		}
 
-    guard !isLoadingStaticData else {
-      print("⏩ Static data loading already in progress")
-      return
-    }
+		if await hasExistingFacilities() {
+			Logger.facilityData.info("Facilities already loaded")
+			return
+		}
 
-    print("📦 Loading static facility data...")
-    isLoadingStaticData = true
+		guard !isLoadingStaticData else {
+			Logger.facilityData.warning("⏩ Static data loading already in progress")
+			return
+		}
 
-    let staticFacilities = LocationManager.shared
-      .sortStaticFacilitiesByDistance(
-        ParkingFacility.getAllStaticFacilities()
-      )
+		Logger.facilityData.notice("📦 Loading static facility data...")
+		isLoadingStaticData = true
 
-    print(
-      "📦 Inserting \(staticFacilities.count) facilities into SwiftData..."
-    )
+		let staticFacilities = LocationManager.shared.sortStaticFacilitiesByDistance(
+			ParkingFacility.getAllStaticFacilities()
+		)
 
-    /// Insert facilities WITHOUT occupancy data
-    for staticInfo in staticFacilities {
-      let facility = ParkingFacility(from: staticInfo)
-      context.insert(facility)
-    }
+		Logger.facilityData.notice(
+			"📦 Inserting \(staticFacilities.count) facilities into SwiftData..."
+		)
 
-    withAnimation(.snappy) {
-      do {
-        try context.save()
-        print("💾 Saved \(staticFacilities.count) static facilities")
-        staticDataLoadTime = Date()
-      } catch {
-        print("❌ Failed to save static facilities: \(error)")
-      }
-    }
+		/// Insert facilities WITHOUT occupancy data
+		for staticInfo in staticFacilities {
+			let facility = ParkingFacility(from: staticInfo)
+			context.insert(facility)
+		}
 
-    isLoadingStaticData = false
-    print("✅ Static facility loading complete!")
-  }
+		withAnimation(.snappy) {
+			do {
+				try context.save()
+				Logger.facilityData.info(
+					"💾 Saved \(staticFacilities.count) static facilities"
+				)
+				staticDataLoadTime = Date()
+			} catch {
+				Logger.facilityData.error("❌ Failed to save static facilities: \(error)")
+			}
+		}
 
-  func reloadStaticFacilities() async {
-    await clearAllFacilities()
-    await loadStaticFacilitiesIfNeeded()
-  }
+		isLoadingStaticData = false
+		Logger.facilityData.notice("✅ Static facility loading complete!")
+	}
 
-  func getFacilityStats() async -> FacilityStats {
-    let allFacilities = await getAllFacilities()
-    let withOccupancyData = allFacilities.filter {
-      $0.isOccupancyCacheValid
-    }
+	func reloadStaticFacilities() async {
+		await clearAllFacilities()
+		await loadStaticFacilitiesIfNeeded()
+	}
 
-    return FacilityStats(
-      totalCount: allFacilities.count,
-      withOccupancyData: withOccupancyData.count,
-      favouriteCount: allFacilities.filter { $0.isFavourite }.count
-    )
-  }
+	func getFacilityStats() async -> FacilityStats {
+		let allFacilities = await getAllFacilities()
+		let withOccupancyData = allFacilities.filter {
+			$0.isOccupancyCacheValid
+		}
 
-  func hasExistingFacilities() async -> Bool {
-    guard let context = modelContext else { return false }
+		return FacilityStats(
+			totalCount: allFacilities.count,
+			withOccupancyData: withOccupancyData.count,
+			favouriteCount: allFacilities.filter {
+				$0.isFavourite
+			}.count
+		)
+	}
 
-    let descriptor = FetchDescriptor<ParkingFacility>()
+	func hasExistingFacilities() async -> Bool {
+		guard let context = modelContext else {
+			return false
+		}
 
-    do {
-      let facilities = try context.fetch(descriptor)
-      return !facilities.isEmpty
-    } catch {
-      print("❌ Failed to check existing facilities: \(error)")
-      return false
-    }
-  }
+		let descriptor = FetchDescriptor<ParkingFacility>()
 
-  func getUserLocation() -> (lat: Double, lon: Double) {
-    let userLoc = LocationManager.shared.userLocation
-    return (lat: userLoc.latitude, lon: userLoc.longitude)
-  }
+		do {
+			let facilities = try context.fetch(descriptor)
+			return !facilities.isEmpty
+		} catch {
+			Logger.facilityData.error("❌ Failed to check existing facilities: \(error)")
+			return false
+		}
+	}
 
-  private func getAllFacilities() async -> [ParkingFacility] {
-    guard let context = modelContext else { return [] }
+	func getUserLocation() -> (lat: Double, lon: Double) {
+		let userLoc = LocationManager.shared.userLocation
+		return (lat: userLoc.latitude, lon: userLoc.longitude)
+	}
 
-    let descriptor = FetchDescriptor<ParkingFacility>()
-    do {
-      return try context.fetch(descriptor)
-    } catch {
-      print("❌ Failed to fetch facilities: \(error)")
-      return []
-    }
-  }
+	private func getAllFacilities() async -> [ParkingFacility] {
+		guard let context = modelContext else {
+			return []
+		}
 
-  func clearAllFacilities() async {
-    guard let context = modelContext else { return }
+		let descriptor = FetchDescriptor<ParkingFacility>()
+		do {
+			return try context.fetch(descriptor)
+		} catch {
+			Logger.facilityData.error("❌ Failed to fetch facilities: \(error)")
+			return []
+		}
+	}
 
-    let descriptor = FetchDescriptor<ParkingFacility>()
+	func clearAllFacilities() async {
+		guard let context = modelContext else {
+			return
+		}
 
-    withAnimation(.snappy) {
-      do {
-        let facilities = try context.fetch(descriptor)
-        for facility in facilities {
-          context.delete(facility)
-        }
-        try context.save()
-        print("🗑️ Cleared all facilities")
-      } catch {
-        print("❌ Failed to clear facilities: \(error)")
-      }
-    }
+		let descriptor = FetchDescriptor<ParkingFacility>()
 
-  }
+		withAnimation(.snappy) {
+			do {
+				let facilities = try context.fetch(descriptor)
+				for facility in facilities {
+					context.delete(facility)
+				}
+				try context.save()
+				Logger.facilityData.notice("🗑️ Cleared all facilities")
+			} catch {
+				Logger.facilityData.error("❌ Failed to clear facilities: \(error)")
+			}
+		}
+
+	}
 }
 
 struct FacilityStats {
-  let totalCount: Int
-  let withOccupancyData: Int
-  let favouriteCount: Int
+	let totalCount: Int
+	let withOccupancyData: Int
+	let favouriteCount: Int
 
-  var occupancyDataPercentage: Double {
-    return totalCount > 0
-      ? Double(withOccupancyData) / Double(totalCount) * 100 : 0
-  }
+	var occupancyDataPercentage: Double {
+		return totalCount > 0 ? Double(withOccupancyData) / Double(totalCount) * 100: 0
+	}
 
-  var description: String {
-    return
-      "\(totalCount) facilities, \(withOccupancyData) with data (\(Int(occupancyDataPercentage))%), \(favouriteCount) favourites"
-  }
+	var description: String {
+		return "\(totalCount) facilities, \(withOccupancyData) with data (\(Int(occupancyDataPercentage))%), \(favouriteCount) favourites"
+	}
 }

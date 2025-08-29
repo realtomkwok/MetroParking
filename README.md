@@ -35,26 +35,42 @@ the [TfNSW Car Park API](https://data.nsw.gov.au/data/dataset/2-car-park-api).
 
 2. **Configure environment**
 
-   Read more about setting up the environment: [Environment Configuration Setup](Docs/ENVIRONMENT_SETUP.md)
+   ### 1. Clone and Configure
 
-    1. **Copy the template:**
-        ```bash
-       cp .env.template .env
-       ```
-    2. **Edit the `.env` file** with your actual values:
-         ```env
-         TFNSW_API_KEY=your_actual_tfnsw_api_key_here
-         CAR_PARK_BASE_URL=https://api.transport.nsw.gov.au/v1
-         SUPABASE_URL=your_actual_supabase_url_here
-         SUPABASE_PUBLISHABLE_KEY=your_actual_supabase_key_here
-         ENVIRONMENT=development
-         ```
+```bash
+git clone <repository-url>
+cd MetroParking
 
-    3. **Add the .env file to your Xcode project:**
-        - In Xcode, right-click your project
-        - Select "Add Files to [Project Name]"
-        - Choose the `.env` file
-        - **Important:** Make sure "Add to target" is checked for your main app target
+# Copy the configuration template
+cp Config.xcconfig.template Config.xcconfig
+```
+
+### 2. Edit Your Configuration
+
+Open `Config.xcconfig` in any text editor and fill in your values:
+
+```bash
+// TfNSW API Configuration (REQUIRED)
+TFNSW_API_KEY=your_actual_tfnsw_api_key_here
+CAR_PARK_BASE_URL=https://api.transport.nsw.gov.au/v1
+
+// Supabase Configuration (OPTIONAL - for analytics features)
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
+
+// Development Configuration (REQUIRED)
+DEVELOPMENT_TEAM=your_apple_developer_team_id
+```
+
+### 3. Build and Run
+
+```bash
+open MetroParking.xcodeproj
+```
+
+Hit ⌘+R. Done.
+
+Read more about configuration: [Configuration](Docs/CONFIGURATION.md)
 
 3. **Open in Xcode**
    ```bash

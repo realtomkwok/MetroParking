@@ -53,7 +53,7 @@ extension FacilityRefreshManager {
 
 			// Update facility with API response
 			await MainActor.run {
-			withAnimation(.snappy(duration: 0.2, extraBounce: 0.5)) {
+				withAnimation(.snappy(duration: 0.2, extraBounce: 0.5)) {
 					facility.updateFromAPI(response)
 				}
 				// TODO: ProgressCallBack()
@@ -61,8 +61,8 @@ extension FacilityRefreshManager {
 			facility.scheduleNextRefresh(appState: currentAppState)
 		} catch {
 			facility.markRefreshFailed()
-// TODO: ProgressCallBack()
-}
+			// TODO: ProgressCallBack()
+		}
 
 	}
 }
@@ -88,11 +88,11 @@ extension FacilityRefreshManager {
 	private func saveContext() {
 		guard let context = modelContext else { return }
 
-do {
-try context.save()
-} catch {
-Logger.facilityRefresh.error("❌ Failed to save context: \( error )")
-}
+		do {
+			try context.save()
+		} catch {
+			Logger.facilityRefresh.error("❌ Failed to save context: \( error )")
+		}
 
 	}
 }
@@ -139,28 +139,30 @@ extension FacilityRefreshManager {
 	func performLoad() async {
 		guard !isRefreshing, modelContext != nil else { return }
 
-Logger.facilityRefresh.info("Starting loading data")
-		isRefreshing = true initialLoadProgress =.loading(0, 0)
+		Logger.facilityRefresh.info("Starting loading data")
+		isRefreshing = true
+		initialLoadProgress = .loading(0, 0)
 
 		let facilities = getAllFacilities().filter {
 			$0.refreshTier != .onDemand
 		}
-		let totalCount = facilities.count await MainActor.run {
-		initialLoadProgress =.loading(0, totalCount)
+		let totalCount = facilities.count
+		await MainActor.run {
+			initialLoadProgress = .loading(0, totalCount)
 		}
 
 		let prioritisedFacilities = prioritiseFacilities(facilities)
 
-for facility in prioritisedFacilities {
-await loadFacility(facility)
+		for facility in prioritisedFacilities {
+			await loadFacility(facility)
 		}
 
 		isRefreshing = false
 		initialLoadProgress = .completed
 		lastRefreshTime = Date()
-saveContext()
+		saveContext()
 
-Logger.facilityRefresh.notice("✅ \( totalCount ) facilities loaded")
+		Logger.facilityRefresh.notice("✅ \( totalCount ) facilities loaded")
 	}
 
 	func startAutoRefresh() {
@@ -181,28 +183,35 @@ Logger.facilityRefresh.notice("✅ \( totalCount ) facilities loaded")
 	}
 }
 
-		// MARK: - Loading facilities
-		/// Using Rolling Window approach — fire 5 concurrent requests at all times to respect the API throttling limits extension FacilityRefreshManager {
+// MARK: - Loading facilities
+/// Using Rolling Window approach — fire 5 concurrent requests at all times to respect the API throttling limits extension FacilityRefreshManager {
 
-		private func prioritiseFacilities(_ facilities: [ParkingFacility])
-		->[ParkingFacility]
-		{
-		var prioritised: [ParkingFacility]=[]var remaining = facilities // MARK: - Step 1: Load favourites let favourites = remaining.filter { $0.isFavourite }
-		prioritised.append(contentsOf: favourites)
-remaining.removeAll { $0.isFavourite }
+private func prioritiseFacilities(_ facilities: [ParkingFacility])
+	-> [ParkingFacility]
+{
+	var prioritised: [ParkingFacility] = []
+	var remaining = facilities
+	// MARK: - Step 1: Load favourites
+	let favourites = remaining.filter { $0.isFavourite }
+	prioritised.append(contentsOf: favourites)
+	remaining.removeAll { $0.isFavourite }
 
-// MARK: - Step 2: Load recently-visited ones let recents = remaining.filter { $0.lastVisited != nil }.sorted { $0.lastVisited ! > $1.lastVisited ! }
+	// MARK: - Step 2: Load recently-visited ones
+	let recents =
+		remaining
+		.filter { $0.lastVisited != nil }
+		.sorted { $0.lastVisited! > $1.lastVisited! }
 
-prioritised.append(contentsOf: recents)
-remaining.removeAll { $0.lastVisited != nil }
+	prioritised.append(contentsOf: recents)
+	remaining.removeAll { $0.lastVisited != nil }
 
-// MARK: - Step 3: Load the most stale data let stalest = remaining.sorted {
-$0.timeSinceLastRefresh > $1.timeSinceLastRefresh
-}
-prioritised.append(contentsOf: stalest)
+	// MARK: - Step 3: Load the most stale data
+	let stalest = remaining.sorted {
+		$0.timeSinceLastRefresh > $1.timeSinceLastRefresh
+	}
+	prioritised.append(contentsOf: stalest)
 
-return prioritised
-}
+	return prioritised
 }
 
 // MARK: - Manually refresh one facility
@@ -250,7 +259,8 @@ extension FacilityRefreshManager {
 			repeats: false
 		) {
 			[weak self] _ in
-			Task { @MainActor in await self ?.performLoad()
+			Task { @MainActor in
+				await self?.performLoad()
 				self?.scheduleNextRefresh()
 			}
 		}
@@ -258,7 +268,6 @@ extension FacilityRefreshManager {
 		timerForCleanup = refreshTimer
 	}
 }
-
 
 // MARK: - Supporting types
 enum AppState {

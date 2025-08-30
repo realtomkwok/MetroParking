@@ -35,14 +35,14 @@ class ParkingAPIService {
 
 	// MARK: - Private methods
 
-	private func buildURL(forfacilityId: String) throws -> URL {
+	private func buildURL(for facilityId: String) throws -> URL {
 		guard let url = URL(string: "\(Configuration.carParkBaseUrl)/carpark?facility=\(facilityId)") else {
 			throw APIError.invalidURL
 		}
 		return url
 	}
 
-	private func buildRequest(forurl: URL) -> URLRequest {
+	private func buildRequest(for url: URL) -> URLRequest {
 		var req = URLRequest(url: url)
 
 		req.setValue("application/json", forHTTPHeaderField: "accept")
@@ -54,7 +54,7 @@ class ParkingAPIService {
 	}
 
 	private func validateResponse(_ res: URLResponse) throws {
-		guard let httpResponse = res as ?HTTPURLResponse else {
+		guard let httpResponse = res as? HTTPURLResponse else {
 			Logger.facilityRefresh.error("HTTP error")
 			throw URLError(.badServerResponse)
 		}
@@ -80,7 +80,7 @@ class ParkingAPIService {
 
 	func decode(_ data: Data, facilityId: String) throws -> ParkingAPIResponse {
 
-		if let response = try ? decoder.decode(
+		if let response = try? decoder.decode(
 			ParkingAPIResponse.self,
 			from: data
 		) {

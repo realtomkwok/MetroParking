@@ -58,6 +58,7 @@ class ETAService: ObservableObject {
 
 			/// Only update if this is still the current request (same user location?)
 			if currentETARequest == request {
+				currentETA = response.expectedTravelTime
 				isCalculatingETA = false
 				Logger.maps.info(
 					"🚗 ETA calculated: \(self.formatETA(response.expectedTravelTime))"

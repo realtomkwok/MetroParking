@@ -184,34 +184,36 @@ extension FacilityRefreshManager {
 }
 
 // MARK: - Loading facilities
-/// Using Rolling Window approach — fire 5 concurrent requests at all times to respect the API throttling limits extension FacilityRefreshManager {
+/// Using Rolling Window approach — fire 5 concurrent requests at all times to respect the API throttling limits
+extension FacilityRefreshManager {
 
-private func prioritiseFacilities(_ facilities: [ParkingFacility])
-	-> [ParkingFacility]
-{
-	var prioritised: [ParkingFacility] = []
-	var remaining = facilities
-	// MARK: - Step 1: Load favourites
-	let favourites = remaining.filter { $0.isFavourite }
-	prioritised.append(contentsOf: favourites)
-	remaining.removeAll { $0.isFavourite }
+	private func prioritiseFacilities(_ facilities: [ParkingFacility])
+		-> [ParkingFacility]
+	{
+		var prioritised: [ParkingFacility] = []
+		var remaining = facilities
+		// MARK: - Step 1: Load favourites
+		let favourites = remaining.filter { $0.isFavourite }
+		prioritised.append(contentsOf: favourites)
+		remaining.removeAll { $0.isFavourite }
 
-	// MARK: - Step 2: Load recently-visited ones
-	let recents =
-		remaining
-		.filter { $0.lastVisited != nil }
-		.sorted { $0.lastVisited! > $1.lastVisited! }
+		// MARK: - Step 2: Load recently-visited ones
+		let recents =
+			remaining
+			.filter { $0.lastVisited != nil }
+			.sorted { $0.lastVisited! > $1.lastVisited! }
 
-	prioritised.append(contentsOf: recents)
-	remaining.removeAll { $0.lastVisited != nil }
+		prioritised.append(contentsOf: recents)
+		remaining.removeAll { $0.lastVisited != nil }
 
-	// MARK: - Step 3: Load the most stale data
-	let stalest = remaining.sorted {
-		$0.timeSinceLastRefresh > $1.timeSinceLastRefresh
+		// MARK: - Step 3: Load the most stale data
+		let stalest = remaining.sorted {
+			$0.timeSinceLastRefresh > $1.timeSinceLastRefresh
+		}
+		prioritised.append(contentsOf: stalest)
+
+		return prioritised
 	}
-	prioritised.append(contentsOf: stalest)
-
-	return prioritised
 }
 
 // MARK: - Manually refresh one facility
@@ -238,7 +240,8 @@ extension FacilityRefreshManager {
 		Logger.facilityRefresh.info("🔄 Force refreshing \( facility.name )")
 		isRefreshing = true
 
-		// Reuse existing loadOccupancyForFacility function await loadFacility(facility)
+		// Reuse existing `loadOccupancyForFacility` function
+		await loadFacility(facility)
 
 		// Reuse existing saveContext function
 		saveContext()

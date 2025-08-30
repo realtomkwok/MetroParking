@@ -9,10 +9,6 @@ import Foundation
 import os.log
 
 enum Configuration {
-    private static let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "com.tomkwok.MetroParking",
-        category: "Configuration"
-    )
 
     // MARK: - TfNSW API Key
 
@@ -24,7 +20,7 @@ enum Configuration {
             !key.hasPrefix("YOUR_"),
             !key.contains("YOUR_API_KEY")
         else {
-            logger.error("❌ TFNSW_API_KEY missing - app will not function")
+            Logger.appConfiguration.error("❌ TFNSW_API_KEY missing - app will not function")
             fatalError(
                 "TFNSW_API_KEY not configured. Get your key from https://opendata.transport.nsw.gov.au/"
             )
@@ -38,13 +34,13 @@ enum Configuration {
             !key.lowercased().contains("test")
         else {
 
-            logger.error("❌ TFNSW_API_KEY invalid format")
+            Logger.appConfiguration.error("❌ TFNSW_API_KEY invalid format")
             fatalError(
                 "TFNSW_API_KEY appears to be invalid. Use a real API key from TfNSW."
             )
         }
 
-        logger.info("✅ TFNSW API key loaded")
+        Logger.appConfiguration.info("✅ TFNSW API key loaded")
         return key
 
     }()
@@ -59,11 +55,11 @@ enum Configuration {
             !urlString.isEmpty
         else {
             let fallback = "https://api.transport.nsw.gov.au/v1"
-            logger.warning("⚠️ CAR_PARK_BASE_URL missing, using: \(fallback)")
+            Logger.appConfiguration.warning("⚠️ CAR_PARK_BASE_URL missing, using: \(fallback)")
             return fallback
         }
 
-        logger.info("✅ Car park base URL loaded: \(urlString)")
+        Logger.appConfiguration.info("✅ Car park base URL loaded: \(urlString)")
         if urlString.hasPrefix("http://") || urlString.hasPrefix("https://") {
             return urlString
         } else {
@@ -81,22 +77,13 @@ enum Configuration {
             !urlString.hasPrefix("YOUR_")
         else {
 
-            logger.info(
+            Logger.appConfiguration.info(
                 "ℹ️ Supabase not configured - analytics features disabled"
             )
             return ""
         }
 
-//        // Validate Supabase URL format
-//        guard let url = URL(string: urlString),
-//            url.host?.contains("supabase") == true
-//        else {
-//			
-//            logger.warning("⚠️ Invalid SUPABASE_URL format, disabling analytics. Received: \(urlString)")
-//            return ""
-//        }
-
-        logger.info("✅ Supabase URL loaded")
+        Logger.appConfiguration.info("✅ Supabase URL loaded")
 
         if urlString.hasPrefix("http://") || urlString.hasPrefix("https://") {
             return urlString
@@ -115,31 +102,25 @@ enum Configuration {
             !key.hasPrefix("YOUR_")
         else {
 
-            logger.info("ℹ️ Supabase key not configured")
+            Logger.appConfiguration.info("ℹ️ Supabase key not configured")
             return ""
         }
 
-        // Validate Supabase key format (starts with specific prefix)
-//        guard key.hasPrefix("sb_publishable") && key.count > 100 else {
-//            logger.warning("⚠️ Invalid SUPABASE_PUBLISHABLE_KEY format. Received: \(key)")
-//            return ""
-//        }
-
-        logger.info("✅ Supabase key loaded")
+        Logger.appConfiguration.info("✅ Supabase key loaded")
         return key
     }()
 
     // MARK: - Debug Helper
 
     static func printConfiguration() {
-        logger.info("🔑 Configuration loaded:")
-        logger.info("📍 Base URL: \(carParkBaseUrl)")
-        logger.info("🔐 API Key: \(tfnswApiKey.prefix(8))...")
+        Logger.appConfiguration.info("🔑 Configuration loaded:")
+        Logger.appConfiguration.info("📍 Base URL: \(carParkBaseUrl)")
+        Logger.appConfiguration.info("🔐 API Key: \(tfnswApiKey.prefix(8))...")
 
         if !supabaseUrl.isEmpty {
-            logger.info("🗄️ Supabase: Enabled")
+            Logger.appConfiguration.info("🗄️ Trend Analytics Supabase: Enabled")
         } else {
-            logger.info("🗄️ Supabase: Disabled")
+            Logger.appConfiguration.info("🗄️ Trend Analytics Supabase: Disabled")
         }
     }
 }
@@ -162,11 +143,13 @@ extension Configuration {
             }
 
             if !issues.isEmpty {
-                print("🚨 Configuration issues found:")
-                issues.forEach { print("  - \($0)") }
-                print("📝 Please update your Config.xcconfig file")
+                Logger.appConfiguration.error("🚨 Configuration issues found:")
+                issues.forEach {
+                    Logger.appConfiguration.debug("  - \($0)")
+                }
+                Logger.appConfiguration.fault("📝 Please update your Config.xcconfig file")
             } else {
-                print("✅ All configurations look good!")
+                Logger.appConfiguration.notice("✅ All configurations look good!")
             }
         #endif
     }

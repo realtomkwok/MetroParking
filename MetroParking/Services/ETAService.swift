@@ -7,6 +7,7 @@
 
 import Foundation
 import MapKit
+import OSLog
 
 @MainActor
 class ETAService: ObservableObject {
@@ -59,15 +60,17 @@ class ETAService: ObservableObject {
 			if currentETARequest == request {
 				currentETA = response.expectedTravelTime
 				isCalculatingETA = false
-				print(
-					"🚗 ETA calculated: \(formatETA(response.expectedTravelTime))"
+				Logger.maps.info(
+					"🚗 ETA calculated: \(self.formatETA(response.expectedTravelTime))"
 				)
 			}
 		} catch {
 			if currentETARequest == request {
 				etaError = "Unable to calculate ETA"
 				isCalculatingETA = false
-				print("❌ ETA calculation failed: \(error.localizedDescription)")
+				Logger.maps.error(
+					"❌ ETA calculation failed: \(error.localizedDescription)"
+				)
 			}
 		}
 	}

@@ -8,6 +8,7 @@
 import MapKit
 import SwiftData
 import SwiftUI
+import OSLog
 
 struct ParkingDetailView: View {
 
@@ -303,7 +304,7 @@ struct ParkingDetailView: View {
 
 	private func calculateETAIfNeeded() async {
 		guard locationManager.isLocationAvailable else {
-			print("📍 Location not available for ETA calculation")
+			Logger.maps.error("📍 Location not available for ETA calculation")
 			return
 		}
 
@@ -504,7 +505,7 @@ struct InfoCard<Content: View>: View {
 	ParkingDetailView(
 		facility: PreviewHelper.availableFacility(),
 		onDismiss: {
-			print("Should close this view")
+			Logger.ui.info("Should close this view")
 		}
 	)
 }

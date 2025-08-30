@@ -20,7 +20,6 @@ class FacilityRefreshManager: ObservableObject {
 	/// Published properties for UI updates
 	@Published var isRefreshing = false
 	@Published var lastRefreshTime: Date?
-	@Published var refreshStats = RefreshStats()
 	@Published var initialLoadProgress: InitialLoadProgress = .notStarted
 
 	/// App state
@@ -28,17 +27,6 @@ class FacilityRefreshManager: ObservableObject {
 	private var refreshTimer: Timer?
 	private weak var timerForCleanup: Timer?
 	private var modelContext: ModelContext?
-
-	/// Rate limiting
-	private var lastAPICall: Date = .distantPast
-
-	private var currentMinInterval: TimeInterval {
-		RefreshConfiguration.globalMinInterval
-	}
-
-	private var currentMaxConcurrency: Int {
-		RefreshConfiguration.globalMaxConcurrency
-	}
 
 	private init() {
 		setupAppStateObservers()
@@ -54,12 +42,9 @@ class FacilityRefreshManager: ObservableObject {
 // MARK: - Core API
 extension FacilityRefreshManager {
 
-	func loadOccupancyForFacility(
+	func loadFacility(
 		_ facility: ParkingFacility,
-		context: String
 	) async {
-
-		await rateLimitedDelay(for: facility)
 
 		do {
 			let response = try await ParkingAPIService.shared.fetchFacility(
@@ -68,46 +53,17 @@ extension FacilityRefreshManager {
 
 			// Update facility with API response
 			await MainActor.run {
-				withAnimation {
+				withAnimation(.snappy(duration: 0.2, extraBounce: 0.5)) {
 					facility.updateFromAPI(response)
 				}
+				// TODO: ProgressCallBack()
 			}
 			facility.scheduleNextRefresh(appState: currentAppState)
-
-			// Update stats
-			refreshStats.successCount += 1
-			refreshStats.lastSuccessTime = Date()
-
-			// Report stats
-			//			Logger.facilityRefresh.info(refreshStats.description)
-			Logger.facilityRefresh.info(
-				"✅ [\(context)] \(facility.name): \(facility.currentAvailableSpots)/\(facility.totalSpaces)"
-			)
 		} catch {
 			facility.markRefreshFailed()
-			refreshStats.failureCount += 1
-			refreshStats.lastFailureTime = Date()
-
-			Logger.facilityRefresh.error(
-				"❌ [\(context)] Failed to load \(facility.name): \(error.localizedDescription)"
-			)
+			// TODO: ProgressCallBack()
 		}
 
-	}
-
-	private func rateLimitedDelay(for facility: ParkingFacility) async {
-		let settings = RefreshConfiguration.getSettings(
-			for: facility.refreshTier
-		)
-		let interval = max(currentMinInterval, settings.baseDelay)
-
-		let timeSinceLastCall = Date().timeIntervalSince(lastAPICall)
-		let waitTime = max(0, interval - timeSinceLastCall)
-
-		if waitTime > 0 {
-			try? await Task.sleep(nanoseconds: UInt64(waitTime * 1_000_000_000))
-		}
-		lastAPICall = Date()
 	}
 }
 
@@ -132,15 +88,12 @@ extension FacilityRefreshManager {
 	private func saveContext() {
 		guard let context = modelContext else { return }
 
-		withAnimation(.bouncy) {
-			do {
-				try context.save()
-			} catch {
-				Logger.facilityRefresh.error(
-					"❌ Failed to save context: \(error)"
-				)
-			}
+		do {
+			try context.save()
+		} catch {
+			Logger.facilityRefresh.error("❌ Failed to save context: \( error )")
 		}
+
 	}
 }
 
@@ -186,79 +139,30 @@ extension FacilityRefreshManager {
 	func performLoad() async {
 		guard !isRefreshing, modelContext != nil else { return }
 
-		Logger.facilityRefresh.notice("🚀 Starting immediate load...")
+		Logger.facilityRefresh.info("Starting loading data")
 		isRefreshing = true
-		initialLoadProgress = .notStarted
-		var processedCount = 0
+		initialLoadProgress = .loading(0, 0)
 
 		let facilities = getAllFacilities().filter {
 			$0.refreshTier != .onDemand
 		}
-
-		let favourites = facilities.filter { $0.isFavourite }
-		let recents =
-			facilities
-			.filter { $0.lastVisited != nil }
-			.sorted { $0.lastVisited! > $1.lastVisited! }
-			.suffix(10)
-
-		/// Create ID sets for efficient exclusion
-		let favouriteIDs = Set(favourites.map(\.facilityId))
-		let recentIDs = Set(recents.map(\.facilityId))
-
-		let remaining = facilities.filter { facility in
-			!favouriteIDs.contains(facility.facilityId)
-				&& !recentIDs.contains(facility.facilityId)
+		let totalCount = facilities.count
+		await MainActor.run {
+			initialLoadProgress = .loading(0, totalCount)
 		}
 
-		if !favourites.isEmpty {
-			for (index, favourite) in favourites.enumerated() {
-				await loadOccupancyForFacility(
-					favourite,
-					context: "favourite"
-				)
+		let prioritisedFacilities = prioritiseFacilities(facilities)
 
-				initialLoadProgress = .loading(index + 1, facilities.count)
-				processedCount += 1
-
-				saveContext()
-			}
-		}
-
-		if !recents.isEmpty {
-			for (index, recent) in recents.enumerated() {
-				await loadOccupancyForFacility(recent, context: "recents")
-				initialLoadProgress = .loading(
-					processedCount + index + 1,
-					facilities.count
-				)
-				saveContext()
-			}
-		}
-
-		for (index, facility) in remaining.enumerated() {
-			await loadOccupancyForFacility(
-				facility,
-				context: "remaining facilities"
-			)
-
-			initialLoadProgress = .loading(
-				processedCount + index + 1,
-				facilities.count
-			)
-			processedCount += 1
-
-			saveContext()
+		for facility in prioritisedFacilities {
+			await loadFacility(facility)
 		}
 
 		isRefreshing = false
 		initialLoadProgress = .completed
 		lastRefreshTime = Date()
+		saveContext()
 
-		Logger.facilityRefresh.notice(
-			"✅ Immediate load complete: \( facilities.count ) facilities"
-		)
-
+		Logger.facilityRefresh.notice("✅ \( totalCount ) facilities loaded")
 	}
 
 	func startAutoRefresh() {
@@ -276,6 +180,39 @@ extension FacilityRefreshManager {
 		refreshTimer?.invalidate()
 		refreshTimer = nil
 		timerForCleanup = nil
+	}
+}
+
+// MARK: - Loading facilities
+/// Using Rolling Window approach — fire 5 concurrent requests at all times to respect the API throttling limits
+extension FacilityRefreshManager {
+
+	private func prioritiseFacilities(_ facilities: [ParkingFacility])
+		-> [ParkingFacility]
+	{
+		var prioritised: [ParkingFacility] = []
+		var remaining = facilities
+		// MARK: - Step 1: Load favourites
+		let favourites = remaining.filter { $0.isFavourite }
+		prioritised.append(contentsOf: favourites)
+		remaining.removeAll { $0.isFavourite }
+
+		// MARK: - Step 2: Load recently-visited ones
+		let recents =
+			remaining
+			.filter { $0.lastVisited != nil }
+			.sorted { $0.lastVisited! > $1.lastVisited! }
+
+		prioritised.append(contentsOf: recents)
+		remaining.removeAll { $0.lastVisited != nil }
+
+		// MARK: - Step 3: Load the most stale data
+		let stalest = remaining.sorted {
+			$0.timeSinceLastRefresh > $1.timeSinceLastRefresh
+		}
+		prioritised.append(contentsOf: stalest)
+
+		return prioritised
 	}
 }
 
@@ -303,8 +240,8 @@ extension FacilityRefreshManager {
 		Logger.facilityRefresh.info("🔄 Force refreshing \( facility.name )")
 		isRefreshing = true
 
-		// Reuse existing loadOccupancyForFacility function
-		await loadOccupancyForFacility(facility, context: "detail-view")
+		// Reuse existing `loadOccupancyForFacility` function
+		await loadFacility(facility)
 
 		// Reuse existing saveContext function
 		saveContext()
@@ -326,94 +263,12 @@ extension FacilityRefreshManager {
 		) {
 			[weak self] _ in
 			Task { @MainActor in
-				await self?.performRefreshCycle()
+				await self?.performLoad()
 				self?.scheduleNextRefresh()
 			}
 		}
 
 		timerForCleanup = refreshTimer
-	}
-
-	private func performRefreshCycle() async {
-		guard !isRefreshing else {
-			Logger.facilityRefresh
-				.notice("⏩ Refresh cycle skipped - already refreshing")
-			return
-		}
-
-		let facilitiesToRefresh = selectFacilitiesToRefresh()
-
-		if facilitiesToRefresh.isEmpty {
-			Logger.facilityRefresh.notice("✅ No facilities due for refresh")
-			return
-		}
-
-		Logger.facilityRefresh.notice(
-			"🔄 Refresh cycle: updating \(facilitiesToRefresh.count) facilities"
-		)
-		isRefreshing = true
-
-		await withTaskGroup(of: Void.self) { group in
-			let semaphore = AsyncSemaphore(value: currentMaxConcurrency)
-
-			for facility in facilitiesToRefresh {
-				group.addTask {
-					await semaphore.wait()
-					await self.loadOccupancyForFacility(
-						facility,
-						context: "refresh"
-					)
-					await semaphore.signal()
-				}
-			}
-		}
-
-		saveContext()
-		isRefreshing = false
-		lastRefreshTime = Date()
-
-		Logger.facilityRefresh.notice("✅ Refresh cycle complete")
-	}
-
-	private func selectFacilitiesToRefresh() -> [ParkingFacility] {
-		return getAllFacilities()
-			.filter(\.isDueForRefresh)
-			.sorted { facility1, facility2 in
-				// User engagement first, then by staleness
-				if facility1.isFavourite != facility2.isFavourite {
-					return facility1.isFavourite
-				}
-				return facility1.timeSinceLastRefresh
-					> facility2.timeSinceLastRefresh
-			}
-			.prefix(8)
-			.map { $0 }
-	}
-}
-
-// MARK: - Debug extension FacilityRefreshManager {
-
-private func debugFacility(_ facilityId: String) async {
-	do {
-		Logger.facilityRefresh.info("🔍 Debug testing facility \( facilityId )")
-		let result = try await ParkingAPIService.shared.fetchFacility(
-			id: facilityId
-		)
-		Logger.facilityRefresh.info(
-			"✅ Debug success for \( facilityId ): \( result.occupancy.total ?? "unknown") total spaces"
-		)
-	} catch {
-		Logger.facilityRefresh.error(
-			"❌ Debug failed for \( facilityId ): \( error.localizedDescription)"
-		)
-	}
-}
-
-func runDiagnostics() async {
-	let facilities = ["486", "487", "488", "489", "490"]  // Ashfield, ... for facility in facilities
-	for facility in facilities {
-		await debugFacility(facility)
-		try? await Task.sleep(nanoseconds: 1_000_000_000)
 	}
 }
 
@@ -467,21 +322,5 @@ enum InitialLoadProgress {
 		case .loading(let current, let total):
 			return total > 0 ? Double(current) / Double(total) : 0.99
 		}
-	}
-}
-
-struct RefreshStats {
-	var successCount: Int = 0
-	var failureCount: Int = 0
-	var lastSuccessTime: Date?
-	var lastFailureTime: Date?
-
-	var successRate: Double {
-		let total = successCount + failureCount
-		return total > 0 ? Double(successCount) / Double(total) : 0.0
-	}
-
-	var description: String {
-		return "✅ \(successCount) success, ❌ \(failureCount) failed"
 	}
 }

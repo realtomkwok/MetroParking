@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import OSLog
 
 class ParkingTrendService: ObservableObject {
 	@Published var hourlyPatterns: [HourlyPattern] = []
@@ -34,7 +35,7 @@ class ParkingTrendService: ObservableObject {
 				self.insights = insights.first
 			}
 		} catch {
-			print("Error fetching data: \(error)")
+			Logger.facilityData.error("Error fetching data: \(error)")
 		}
 	}
 }

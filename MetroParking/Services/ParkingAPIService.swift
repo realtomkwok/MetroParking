@@ -8,239 +8,121 @@
 import Foundation
 import OSLog
 
-typealias FacilityID = String
-typealias FacilityName = String
-
-struct APIErrorResponse: Codable {
-	let errorDetails: ErrorDetails?
-
-	var message: String {
-		return errorDetails?.message ?? "Unknown API error"
-	}
-
-	enum CodingKeys: String, CodingKey {
-		case errorDetails = "ErrorDetails"
-	}
-}
-
-struct ErrorDetails: Codable {
-	let message: String
-	let code: String?
-
-	enum CodingKeys: String, CodingKey {
-		case message = "Message"
-		case code = "Code"
-	}
-}
-
-enum APIError: Error, LocalizedError {
-	case invalidURL
-	case noData
-	case networkError (Error)
-	case decodingError (Error)
-
-	var errorDescription: String? {
-		switch self {
-		case .invalidURL:
-			return "Invalid URL"
-		case .noData:
-			return "No data received"
-		case .networkError (let error):
-			return "Network error: \(error.localizedDescription)"
-		case .decodingError (let error):
-			return "Decoding error: \(error.localizedDescription)"
-		}
-	}
-}
-
 class ParkingAPIService {
 	static let shared = ParkingAPIService()
-	let startTime = CFAbsoluteTimeGetCurrent()
+
+	private let session = URLSession.shared
+	private let rateLimiter = RateLimiter(minInterval: 0.3)
+	private let decoder = JSONDecoder()
 
 	private init() {
-	}
-
-	private var baseURL: String {
-		return Configuration.carParkBaseUrl
-	}
-	private var apiKey: String {
-		return Configuration.tfnswApiKey
-	}
-
-	struct FacilityListItem: Codable {
-		let facilityId: String
-		let facilityName: String
-
-		enum CodingKeys: String, CodingKey {
-			case facilityId = "facility_id"
-			case facilityName = "facility_name"
-		}
 	}
 
 	// MARK: - API Methods
 
 	func fetchFacility(id: String) async throws -> ParkingAPIResponse {
-		guard let url = URL(string: "\(baseURL)/carpark?facility=\(id)") else {
-			Logger.facilityRefresh.error("❌ Invalid URL for facility \(id)")
+		await rateLimiter.waitIfNeeded()
+
+		let url = try buildURL(for: id)
+		let request = buildRequest(for: url)
+
+		let (data, response) = try await session.data(for: request)
+
+		try validateResponse(response)
+
+		return try decode(data, facilityId: id)
+	}
+
+	// MARK: - Private methods
+
+	private func buildURL(forfacilityId: String) throws -> URL {
+		guard let url = URL(string: "\(Configuration.carParkBaseUrl)/carpark?facility=\(facilityId)") else {
 			throw APIError.invalidURL
 		}
+		return url
+	}
 
+	private func buildRequest(forurl: URL) -> URLRequest {
 		var req = URLRequest(url: url)
+
 		req.setValue("application/json", forHTTPHeaderField: "accept")
-		req.setValue("apikey \(apiKey)", forHTTPHeaderField: "Authorization")
-
-		Logger.facilityRefresh.info("🚀 Request for facility \(id)")
-		Logger.facilityRefresh.debug("URL: \(url.absoluteString)")
-		Logger.facilityRefresh.debug(
-			"Header: \(req.allHTTPHeaderFields ?? [:])"
+		req.setValue(
+			"apikey \(Configuration.tfnswApiKey)",
+			forHTTPHeaderField: "Authorization"
 		)
+		return req
+	}
 
-		do {
-			let (data, response) = try await URLSession.shared.data(for: req)
-			let networkTime = CFAbsoluteTimeGetCurrent() - startTime
+	private func validateResponse(_ res: URLResponse) throws {
+		guard let httpResponse = res as ?HTTPURLResponse else {
+			Logger.facilityRefresh.error("HTTP error")
+			throw URLError(.badServerResponse)
+		}
 
-			Logger.facilityRefresh.info(
-				"📥 Response received in \(String(format: "%.3f", networkTime))s"
-			)
-			Logger.facilityRefresh.debug("📊 Data size: \(data.count) bytes")
+		switch httpResponse.statusCode {
+		case 200 ... 299:
+			return
+		case 429:
+			Logger.facilityRefresh.warning("⚠️ API rate limit hit")
+			throw APIError.networkError(429)
+		case 400 ... 499:
+			Logger.facilityRefresh.error("❌ Client error: \(httpResponse.statusCode)")
+			throw APIError.networkError(httpResponse.statusCode)
+		case 500 ... 599:
+			Logger.facilityRefresh.error("❌ Server error: \(httpResponse.statusCode)")
+			throw APIError.networkError(httpResponse.statusCode)
+		default:
+			Logger.facilityRefresh.error("❌ Unexpected status: \(httpResponse.statusCode)")
+			throw APIError.networkError(httpResponse.statusCode)
 
-			// Check HTTP status
-			if let httpResponse = response as? HTTPURLResponse {
-				Logger.facilityRefresh.debug(
-					"🌐 HTTP Status: \(httpResponse.statusCode)"
-				)
-				Logger.facilityRefresh.debug(
-					"📨 Response headers: \(httpResponse.allHeaderFields)"
-				)
-
-				if httpResponse.statusCode == 429 {
-					Logger.facilityRefresh.error("⚠️ Rate limited for facility \(id)")
-					throw APIError.networkError(
-						NSError(
-							domain: "RateLimit",
-							code: 429,
-							userInfo: [
-								NSLocalizedDescriptionKey: "Rate limit exceeded"
-							]
-						)
-					)
-				} else if httpResponse.statusCode != 200 {
-					Logger.facilityRefresh.warning(
-						"⚠️ HTTP \(httpResponse.statusCode) for facility \(id)"
-					)
-				}
-			}
-
-			if let rawString = String(data: data, encoding: .utf8) {
-				Logger.facilityRefresh.info("📄 Raw JSON response: \(rawString)")
-
-				let bytes = data.map {
-					String(format: "%02x", $0)
-				}.joined(
-					separator: " "
-				)
-				Logger.facilityRefresh.debug(
-					"🔍 Raw bytes (first 100): \(String(bytes.prefix(200)))"
-				)
-			} else {
-				Logger.facilityRefresh.error("❌ Cannot convert data to UTF-8 string!")
-			}
-
-			return try attemptDecode(data: data, facilityId: id)
-
-		} catch {
-			throw APIError.networkError(error)
 		}
 	}
 
-	private func attemptDecode(data: Data, facilityId: String) throws -> ParkingAPIResponse
-		{
-		let decoder = JSONDecoder()
+	func decode(_ data: Data, facilityId: String) throws -> ParkingAPIResponse {
 
-		// Strategy 1: Decode it into single object
-		do {
-			let facility = try decoder.decode(
-				ParkingAPIResponse.self,
-				from: data
-			)
-			Logger.facilityRefresh.info("✅ Single object decode SUCCESS for \(facilityId)")
-			return facility
-		} catch let decodingError {
-			Logger.facilityData.warning(
-				"⚠️ Single object decode failed for \(facilityId)"
-			)
-			Logger.facilityData.debug("🔍 Decoding error: \(decodingError)")
-
-			if let decodingError = decodingError as? DecodingError {
-				logDecodingError(decodingError, context: "single object")
-			}
+		if let response = try ? decoder.decode(
+			ParkingAPIResponse.self,
+			from: data
+		) {
+			return response
 		}
 
-		// Strategy 2: Dictionary format
+		// Fallback to dictionary format decoder
 		do {
-			let facilitiesDict = try decoder.decode(
+			let dict = try decoder.decode(
 				[String: ParkingAPIResponse] .self,
 				from: data
 			)
-			Logger.facilityData.info(
-				"📚 Dictionary contains \(facilitiesDict.keys.count) facilities"
-			)
-			Logger.facilityData.debug(
-				"🗝️ Dictionary keys: \(Array(facilitiesDict.keys))"
-			)
 
-			if let facility = facilitiesDict[facilityId] ?? facilitiesDict.values.first {
-				Logger.facilityData.info(
-					"✅ Dictionary decode SUCCESS for \(facilityId)"
-				)
-				return facility
+			if let response = dict[facilityId] ?? dict.values.first {
+				return response
 			} else {
-				Logger.facilityData.error(
-					"❌ Facility \(facilityId) not found in dictionary"
-				)
+				throw APIError.noDataForFacility(facilityId)
 			}
-		} catch let decodingError {
-			Logger.facilityData.warning(
-				"⚠️ Dictionary decode failed for \(facilityId)"
-			)
-			if let decodingError = decodingError as? DecodingError {
-				logDecodingError(decodingError, context: "dictionary")
-			}
-		}
-
-		Logger.facilityData.error(
-			"❌ ALL decode strategies failed for facility \(facilityId)"
-		)
-		throw APIError.noData
-	}
-
-	private func logDecodingError(_ error: DecodingError, context: String) {
-		switch error {
-		case .typeMismatch (let type, let ct):
-			Logger.facilityData.debug(
-				"🔍 [\(context)] Type mismatch: expected \(type), at path: \(ct.codingPath)"
-			)
-		case .valueNotFound (let type, let ct):
-			Logger.facilityData.debug(
-				"🔍 [\(context)] Value not found: \(type) at path: \(ct.codingPath)"
-			)
-		case .keyNotFound (let key, let ct):
-			Logger.facilityData.debug(
-				"🔍 [\(context)] Key not found: \(key.stringValue) at path: \(ct.codingPath)"
-			)
-		case .dataCorrupted (let ct):
-			Logger.facilityData.debug(
-				"🔍 [\(context)] Data corrupted at path: \(ct.codingPath)"
-			)
-			Logger.facilityData.debug(
-				"🔍 [\(context)] Debug description: \(ct.debugDescription)"
-			)
-		@unknown default:
-			Logger.facilityData.debug("🔍 [\(context)] Unknown decoding error: \(error)")
+		} catch {
+			throw APIError.decodingFailed(error)
 		}
 	}
 }
 
-extension ParkingAPIService {
+// MARK: - Supporting types
 
+enum APIError: LocalizedError {
+	case invalidURL
+	case noDataForFacility (String)
+	case decodingFailed (Error)
+	case networkError (Int)
+
+	var errorDescription: String? {
+		switch self {
+		case .invalidURL:
+			return "Invalid API URL configuration"
+		case .noDataForFacility (let id):
+			return "No data returned for facility \(id)"
+		case .decodingFailed (let error):
+			return "Failed to decode API response: \(error.localizedDescription)"
+		case .networkError (let code):
+			return "Network error with status code: \(code)"
+		}
+	}
 }

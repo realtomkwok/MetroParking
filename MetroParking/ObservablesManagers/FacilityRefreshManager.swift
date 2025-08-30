@@ -58,9 +58,9 @@ extension FacilityRefreshManager {
 				}
 				// TODO: ProgressCallBack()
 			}
-			facility.scheduleNextRefresh(appState: currentAppState)
+			scheduleNextRefresh()
 		} catch {
-			facility.markRefreshFailed()
+			Logger.facilityRefresh.error("❌ Failed to fetch data: \(error)")
 			// TODO: ProgressCallBack()
 		}
 
@@ -143,9 +143,7 @@ extension FacilityRefreshManager {
 		isRefreshing = true
 		initialLoadProgress = .loading(0, 0)
 
-		let facilities = getAllFacilities().filter {
-			$0.refreshTier != .onDemand
-		}
+		let facilities = getAllFacilities()
 		let totalCount = facilities.count
 		await MainActor.run {
 			initialLoadProgress = .loading(0, totalCount)
@@ -229,25 +227,8 @@ extension FacilityRefreshManager {
 			Logger.facilityRefresh.info(
 				"🔄 Refreshing \(facility.name) in detail view (age: \(Int(timeSinceLastRefresh))s)"
 			)
-			await refreshSingleFacility(facility)
+			await loadFacility(facility)
 		}
-	}
-
-	/// Force refresh a single facility (for manual refresh button)
-	func refreshSingleFacility(_ facility: ParkingFacility) async {
-		guard !isRefreshing else { return }
-
-		Logger.facilityRefresh.info("🔄 Force refreshing \( facility.name )")
-		isRefreshing = true
-
-		// Reuse existing `loadOccupancyForFacility` function
-		await loadFacility(facility)
-
-		// Reuse existing saveContext function
-		saveContext()
-
-		isRefreshing = false
-		lastRefreshTime = Date()
 	}
 }
 

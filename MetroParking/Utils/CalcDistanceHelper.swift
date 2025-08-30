@@ -6,6 +6,7 @@
 //
 
 import MapKit
+import OSLog
 
 class DistanceCalculator {
 	private static var routeCache: [String: RouteData] = [:]
@@ -68,7 +69,7 @@ class DistanceCalculator {
 				return result
 			}
 		} catch {
-			print("❌ Failed to calculate route: \(error)")
+			Logger.maps.error("❌ Failed to calculate route: \(error)")
 		}
 		
 		return nil

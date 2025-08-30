@@ -10,7 +10,13 @@ import OSLog
 extension Logger {
     private static var subsystem = Bundle.main.bundleIdentifier ?? "MetroParking"
 
+    static let appConfiguration = Logger(subsystem: subsystem, category: "Configuration")
+
     static let facilityData = Logger(subsystem: subsystem, category: "Facility Data")
 
     static let facilityRefresh = Logger(subsystem: subsystem, category: "Facility Refresh")
+
+    static let maps = Logger(subsystem: subsystem, category: "Map Service")
+
+    static let ui = Logger(subsystem: subsystem, category: "UI")
 }

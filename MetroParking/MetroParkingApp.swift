@@ -33,9 +33,9 @@ struct MetroParkingApp: App {
         WindowGroup {
             ContentView()
 				.modelContainer(sharedModelContainer)
-				.onAppear {
-					setupRefreshManager()
-				}
+//				.onAppear {
+//					setupRefreshManager()
+//				}
         }
     }
 	
@@ -53,11 +53,11 @@ struct MetroParkingApp: App {
         #endif
     }
     
-	private func setupRefreshManager() {
-		let context = sharedModelContainer.mainContext
-		
-		Task { @MainActor in
-			FacilityRefreshManager.shared.setModelContext(context)
-		}
-	}
+//	private func setupRefreshManager() {
+//		let context = sharedModelContainer.mainContext
+//		
+//		Task { @MainActor in
+//			FacilityRefreshManager.shared.setModelContext(context)
+//		}
+//	}
 }

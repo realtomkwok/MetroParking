@@ -19,7 +19,7 @@ struct ParkingDetailView: View {
 	let onDismiss: () -> Void
 
 	/// ETA Services
-	@ObservedObject private var refreshManager = FacilityRefreshManager.shared
+	@ObservedObject private var facilityManager = FacilityManager.shared
 	@ObservedObject private var etaService = ETAService.shared
 	@ObservedObject private var locationManager = LocationManager.shared
 
@@ -293,7 +293,7 @@ struct ParkingDetailView: View {
 
 			/// Refresh and Calculate ETA when view appears
 			Task {
-				await refreshManager.refreshFacilityIfNeeded(facility)
+				await facilityManager.loadFacility(facility)
 				await calculateETAIfNeeded()
 			}
 		}

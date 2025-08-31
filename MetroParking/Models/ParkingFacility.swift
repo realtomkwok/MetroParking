@@ -43,7 +43,6 @@ final class ParkingFacility {
 	private var _cachedOccupancy: Int = 0
 	private var _cachedAvailableSpots: Int = 0
 	private var _occupancyCacheTime: Date = Date.distantPast
-	private var occupancyCacheValidityMinutes: TimeInterval = 15
 
 	@Relationship(deleteRule: .cascade, inverse: \ParkingZone.facility)
 	var zones: [ParkingZone] = []
@@ -72,7 +71,7 @@ final class ParkingFacility {
 
 	var isOccupancyCacheValid: Bool {
 		let cacheAge = Date().timeIntervalSince(_occupancyCacheTime)
-		return cacheAge < (occupancyCacheValidityMinutes * 60)
+		return cacheAge < 1000
 	}
 
 	var timeSinceLastRefresh: TimeInterval {

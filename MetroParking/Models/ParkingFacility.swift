@@ -9,8 +9,8 @@
 
 import Foundation
 import MapKit
-import SwiftData
 import OSLog
+import SwiftData
 
 @Model
 final class ParkingFacility {
@@ -35,11 +35,12 @@ final class ParkingFacility {
 	var retrievalFailures: Int = 0
 	var lastFailureDate: Date?
 
-	/// Route caching
+	// Route caching
 	var lastCalculatedDistance: CLLocationDistance?
 	var lastCalculatedTravelTime: TimeInterval?
 	var routingDataAge: Date?
 
+	// Occupancy cache
 	private var _cachedOccupancy: Int = 0
 	private var _cachedAvailableSpots: Int = 0
 	private var _occupancyCacheTime: Date = Date.distantPast
@@ -47,53 +48,9 @@ final class ParkingFacility {
 	@Relationship(deleteRule: .cascade, inverse: \ParkingZone.facility)
 	var zones: [ParkingZone] = []
 
-	/// Computed properties
-	var displayName: String {
-		return name.removePrefix("Park&Ride - ").localizedCapitalized
-	}
+	// MARK: - Initialisers
 
-	var availabilityStatus: AvailabilityStatus {
-		let available = currentAvailableSpots
-		let total = totalSpaces
-
-		if available >= 0 {
-			if available == 0 {
-				return .full
-			} else if available < total / 10 {
-				return .almostFull
-			} else {
-				return .available
-			}
-		} else {
-			return .noData
-		}
-	}
-
-	var isOccupancyCacheValid: Bool {
-		let cacheAge = Date().timeIntervalSince(_occupancyCacheTime)
-		return cacheAge < 1000
-	}
-
-	var timeSinceLastRefresh: TimeInterval {
-		return Date().timeIntervalSince(lastRefreshed)
-	}
-
-	var hasRecentFailures: Bool {
-		return retrievalFailures > 0
-	}
-
-	var hasValidRoutingData: Bool {
-		guard let age = routingDataAge else { return false }
-		return age.timeIntervalSinceNow > -3600/// Valid for an hour
-	}
-
-	// TODO: Localisation
-	var formattedLastUpdated: String {
-		return lastUpdated == .distantPast
-			? "--"
-			: "updated \(lastUpdated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))"
-	}
-
+	// From API
 	init(from apiResponse: ParkingAPIResponse) {
 		self.facilityId = apiResponse.facilityId
 		self.name = apiResponse.facilityName
@@ -115,20 +72,87 @@ final class ParkingFacility {
 
 	}
 
-	init(from staticInfo: StaticFacilityInfo) {
-		self.facilityId = staticInfo.facilityId
-		self.name = staticInfo.name
-		self.tsn = staticInfo.tsn
-		self.tfnswFacilityId = staticInfo.tfnswFacilityId
-		self.suburb = staticInfo.suburb
-		self.address = staticInfo.address
-		self.latitude = staticInfo.latitude
-		self.longitude = staticInfo.longitude
-		self.totalSpaces = staticInfo.totalSpaces
-		self.lastUpdated = Date.distantPast  // No occupancy data yet
-		self.isFavourite = false
+	// Direct init for static facilities (initial load)
+	init(
+		facilityId: String,
+		name: String,
+		suburb: String,
+		address: String,
+		latitude: Double,
+		longitude: Double,
+		totalSpaces: Int,
+		tsn: String,
+		tfnswFacilityId: String
+	) {
+		self.facilityId = facilityId
+		self.name = name
+		self.tsn = tsn
+		self.tfnswFacilityId = tfnswFacilityId
+		self.suburb = suburb
+		self.address = address
+		self.latitude = latitude
+		self.longitude = longitude
+		self.totalSpaces = totalSpaces
+		self.lastUpdated = Date.distantPast
 		self.lastVisited = nil
+		self.isFavourite = false
 		self.notificationThreshold = nil
+	}
+
+	// MARK: - Computed properties
+	var displayName: String {
+		return name.removePrefix("Park&Ride - ").localizedCapitalized
+	}
+
+	var availabilityStatus: AvailabilityStatus {
+		let available = currentAvailableSpots
+		let total = totalSpaces
+
+		if available >= 0 {
+			if available == 0 {
+				return .full
+			} else if available < total / 10 {
+				return .almostFull
+			} else {
+				return .available
+			}
+		} else {
+			return .noData
+		}
+	}
+
+	/// Refresh priority tier
+	var refreshTier: RefreshTier {
+		if isFavourite { return .critical }
+		if lastVisited?.timeIntervalSinceNow ?? -3600 > 3600 {
+			return .standard
+		}
+		return .background
+	}
+
+	var isOccupancyCacheValid: Bool {
+		let cacheAge = Date().timeIntervalSince(_occupancyCacheTime)
+		return cacheAge < refreshTier.cacheValiditySeconds
+	}
+
+	var timeSinceLastRefresh: TimeInterval {
+		return Date().timeIntervalSince(lastRefreshed)
+	}
+
+	var hasRecentFailures: Bool {
+		return retrievalFailures > 0
+	}
+
+	var hasValidRoutingData: Bool {
+		guard let age = routingDataAge else { return false }
+		return age.timeIntervalSinceNow > -3600/// Valid for an hour
+	}
+
+	// TODO: Localisation
+	var formattedLastUpdated: String {
+		return lastUpdated == .distantPast
+			? "--"
+			: "updated \(lastUpdated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))"
 	}
 }
 
@@ -243,6 +267,20 @@ extension ParkingFacility {
 			self.lastCalculatedDistance = nil
 			self.lastCalculatedTravelTime = nil
 			self.routingDataAge = nil
+		}
+	}
+}
+
+enum RefreshTier: CaseIterable {
+	case critical
+	case standard
+	case background
+
+	var cacheValiditySeconds: TimeInterval {
+		switch self {
+		case .critical: return 15  // 15 sec
+		case .standard: return 60  // 1 min
+		case .background: return 600  // 10 min
 		}
 	}
 }

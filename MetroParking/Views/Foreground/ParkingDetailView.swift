@@ -135,7 +135,7 @@ struct ParkingDetailView: View {
 											)
 										}
 
-										Gauge(value: max(0, occupancyProgress)) {
+										Gauge(value: occupancyProgress) {
 											Label("Value", systemImage: "car")
 										}
 										.gaugeStyle(.accessoryLinear)

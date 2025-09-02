@@ -16,52 +16,46 @@ struct ContentView: View {
 	@Environment(\.modelContext) private var modelContext
 
 	@ObservedObject private var facilityManager = FacilityManager.shared
+	@ObservedObject private var appStateManager = AppStateManager.shared
 
 	/// Location Manager
 	@ObservedObject private var locationManager = LocationManager.shared
 
-	/// Map State manager
-	@StateObject private var mapStateManager = MapStateManager()
-	/// Sheet manager
-	@StateObject private var sheetStateManager = SheetStateManager()
-
 	/// UI State
-	@State private var presentSheet = true
+	@State private var presentMainSheet = true
 	@State private var hasInitialised = false
 
 	var body: some View {
 		ZStack {
 			BackgroundView(
-				mapState: mapStateManager,
-				sheetState: sheetStateManager,
+				appState: appStateManager,
 				locationState: locationManager
 			)
-			.sheet(isPresented: $presentSheet) {
+
+			// MARK: - Main sheet
+			.sheet(isPresented: $presentMainSheet) {
 
 				ForegroundView(
-					mapState: mapStateManager,
-					sheetState: sheetStateManager,
+					appState: appStateManager,
 					locationState: locationManager
 				)
 				.presentationCornerRadius(24)
 				.presentationBackground(.thinMaterial)
 				.presentationDetents(
-					[.fraction(0.3), .medium, .large],
-					selection: $sheetStateManager.currentDetent
+					Set(SheetState.allCases.map { $0.detent }),
+					selection: $appStateManager.currentDetent
 				)
 				.presentationDragIndicator(.visible)
 				.presentationBackgroundInteraction(.enabled)
 				.presentationContentInteraction(.resizes)
 				.interactiveDismissDisabled()
 			}
+
 			.task {
 				guard !hasInitialised else { return }
 				hasInitialised = true
 				await initialisedApp()
 			}
-//			.onDisappear {
-//				facilityManager.stopAutoRefresh()
-//			}
 			.fontDesign(.rounded)
 		}
 	}
@@ -101,37 +95,27 @@ enum ScreenView: String, CaseIterable, Identifiable {
 	}
 
 	@ViewBuilder
-	func destinationView(
-		mapState: MapStateManager,
-		sheetState: SheetStateManager,
-	) -> some View {
+	func destinationView() -> some View {
 		VStack(spacing: 8) {
 			Spacer()
 			switch self {
 			case .pinned:
-
-				PinnedAndRecents(
-					mapState: mapState,
-					sheetState: sheetState
-				)
+				PinnedAndRecents()
 
 			case .all:
-				AllFacilitiesView(
-					mapState: mapState,
-					sheetState: sheetState
-				)
+				AllFacilitiesView()
 			}
 		}
 	}
 }
 
 struct ForegroundView: View {
-	@ObservedObject var mapState: MapStateManager
-	@ObservedObject var sheetState: SheetStateManager
+	@ObservedObject var appState: AppStateManager
 	@ObservedObject var locationState: LocationManager
 
 	@State private var selectedScreen: ScreenView = .pinned
 	@State private var showSettingsSheet: Bool = false
+	@State private var detailSheetDetent: PresentationDetent = .medium
 
 	/// Tracking scroll position and dynamically change the background of Topbar
 	@State private var isScrolled = false
@@ -165,10 +149,7 @@ struct ForegroundView: View {
 
 			LazyVStack(alignment: .leading, pinnedViews: .sectionHeaders) {
 				Section {
-					selectedScreen.destinationView(
-						mapState: mapState,
-						sheetState: sheetState,
-					)
+					selectedScreen.destinationView()
 				} header: {
 					TopBar(showBackground: isScrolled) {
 						/// Menu (select views)
@@ -206,7 +187,7 @@ struct ForegroundView: View {
 							Button {
 								Task {
 									await facilityManager
-										.performLoad()
+										.performLoad(forced: true)
 								}
 							} label: {
 								Label("Refresh", systemImage: "arrow.clockwise")
@@ -248,35 +229,31 @@ struct ForegroundView: View {
 					}
 				}
 			}
-			.sheet(
-				isPresented: $sheetState.showingFacilityDetail,
-				onDismiss: {
-					mapState.showAllFacilities()
-				},
-				content: {
-					if let facility = sheetState.selectedFacilityForDetail {
-						ParkingDetailView(
-							facility: facility,
-							onDismiss: {
-								sheetState.hideFacilityDetail()
-								mapState.showAllFacilities()
-							}
-						)
-						.presentationDetents(
-							[.fraction(0.2), .medium, .large],
-							selection: $sheetState.currentDetent
-						)
-						.presentationBackground(.regularMaterial)
-						.presentationDragIndicator(.visible)
-						//					.presentationCornerRadius(24)
-						.presentationBackgroundInteraction(.enabled)
-
-					}
-				}
-			)
 		}
 		.fontDesign(.rounded)
 		.coordinateSpace(name: "scroll")
+		// MARK: - Detail Sheet
+		.sheet(
+			isPresented: $appState.showingFacilityDetail,
+			onDismiss: {
+				appState.deselectFacility()
+			}
+		) {
+			if let facility = appState.selectedFacility {
+				ParkingDetailView(
+					facility: facility,
+					onDismiss: appState
+						.toggleFacilityDetail
+				)
+				.presentationDetents(
+					Set(SheetState.allCases.map { $0.detent }),
+					selection: $detailSheetDetent
+				)
+				.presentationDragIndicator(.hidden)
+				.presentationBackgroundInteraction(.enabled(upThrough: .medium))
+				.presentationBackground(.thinMaterial)
+			}
+		}
 		.sheet(isPresented: $showSettingsSheet) {
 			SettingsView()
 				.presentationDetents([.large])
@@ -287,8 +264,7 @@ struct ForegroundView: View {
 }
 
 struct BackgroundView: View {
-	@ObservedObject var mapState: MapStateManager
-	@ObservedObject var sheetState: SheetStateManager
+	@ObservedObject var appState: AppStateManager
 	@ObservedObject var locationState: LocationManager
 
 	@Query var allFacilities: [ParkingFacility]
@@ -298,7 +274,7 @@ struct BackgroundView: View {
 	var body: some View {
 		VStack {
 			Map(
-				position: $mapState.cameraPosition
+				position: $appState.cameraPosition
 			) {
 				UserAnnotation()
 
@@ -313,12 +289,11 @@ struct BackgroundView: View {
 					) {
 						ParkingMapAnnotation(
 							facility: facility,
-							isSelected: mapState.selectedFacility?.facilityId
+							isSelected: appState.selectedFacility?.facilityId
 								== facility.facilityId
 						)
 						.onTapGesture {
-							mapState.focusOnFacility(facility)
-							sheetState.showFacilityDetail(facility)
+							appState.selectFacility(facility)
 						}
 					}
 
@@ -346,14 +321,13 @@ struct BackgroundView: View {
 					case .authorizedAlways, .authorizedWhenInUse:
 
 						let newRegion =
-							locationState.getNearestFacilitiesRegion(
+							MapCameraHelper.getNearestFacilitiesRegion(
 								facilities: allFacilities,
 								count: 5,
-								paddingFactor: 1
 							)
 
 						withAnimation(.snappy(duration: 1.5)) {
-							mapState.cameraPosition = .region(newRegion)
+							appState.cameraPosition = .region(newRegion)
 						}
 
 					@unknown default:
@@ -399,8 +373,7 @@ struct BackgroundView: View {
 
 #Preview("Foreground Sheet") {
 	ForegroundView(
-		mapState: MapStateManager(),
-		sheetState: SheetStateManager(),
+		appState: AppStateManager(),
 		locationState: LocationManager()
 	)
 	.modelContainer(PreviewHelper.previewContainer(withSamplePins: false))

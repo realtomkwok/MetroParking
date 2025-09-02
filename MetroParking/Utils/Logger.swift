@@ -19,4 +19,8 @@ extension Logger {
     static let maps = Logger(subsystem: subsystem, category: "Map Service")
 
     static let ui = Logger(subsystem: subsystem, category: "UI")
+
+	static let api = Logger(subsystem: subsystem, category: "API")
+
+	static let location = Logger(subsystem: subsystem, category: "Location Services")
 }

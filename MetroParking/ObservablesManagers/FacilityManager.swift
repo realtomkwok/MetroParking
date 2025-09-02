@@ -18,7 +18,7 @@ class FacilityManager: ObservableObject {
 	// MARK: - Live data
 	@Published var isRefreshing = false
 	@Published var lastRefreshTime: Date?
-	@Published var initialLoadProgress: InitialLoadProgress = .notStarted
+	@Published var loadProgress: LoadProgress = .notStarted
 
 	// MARK: - Static data
 	@Published var isLoadingStaticData = false
@@ -69,18 +69,13 @@ extension FacilityManager {
 		Logger.facilityData.notice("📦 Loading static facility data...")
 		isLoadingStaticData = true
 
-		let staticFacilities = LocationManager.shared
-			.sortStaticFacilitiesByDistance(
-				ParkingFacility.getAllStaticFacilities()
-			)
+		let staticFacilities = ParkingFacility.getAllStaticFacilities()
 
 		Logger.facilityData.notice(
 			"📦 Inserting \(staticFacilities.count) facilities into SwiftData..."
 		)
 
-		/// Insert facilities WITHOUT occupancy data
-		for staticInfo in staticFacilities {
-			let facility = ParkingFacility(from: staticInfo)
+		for facility in staticFacilities {
 			context.insert(facility)
 		}
 
@@ -143,8 +138,14 @@ extension FacilityManager {
 extension FacilityManager {
 
 	/// When the app is opened for the first time, awakened from the background, or it is requested by the user, run this function to load the data immediately
-	func performLoad() async {
-		guard !isRefreshing, modelContext != nil else {
+	func performLoad(forced: Bool = false) async {
+		guard !isRefreshing else {
+			Logger.facilityRefresh
+				.warning("Refresh has already started, not refreshing")
+			return
+		}
+
+		guard modelContext != nil else {
 			Logger.facilityRefresh
 				.error("Model Context not found, not refreshing")
 			return
@@ -152,35 +153,61 @@ extension FacilityManager {
 
 		Logger.facilityRefresh.info("Starting loading data")
 		isRefreshing = true
-		initialLoadProgress = .loading(0, 0)
+		loadProgress = .loading(0, 0)
 
-		let facilities = getAllFacilities()
-		let prioritisedFacilities = prioritiseFacilities(facilities)
+		let allFacilities = getAllFacilities()
 
-		let totalCount = facilities.count
-		await MainActor.run {
-			initialLoadProgress = .loading(0, totalCount)
+		// Separate by tier and cache validity
+		let critical = allFacilities.filter {
+			$0.refreshTier == .critical && !$0.isOccupancyCacheValid
+		}
+		let standard = allFacilities.filter {
+			$0.refreshTier == .standard && !$0.isOccupancyCacheValid
+		}
+		let background = allFacilities.filter {
+			$0.refreshTier == .background && !$0.isOccupancyCacheValid
 		}
 
-		for facility in prioritisedFacilities {
+		let smartLoadBatches = (critical + standard + background)
+
+		// Load in priority order, respecting API limits
+		let toLoad = forced ? smartLoadBatches : allFacilities
+
+		var processedCount = 0
+
+		await MainActor.run {
+			loadProgress = .loading(0, toLoad.count)
+		}
+
+		for facility in toLoad {
 			await loadFacility(facility)
+			processedCount += 1
+
+			await MainActor.run {
+				loadProgress = .loading(processedCount, toLoad.count)
+			}
 		}
 
 		isRefreshing = false
-		initialLoadProgress = .completed
+		loadProgress = .completed
 		lastRefreshTime = Date()
 
 		await saveContext()
 
-		Logger.facilityRefresh.notice("✅ \( totalCount ) facilities loaded")
+		Logger.facilityRefresh.notice("✅ \( processedCount ) facilities updated")
 	}
 
 	func loadFacility(_ facility: ParkingFacility) async {
-//		guard !facility.isOccupancyCacheValid else {
-//			Logger.facilityRefresh
-//				.info("Cache still valid for \(facility.displayName)")
-//			return
-//		}
+		guard !facility.isOccupancyCacheValid else {
+			Logger.facilityRefresh
+				.info("Cache still valid for \(facility.displayName)")
+			return
+		}
+
+		guard APIUsageMonitor.canMakeCall else {
+			Logger.facilityRefresh.warning("⚠️ API limit reached")
+			return
+		}
 
 		do {
 			let response = try await ParkingAPIService.shared.fetchFacility(
@@ -222,7 +249,7 @@ extension FacilityManager {
 
 		timeForCleanup = refreshTimer
 		Logger.facilityRefresh.notice(
-			"⏰ Auto refresh started (5 min intervals)"
+			"⏰ Auto refresh started"
 		)
 	}
 
@@ -231,35 +258,6 @@ extension FacilityManager {
 		refreshTimer = nil
 		Logger.facilityRefresh.notice("⏹️ Auto refresh stopped")
 	}
-
-	private func prioritiseFacilities(_ facilities: [ParkingFacility])
-		-> [ParkingFacility]
-	{
-		var prioritised: [ParkingFacility] = []
-		var remaining = facilities
-		// MARK: - Step 1: Load favourites
-		let favourites = remaining.filter { $0.isFavourite }
-		prioritised.append(contentsOf: favourites)
-		remaining.removeAll { $0.isFavourite }
-
-		// MARK: - Step 2: Load recently-visited ones
-		let recents =
-			remaining
-			.filter { $0.lastVisited != nil }
-			.sorted { $0.lastVisited! > $1.lastVisited! }
-
-		prioritised.append(contentsOf: recents)
-		remaining.removeAll { $0.lastVisited != nil }
-
-		// MARK: - Step 3: Load the most stale data
-		let stalest = remaining.sorted {
-			$0.timeSinceLastRefresh > $1.timeSinceLastRefresh
-		}
-		prioritised.append(contentsOf: stalest)
-
-		return prioritised
-	}
-
 }
 
 // MARK: - Helper Methods
@@ -340,13 +338,13 @@ enum AppState {
 
 	var refreshInterval: TimeInterval {
 		switch self {
-		case .active: return 30.0
+		case .active: return 15.0
 		case .background: return 300.0
 		}
 	}
 }
 
-enum InitialLoadProgress {
+enum LoadProgress {
 	typealias Current = Int
 	typealias Total = Int
 

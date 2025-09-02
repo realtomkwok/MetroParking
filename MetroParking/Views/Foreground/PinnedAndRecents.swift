@@ -9,8 +9,7 @@ import SwiftData
 import SwiftUI
 
 struct PinnedAndRecents: View {
-	let mapState: MapStateManager
-	let sheetState: SheetStateManager
+	let appState = AppStateManager.shared
 
 	/// For pinned facilities
 	@Query(
@@ -74,8 +73,6 @@ struct PinnedAndRecents: View {
 								facility in
 								ParkingGauge(
 									facility: facility,
-									mapState: mapState,
-									sheetState: sheetState
 								)
 							}
 							.safeAreaPadding(.leading)
@@ -105,9 +102,7 @@ struct PinnedAndRecents: View {
 				ForEach(recentlyVisitedFacilities, id: \.facilityId) {
 					facility in
 					ParkingListCardView(
-						facility: facility,
-						mapState: mapState,
-						sheetState: sheetState
+						facility: facility
 					)
 				}
 			}
@@ -118,9 +113,6 @@ struct PinnedAndRecents: View {
 }
 
 #Preview {
-	PinnedAndRecents(
-		mapState: MapStateManager(),
-		sheetState: SheetStateManager()
-	)
+	PinnedAndRecents()
 	.modelContainer(PreviewHelper.previewContainer(withSamplePins: true))
 }

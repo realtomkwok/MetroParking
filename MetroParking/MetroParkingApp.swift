@@ -14,7 +14,6 @@ struct MetroParkingApp: App {
 		let schema = Schema([
 			ParkingFacility.self,
 			ParkingZone.self,
-			Item.self,
 		])
 		let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

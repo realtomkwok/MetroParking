@@ -148,7 +148,7 @@ extension MapCameraHelper {
 
 		return calculateRegion(
 			for: coordinates,
-			paddingFactor: 1.3,
+			paddingFactor: 1.5,
 			minSpan: 0.5,
 			maxSpan: 2.0
 		)

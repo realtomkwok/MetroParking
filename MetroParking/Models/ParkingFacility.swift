@@ -104,6 +104,13 @@ final class ParkingFacility {
 		return name.removePrefix("Park&Ride - ").localizedCapitalized
 	}
 
+	var coordinate: CLLocationCoordinate2D {
+		return CLLocationCoordinate2D(
+			latitude: latitude,
+			longitude: longitude
+		)
+	}
+
 	var availabilityStatus: AvailabilityStatus {
 		let available = currentAvailableSpots
 		let total = totalSpaces
@@ -121,10 +128,10 @@ final class ParkingFacility {
 		}
 	}
 
-	/// Refresh priority tier
+	// MARK: - Refresh priority tier
 	var refreshTier: RefreshTier {
-		if isFavourite { return .critical }
-		if lastVisited?.timeIntervalSinceNow ?? -3600 > 3600 {
+		if self.isFavourite { return .critical }
+		if self.lastVisited?.timeIntervalSinceNow ?? -3600 > 3600 {
 			return .standard
 		}
 		return .background
@@ -153,6 +160,21 @@ final class ParkingFacility {
 		return lastUpdated == .distantPast
 			? "--"
 			: "updated \(lastUpdated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))"
+	}
+
+	// MARK: - MapKit
+
+	var mapItem: MKMapItem {
+		let coordinate = CLLocationCoordinate2D(
+			latitude: latitude,
+			longitude: longitude
+		)
+		let placeMark = MKPlacemark(coordinate: coordinate)
+
+		// TODO: .init(placemark: placemark) is deprecated, there's a new method for creating a MapItem
+		let item = MKMapItem(placemark: placeMark)
+		item.name = displayName
+		return item
 	}
 }
 

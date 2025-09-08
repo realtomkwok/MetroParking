@@ -5,25 +5,25 @@
 //  Created by Tom Kwok on 2/9/2025.
 //
 
-import SwiftUI
-import SwiftData
 import MapKit
+import OSLog
+import SwiftData
+import SwiftUI
 
 struct BackgroundView: View {
-	@ObservedObject var appState: AppStateManager
-	@ObservedObject var locationState: LocationManager
+	@ObservedObject var appState = AppStateManager.shared
+	@ObservedObject var locationState = LocationManager.shared
+	@ObservedObject var mapCamera = MapCameraManager.shared
 
 	@Query var allFacilities: [ParkingFacility]
 	@State private var showLocationPermissionAlert = false
 	@State private var showLocationSettingsAlert = false
 
 	var body: some View {
-		VStack {
+		GeometryReader { geometry in
 			Map(
-				position: $appState.cameraPosition
+				position: $mapCamera.cameraPosition
 			) {
-				UserAnnotation()
-
 				ForEach(allFacilities, id: \.facilityId) { facility in
 
 					Annotation(
@@ -45,6 +45,13 @@ struct BackgroundView: View {
 
 				}
 			}
+			.onReceive(appState.$currentSheetDetent) { detent in
+				Task { @MainActor in
+					try? await Task.sleep(for: .milliseconds(50))
+					mapCamera.updateSheetHeight(for: detent, geometry.size.height)
+				}
+
+			}
 			.mapStyle(
 				.standard(
 					elevation: .realistic,
@@ -55,59 +62,69 @@ struct BackgroundView: View {
 			)
 			.mapControls {
 				MapScaleView()
-				MapCompass()
 			}
 		}
-		.overlay(alignment: .trailing) {
-			VStack {
-				Button {
-					switch locationState.authorisationStatus {
-					case .notDetermined, .restricted, .denied:
-						showLocationPermissionAlert = true
-					case .authorizedAlways, .authorizedWhenInUse:
-
-						let newRegion =
-							MapCameraHelper.getNearestFacilitiesRegion(
-								facilities: allFacilities,
-								count: 5,
-							)
-
-						withAnimation(.snappy(duration: 1.5)) {
-							appState.cameraPosition = .region(newRegion)
-						}
-
-					@unknown default:
-						showLocationPermissionAlert = true
-					}
-				} label: {
-					VStack(alignment: .center, spacing: 8) {
-						if locationState.isRefreshing {
-							ProgressView()
-						} else {
-							Label(
-								"Current Location",
-								systemImage: locationState.isLocationAvailable
-									? "location.fill" : "location"
-							)
-							.font(.headline)
-							.frame(width: 40, height: 40)
-							.background(.regularMaterial, in: Circle())
-							.padding(.trailing)
-							.contentTransition(
-								.symbolEffect(.replace, options: .default)
-							)
-							.labelStyle(.iconOnly)
-						}
-					}
-				}
-				.sheet(isPresented: $showLocationPermissionAlert) {
-					PermissionView()
-						.presentationDetents([.medium])
-						.presentationBackgroundInteraction(.disabled)
-
-				}
-				Spacer()
-			}
-		}
+		// TODO: Get current user location
+//		.overlay(alignment: .trailing) {
+//			VStack {
+//				Button {
+//					switch locationState.authorisationStatus {
+//					case .notDetermined, .restricted, .denied:
+//						showLocationPermissionAlert = true
+//					case .authorizedAlways, .authorizedWhenInUse:
+//						guard
+//							let currentLocation = locationState.currentLocation
+//						else {
+//							Logger.location.warning("No location available")
+//							return
+//						}
+//
+//							let nearbyFacilities = allFacilities.sorted {
+//								$0.lastCalculatedDistance! < $1.lastCalculatedDistance!
+//							}
+//
+//							appState
+//								.selectFacilityWithContext(
+//									currentLocation.coordinate,
+//									nearby: nearbyFacilities
+//								)
+//
+//						mapCamera
+//							.updateCameraPosition(
+//								trueCentre: currentLocation.coordinate
+//							)
+//
+//					@unknown default:
+//						showLocationPermissionAlert = true
+//					}
+//				} label: {
+//					VStack(alignment: .center, spacing: 8) {
+//						if locationState.isRefreshing {
+//							ProgressView()
+//						} else {
+//							Label(
+//								"Current Location",
+//								systemImage: locationState.isLocationAvailable
+//									? "location.fill" : "location"
+//							)
+//							.font(.headline)
+//							.frame(width: 40, height: 40)
+//							.background(.regularMaterial, in: Circle())
+//							.padding(.trailing)
+//							.contentTransition(
+//								.symbolEffect(.replace, options: .default)
+//							)
+//							.labelStyle(.iconOnly)
+//						}
+//					}
+//				}
+//				.sheet(isPresented: $showLocationPermissionAlert) {
+//					PermissionView()
+//						.presentationDetents([.medium])
+//						.presentationBackgroundInteraction(.disabled)
+//				}
+//				Spacer()
+//			}
+//		}
 	}
 }

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ParkingListCardView: View {
 
+	@Environment(\.dismiss) private var dismiss
 	@Environment(\.modelContext) private var modelContext
 	@ObservedObject private var locationManager = LocationManager.shared
 
@@ -27,6 +28,7 @@ struct ParkingListCardView: View {
 
 	var body: some View {
 		Button {
+			dismiss()
 			appState.selectFacility(facility)
 		} label: {
 

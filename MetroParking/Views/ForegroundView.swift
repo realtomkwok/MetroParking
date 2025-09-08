@@ -130,28 +130,8 @@ struct ForegroundView: View {
 		}
 		.fontDesign(.rounded)
 		.coordinateSpace(name: "scroll")
-		// MARK: - Detail Sheet
-		.sheet(
-			isPresented: $appState.showingFacilityDetail,
-			onDismiss: {
-				appState.deselectFacility()
-			}
-		) {
-			if let facility = appState.selectedFacility {
-				ParkingDetailView(
-					facility: facility,
-					onDismiss: appState
-						.toggleFacilityDetail
-				)
-				.presentationDetents(
-					Set(SheetState.allCases.map { $0.detent }),
-					selection: $detailSheetDetent
-				)
-				.presentationDragIndicator(.hidden)
-				.presentationBackgroundInteraction(.enabled(upThrough: .medium))
-				.presentationBackground(.thinMaterial)
-			}
-		}
+
+
 		.sheet(isPresented: $showSettingsSheet) {
 			SettingsView()
 				.presentationDetents([.large])

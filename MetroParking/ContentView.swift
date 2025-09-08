@@ -16,48 +16,20 @@ struct ContentView: View {
 	@Environment(\.modelContext) private var modelContext
 
 	@ObservedObject private var facilityManager = FacilityManager.shared
-	@ObservedObject private var appStateManager = AppStateManager.shared
+	@ObservedObject private var appState = AppStateManager.shared
+	@ObservedObject private var mapCamera = MapCameraManager.shared
 
 	/// Location Manager
 	@ObservedObject private var locationManager = LocationManager.shared
 
 	/// UI State
-	@State private var presentMainSheet = true
+	@State private var showingMainSheet = true
 	@State private var hasInitialised = false
 
-	var body: some View {
-		ZStack {
-			BackgroundView(
-				appState: appStateManager,
-				locationState: locationManager
-			)
-
-			// MARK: - Main sheet
-			.sheet(isPresented: $presentMainSheet) {
-
-				ForegroundView(
-					appState: appStateManager,
-					locationState: locationManager
-				)
-				.presentationCornerRadius(24)
-				.presentationBackground(.thinMaterial)
-				.presentationDetents(
-					Set(SheetState.allCases.map { $0.detent }),
-					selection: $appStateManager.currentDetent
-				)
-				.presentationDragIndicator(.visible)
-				.presentationBackgroundInteraction(.enabled)
-				.presentationContentInteraction(.resizes)
-				.interactiveDismissDisabled()
-			}
-
-			.task {
-				guard !hasInitialised else { return }
-				hasInitialised = true
-				await initialisedApp()
-			}
-			.fontDesign(.rounded)
-		}
+	private var shouldDisableMainSheetDismiss: Bool {
+		appState.showingFacilityDetail
+			|| appState.currentSheetDetent == .medium
+			|| appState.currentSheetDetent == .large
 	}
 
 	private func initialisedApp() async {
@@ -70,8 +42,63 @@ struct ContentView: View {
 		/// Start loading live data
 		await facilityManager.performLoad()
 
+		// Might just replace it with hardcoded coordinates
+		mapCamera.setupInitialCameraPosition()
+
 		facilityManager.startAutoRefresh()
 	}
+
+	var body: some View {
+		ZStack {
+			BackgroundView()
+
+				// MARK: - Main sheet
+				.sheet(isPresented: $appState.showingMainSheet) {
+					ForegroundView()
+						.presentationCornerRadius(24)
+						.presentationBackground(.thinMaterial)
+						.presentationDetents(
+							[.fraction(0.2), .medium, .large],
+							selection: $appState.currentSheetDetent
+						)
+						.presentationDragIndicator(.visible)
+						.presentationBackgroundInteraction(.enabled)
+						.presentationContentInteraction(.automatic)
+						.interactiveDismissDisabled(
+							true
+						)
+				}
+
+				// MARK: - Detail Sheet
+				.sheet(
+					isPresented: $appState.showingFacilityDetail,
+					onDismiss: {
+						appState.deselectFacility()
+					}
+				) {
+					if let facility = appState.selectedFacility {
+						ParkingDetailView(
+							facility: facility,
+						)
+						.presentationDetents(
+							[.fraction(0.2), .medium, .large],
+							selection: $appState.currentSheetDetent
+						)
+						.presentationDragIndicator(.hidden)
+						.presentationBackgroundInteraction(.enabled)
+						.presentationBackground(.thinMaterial)
+						.interactiveDismissDisabled(true)
+					}
+				}
+				.task {
+					guard !hasInitialised else { return }
+					hasInitialised = true
+					await initialisedApp()
+				}
+				.fontDesign(.rounded)
+		}
+	}
+
 }
 
 enum ScreenView: String, CaseIterable, Identifiable {

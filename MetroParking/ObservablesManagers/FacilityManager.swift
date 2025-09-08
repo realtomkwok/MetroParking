@@ -103,7 +103,7 @@ extension FacilityManager {
 			return !facilities.isEmpty
 		} catch {
 			Logger.facilityData.error(
-				"❌ Failed to check existing facilities: \(error)"
+				"❌ Failed to check existing facilities: \(error.localizedDescription)"
 			)
 			return false
 		}
@@ -126,7 +126,7 @@ extension FacilityManager {
 				Logger.facilityData.notice("🗑️ Cleared all facilities")
 			} catch {
 				Logger.facilityData.error(
-					"❌ Failed to clear facilities: \(error)"
+					"❌ Failed to clear facilities: \(error.localizedDescription)"
 				)
 			}
 		}
@@ -170,6 +170,11 @@ extension FacilityManager {
 
 		let smartLoadBatches = (critical + standard + background)
 
+		Logger.facilityRefresh
+			.debug(
+				"Loading \(smartLoadBatches.count) facilities (including \(smartLoadBatches.map { $0.displayName + ", " })"
+			)
+
 		// Load in priority order, respecting API limits
 		let toLoad = forced ? smartLoadBatches : allFacilities
 
@@ -194,7 +199,9 @@ extension FacilityManager {
 
 		await saveContext()
 
-		Logger.facilityRefresh.notice("✅ \( processedCount ) facilities updated")
+		Logger.facilityRefresh.notice(
+			"✅ \( processedCount ) facilities updated"
+		)
 	}
 
 	func loadFacility(_ facility: ParkingFacility) async {
@@ -215,7 +222,7 @@ extension FacilityManager {
 			)
 
 			await MainActor.run {
-				withAnimation(.snappy(duration: 0.2, extraBounce: 0.5)) {
+				withAnimation(.snappy(duration: 0.2)) {
 					facility.updateFromAPI(response)
 				}
 			}
@@ -223,7 +230,7 @@ extension FacilityManager {
 			Logger.facilityRefresh.info("✅ Updated \(facility.displayName)")
 		} catch {
 			Logger.facilityRefresh.error(
-				"❌ Failed to fetch \(facility.displayName): \(error)"
+				"❌ Failed to fetch \(facility.displayName): \(error.localizedDescription)"
 			)
 		}
 	}
@@ -264,7 +271,7 @@ extension FacilityManager {
 extension FacilityManager {
 
 	/// Get all facilities from SwiftData
-	private func getAllFacilities() -> [ParkingFacility] {
+	func getAllFacilities() -> [ParkingFacility] {
 		guard let context = modelContext else { return [] }
 
 		let descriptor = FetchDescriptor<ParkingFacility>()
@@ -272,7 +279,7 @@ extension FacilityManager {
 			return try context.fetch(descriptor)
 		} catch {
 			Logger.facilityRefresh.error(
-				"❌ Failed to fetch all facilities: \(error)"
+				"❌ Failed to fetch all facilities: \(error.localizedDescription)"
 			)
 			return []
 		}
@@ -285,14 +292,11 @@ extension FacilityManager {
 		do {
 			try context.save()
 		} catch {
-			Logger.facilityRefresh.error("❌ Failed to save context: \(error)")
+			Logger.facilityRefresh
+				.error(
+					"❌ Failed to save context: \(error.localizedDescription)"
+				)
 		}
-	}
-
-	/// Get user location (convenience method)
-	func getUserLocation() -> (lat: Double, lon: Double) {
-		let userLoc = LocationManager.shared.userLocation
-		return (lat: userLoc.latitude, lon: userLoc.longitude)
 	}
 }
 

@@ -153,7 +153,7 @@ extension PreviewHelper {
 				return container
 
 			} catch {
-				fatalError("Failed to create preview container: \(error)")
+				fatalError("Failed to create preview container: \(error.localizedDescription)")
 			}
 		}
 	}
@@ -193,7 +193,7 @@ extension PreviewHelper {
 			)
 
 		} catch {
-			print("❌ Preview: Failed to add sample pins: \(error)")
+			print("❌ Preview: Failed to add sample pins: \(error.localizedDescription)")
 		}
 	}
 }

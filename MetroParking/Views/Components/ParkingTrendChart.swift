@@ -245,7 +245,7 @@ struct ParkingTrendChart: View {
 							}
 						}
 						.onEnded { _ in
-							withAnimation(.snappy(duration: 0.3)) {
+							withAnimation(.snappy(duration: 0.2)) {
 								isInteracting = false
 								selectedDatePoint = nil
 							}

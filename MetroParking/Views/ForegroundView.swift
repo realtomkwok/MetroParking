@@ -9,8 +9,8 @@ import SwiftUI
 import SwiftData
 
 struct ForegroundView: View {
-	@ObservedObject var appState: AppStateManager
-	@ObservedObject var locationState: LocationManager
+	@ObservedObject var appState = AppStateManager.shared
+	@ObservedObject var locationState = LocationManager.shared
 
 	@State private var selectedScreen: ScreenView = .pinned
 	@State private var showSettingsSheet: Bool = false
@@ -22,7 +22,6 @@ struct ForegroundView: View {
 
 	@ObservedObject private var facilityManager = FacilityManager.shared
 
-	/// SwiftData Queries
 	@Query private var allFacilities: [ParkingFacility]
 
 	var body: some View {

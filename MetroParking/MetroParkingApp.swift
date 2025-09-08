@@ -20,7 +20,7 @@ struct MetroParkingApp: App {
 		do {
 			return try ModelContainer(for: schema, configurations: [modelConfiguration])
 		} catch {
-			fatalError("Could not create ModelContainer: \(error)")
+			fatalError("Could not create ModelContainer: \(error.localizedDescription)")
 		}
 	}()
 

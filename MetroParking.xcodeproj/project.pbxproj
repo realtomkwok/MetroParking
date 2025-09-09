@@ -474,6 +474,7 @@
 				INFOPLIST_FILE = MetroParking/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Metro Parking";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = NO;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We use your location in the background to send you relevant parking information.";
 				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "We use your location in the background to send you relevant parking information.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to show nearby parking and provide location-based information.";
@@ -514,6 +515,7 @@
 				INFOPLIST_FILE = MetroParking/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Metro Parking";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = NO;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We use your location in the background to send you relevant parking information.";
 				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "We use your location in the background to send you relevant parking information.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to show nearby parking and provide location-based information.";

@@ -142,12 +142,22 @@ final class ParkingFacility {
 		return cacheAge < refreshTier.cacheValiditySeconds
 	}
 
-	var timeSinceLastRefresh: TimeInterval {
-		return Date().timeIntervalSince(lastRefreshed)
+	var shouldShowCachedData: Bool {
+		// Show cached data if:
+		// 1. Cache is valid, OR
+		// 2. Cache is recently expired (grace period) AND we have previous data
+		if isOccupancyCacheValid {
+			return true
+		}
+
+		// Grace period: show old data for up to 2x cache validity time
+		let gracePeriod = refreshTier.cacheValiditySeconds * 2
+		let cacheAge = Date().timeIntervalSince(_occupancyCacheTime)
+		return cacheAge < gracePeriod && _cachedAvailableSpots > 0
 	}
 
-	var hasRecentFailures: Bool {
-		return retrievalFailures > 0
+	var timeSinceLastRefresh: TimeInterval {
+		return Date().timeIntervalSince(lastRefreshed)
 	}
 
 	var hasValidRoutingData: Bool {
@@ -202,6 +212,13 @@ extension ParkingFacility {
 		retrievalFailures += 1
 		lastFailureDate = Date()
 
+		// Don't immediately invalidate cache on first few failures
+		// This prevents showing "noData" when API is temporarily down
+		if retrievalFailures >= 3 {
+			// Force cache invalidation after repeated failures
+			_occupancyCacheTime = Date.distantPast
+		}
+
 		Logger.facilityRefresh.error(
 			"❌ \(self.name): Failure #\(self.retrievalFailures)"
 		)
@@ -230,7 +247,7 @@ extension ParkingFacility {
 	}
 
 	var currentAvailableSpots: Int {
-		if isOccupancyCacheValid {
+		if shouldShowCachedData {
 			return _cachedAvailableSpots
 		} else {
 			return -1
@@ -245,10 +262,6 @@ extension ParkingFacility {
 		}
 	}
 
-	var hasValidSpotData: Bool {
-		return currentAvailableSpots >= 0
-	}
-
 	var occupancy: Double {
 		guard totalSpaces > 0 else { return 0.0 }
 		guard isOccupancyCacheValid else { return -1.0 }
@@ -256,19 +269,6 @@ extension ParkingFacility {
 		let occupancy = Double(currentOccupiedSpots) / Double(totalSpaces)
 
 		return max(0, occupancy)
-	}
-
-	var occupancyStatus: String {
-		switch occupancy {
-		case 0.0..<0.3:
-			return "Low"
-		case 0.3..<0.7:
-			return "Moderate"
-		case 0.7..<0.9:
-			return "Almost Full"
-		default:
-			return "Full"
-		}
 	}
 }
 

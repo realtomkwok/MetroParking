@@ -157,16 +157,25 @@ extension FacilityManager {
 
 		let allFacilities = getAllFacilities()
 
-		// Separate by tier and cache validity
-		let critical = allFacilities.filter {
-			$0.refreshTier == .critical && !$0.isOccupancyCacheValid
+		// Fix the refresh selection logic
+		let needsRefresh = allFacilities.filter { facility in
+			// Always refresh if cache is invalid
+			if !facility.isOccupancyCacheValid {
+				return true
+			}
+
+			// For forced refresh, include high-priority facilities even with valid cache
+			if forced && facility.refreshTier == .critical {
+				return true
+			}
+
+			return false
 		}
-		let standard = allFacilities.filter {
-			$0.refreshTier == .standard && !$0.isOccupancyCacheValid
-		}
-		let background = allFacilities.filter {
-			$0.refreshTier == .background && !$0.isOccupancyCacheValid
-		}
+
+		// Separate by priority for ordered loading
+		let critical = needsRefresh.filter { $0.refreshTier == .critical }
+		let standard = needsRefresh.filter { $0.refreshTier == .standard }
+		let background = needsRefresh.filter { $0.refreshTier == .background }
 
 		let smartLoadBatches = (critical + standard + background)
 

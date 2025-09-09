@@ -290,7 +290,7 @@ struct ParkingDetailView: View {
 
 			/// Refresh and Calculate ETA when view appears
 			Task {
-				await facilityManager.loadFacility(facility)
+//				await facilityManager.loadFacility(facility)
 				await calculateETAIfNeeded()
 			}
 		}

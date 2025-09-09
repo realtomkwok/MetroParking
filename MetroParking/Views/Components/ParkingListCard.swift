@@ -9,121 +9,122 @@ import SwiftUI
 
 struct ParkingListCardView: View {
 
-  @Environment(\.modelContext) private var modelContext
-  @ObservedObject private var locationManager = LocationManager.shared
+	@Environment(\.dismiss) private var dismiss
+	@Environment(\.modelContext) private var modelContext
+	@ObservedObject private var locationManager = LocationManager.shared
 
-  let facility: ParkingFacility
-  let mapState: MapStateManager
-  let sheetState: SheetStateManager
+	let facility: ParkingFacility
+	let appState = AppStateManager.shared
 
-  private var actualDistance: Measurement<UnitLength> {
-    let distance = locationManager.distanceToFacility(facility)
-    return Measurement(value: distance, unit: UnitLength.kilometers)
-  }
+	private var actualDistance: Measurement<UnitLength> {
+		let distance = DistanceHelper.distanceToFacility(
+			facility,
+			from: locationManager.userLocation
+		)
+		return Measurement(value: distance, unit: UnitLength.kilometers)
+	}
 
-  // TODO: Update indicator
+	// TODO: Update indicator
 
-  var body: some View {
-    Button {
-      mapState.focusOnFacility(facility)
-      sheetState.showFacilityDetail(facility)
-    } label: {
+	var body: some View {
+		Button {
+			dismiss()
+			appState.selectFacility(facility)
+		} label: {
 
-      VStack(alignment: .center) {
-        HStack(alignment: .top) {
-          VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .center) {
-              /// Facility name
-              Text("\(facility.displayName)")
-                .font(.title2)
-                .fontDesign(.rounded)
-                .multilineTextAlignment(.leading)
-                .lineLimit(1)
-                .foregroundStyle(.primary)
+			VStack(alignment: .center) {
+				HStack(alignment: .top) {
+					VStack(alignment: .leading, spacing: 8) {
+						HStack(alignment: .center) {
+							/// Facility name
+							Text("\(facility.displayName)")
+								.font(.title2)
+								.fontDesign(.rounded)
+								.multilineTextAlignment(.leading)
+								.lineLimit(1)
+								.foregroundStyle(.primary)
 
-              /// is Pinned
-              if facility.isFavourite {
-                Label("pinned", systemImage: "star.fill")
-                  .labelStyle(.iconOnly)
-                  .font(.callout)
-                  .foregroundStyle(.tertiary)
-              }
-            }
+							/// is Pinned
+							if facility.isFavourite {
+								Label("pinned", systemImage: "star.fill")
+									.labelStyle(.iconOnly)
+									.font(.callout)
+									.foregroundStyle(.tertiary)
+							}
+						}
 
-            HStack(alignment: .center) {
-              Text("\(actualDistance.formatted()) away")
-            }
-            .font(.callout)
-            .foregroundStyle(Color(.secondaryLabel))
-          }
+						HStack(alignment: .center) {
+							Text("\(actualDistance.formatted()) away")
+						}
+						.font(.callout)
+						.foregroundStyle(Color(.secondaryLabel))
+					}
 
-          Spacer(minLength: 32)
+					Spacer(minLength: 32)
 
-          /// Availability Status
-          Text("\(facility.availabilityStatus.text)")
-            .font(.subheadline)
-            .fontWeight(.semibold)
-            .fontDesign(.rounded)
-            .textCase(.uppercase)
-            // Ditch 4px padding?
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .blendMode(.hardLight)
-            .foregroundStyle(
-              facility.availabilityStatus.color.adaptedTextColor()
-            )
-            .background(facility.availabilityStatus.color)
-            .clipShape(RoundedRectangle(cornerRadius: .infinity))
+					/// Availability Status
+					Text("\(facility.availabilityStatus.text)")
+						.font(.subheadline)
+						.fontWeight(.semibold)
+						.fontDesign(.rounded)
+						.textCase(.uppercase)
+						// Ditch 4px padding?
+						.padding(.horizontal, 8)
+						.padding(.vertical, 4)
+						.blendMode(.hardLight)
+						.foregroundStyle(
+							facility.availabilityStatus.color.adaptedTextColor()
+						)
+						.background(facility.availabilityStatus.color)
+						.clipShape(RoundedRectangle(cornerRadius: .infinity))
 
-        }
+				}
 
-        Spacer(minLength: 32)
+				Spacer(minLength: 32)
 
-        /// Row #2
-        HStack(alignment: .lastTextBaseline) {
-          /// Updated time
+				/// Row #2
+				HStack(alignment: .lastTextBaseline) {
+					/// Updated time
 
-          HStack(alignment: .center) {
-            Text(
-              facility.formattedLastUpdated
-            )
-          }
-          .font(.callout)
-          .foregroundStyle(.secondary)
+					HStack(alignment: .center) {
+						Text(
+							facility.formattedLastUpdated
+						)
+					}
+					.font(.callout)
+					.foregroundStyle(.secondary)
 
-          Spacer()
+					Spacer()
 
-          /// Current available spaces
-          VStack(alignment: .trailing, spacing: 0) {
-            Text("\(facility.displayAvailableSpots)")
-              .font(.system(size: 48))
-              .fontDesign(.rounded)
-              .foregroundStyle(Color(.label))
-              .contentTransition(
-                .numericText(
-                  value: Double(
-                    facility.currentAvailableSpots
-                  )
-                )
-              )
-            Text("spaces")
-              .foregroundStyle(.secondary)
-          }
-        }
-      }
-      .frame(minHeight: 64, maxHeight: 160)
-      .padding(20)
-      .background(.thickMaterial)
-      .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-    }
-    .buttonStyle(.plain)
-  }
+					/// Current available spaces
+					VStack(alignment: .trailing, spacing: 0) {
+						Text("\(facility.displayAvailableSpots)")
+							.font(.system(size: 48))
+							.fontDesign(.rounded)
+							.foregroundStyle(Color(.label))
+							.contentTransition(
+								.numericText(
+									value: Double(
+										facility.currentAvailableSpots
+									)
+								)
+							)
+						Text("spaces")
+							.foregroundStyle(.secondary)
+					}
+				}
+			}
+			.frame(minHeight: 64, maxHeight: 160)
+			.padding(20)
+			.background(.thickMaterial)
+			.clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+		}
+		.buttonStyle(.plain)
+	}
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-  ParkingListCardView(
-    facility: PreviewHelper.pinnedFacilities().first!,
-    mapState: MapStateManager(),
-    sheetState: SheetStateManager()
-  )
+	ParkingListCardView(
+		facility: PreviewHelper.pinnedFacilities().first!,
+	)
 }

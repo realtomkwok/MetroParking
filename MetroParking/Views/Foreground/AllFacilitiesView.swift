@@ -39,9 +39,6 @@ enum FacilitySortOption: String, CaseIterable, Identifiable {
 }
 
 struct AllFacilitiesView: View {
-  let mapState: MapStateManager
-  let sheetState: SheetStateManager
-
   @ObservedObject private var locationManager = LocationManager.shared
 
   /// Sorting state
@@ -81,8 +78,6 @@ struct AllFacilitiesView: View {
           sortOption: selectedSortOption,
           ascending: sortAscending,
           searchPredicate: searchPredicate,
-          mapState: mapState,
-          sheetState: sheetState,
           sortTransition: sortTransition
         )
         .padding(.horizontal)
@@ -204,8 +199,6 @@ struct FacilityListView: View {
   let sortOption: FacilitySortOption
   let ascending: Bool
   let searchPredicate: Predicate<ParkingFacility>?
-  let mapState: MapStateManager
-  let sheetState: SheetStateManager
   let sortTransition: Namespace.ID
 
   var body: some View {
@@ -214,16 +207,12 @@ struct FacilityListView: View {
         sortOption: sortOption,
         ascending: ascending,
         searchPredicate: searchPredicate,
-        mapState: mapState,
-        sheetState: sheetState,
         sortTransition: sortTransition
       )
     } else {
       DatabaseSortedFacilities(
         filter: searchPredicate,
         sort: sortDescriptors,
-        mapState: mapState,
-        sheetState: sheetState,
         sortTransition: sortTransition
       )
     }
@@ -256,8 +245,6 @@ struct FacilityListView: View {
 }
 
 struct DatabaseSortedFacilities: View {
-  let mapState: MapStateManager
-  let sheetState: SheetStateManager
   let sortTransition: Namespace.ID
 
   @Query private var facilities: [ParkingFacility]
@@ -265,12 +252,8 @@ struct DatabaseSortedFacilities: View {
   init(
     filter: Predicate<ParkingFacility>? = nil,
     sort: [SortDescriptor<ParkingFacility>],
-    mapState: MapStateManager,
-    sheetState: SheetStateManager,
     sortTransition: Namespace.ID
   ) {
-    self.mapState = mapState
-    self.sheetState = sheetState
     self.sortTransition = sortTransition
 
     /// Sort descriptors
@@ -288,9 +271,7 @@ struct DatabaseSortedFacilities: View {
   var body: some View {
     ForEach(facilities, id: \.facilityId) { facility in
       ParkingListCardView(
-        facility: facility,
-        mapState: mapState,
-        sheetState: sheetState
+        facility: facility
       )
       .matchedGeometryEffect(id: facility.facilityId, in: sortTransition)
     }
@@ -302,8 +283,6 @@ struct ComputedSortedFacilities: View {
   let sortOption: FacilitySortOption
   let ascending: Bool
   let searchPredicate: Predicate<ParkingFacility>?
-  let mapState: MapStateManager
-  let sheetState: SheetStateManager
   let sortTransition: Namespace.ID
 
   @Query private var allFacilities: [ParkingFacility]
@@ -313,15 +292,11 @@ struct ComputedSortedFacilities: View {
     sortOption: FacilitySortOption,
     ascending: Bool,
     searchPredicate: Predicate<ParkingFacility>?,
-    mapState: MapStateManager,
-    sheetState: SheetStateManager,
     sortTransition: Namespace.ID
   ) {
     self.sortOption = sortOption
     self.ascending = ascending
     self.searchPredicate = searchPredicate
-    self.mapState = mapState
-    self.sheetState = sheetState
     self.sortTransition = sortTransition
 
     if let predicate = searchPredicate {
@@ -334,10 +309,8 @@ struct ComputedSortedFacilities: View {
   var body: some View {
     ForEach(sortedFacilities, id: \.facilityId) { facility in
       ParkingListCardView(
-        facility: facility,
-        mapState: mapState,
-        sheetState: sheetState
-      )
+        facility: facility
+	  )
       .matchedGeometryEffect(id: facility.facilityId, in: sortTransition)
     }
   }
@@ -361,8 +334,14 @@ struct ComputedSortedFacilities: View {
     _ facility1: ParkingFacility,
     _ facility2: ParkingFacility
   ) -> Bool {
-    let distance1 = locationManager.distanceToFacility(facility1)
-    let distance2 = locationManager.distanceToFacility(facility2)
+	  let distance1 = DistanceHelper.distanceToFacility(
+		facility1,
+		from: locationManager.userLocation
+	  )
+	  let distance2 = DistanceHelper.distanceToFacility(
+		facility2,
+		from: locationManager.userLocation
+	  )
 
     return distance1 < distance2
   }

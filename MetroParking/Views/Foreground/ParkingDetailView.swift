@@ -6,9 +6,9 @@
 //
 
 import MapKit
+import OSLog
 import SwiftData
 import SwiftUI
-import OSLog
 
 struct ParkingDetailView: View {
 
@@ -16,12 +16,12 @@ struct ParkingDetailView: View {
 	@Environment(\.dismiss) private var dismiss
 
 	let facility: ParkingFacility
-	let onDismiss: () -> Void
 
 	/// ETA Services
-	@ObservedObject private var refreshManager = FacilityRefreshManager.shared
+	@ObservedObject private var facilityManager = FacilityManager.shared
 	@ObservedObject private var etaService = ETAService.shared
 	@ObservedObject private var locationManager = LocationManager.shared
+	@StateObject private var mapCamera = MapCameraManager.shared
 
 	private var isDirectionAvailable: Bool {
 		locationManager.isLocationAvailable
@@ -48,8 +48,7 @@ struct ParkingDetailView: View {
 							GridRow {
 								/// Drive  there
 								Button {
-									locationManager.isLocationAvailable
-										? openInMaps() : nil
+									openInMaps()
 								} label: {
 									HStack {
 										Image(
@@ -95,15 +94,14 @@ struct ParkingDetailView: View {
 								.font(.headline)
 								.buttonStyle(.borderedProminent)
 								.buttonBorderShape(.capsule)
-								.disabled(!isDirectionAvailable)
 								.labelStyle(.titleAndIcon)
 								.controlSize(.extraLarge)
 								.animation(
-									.easeInOut(duration: 0.3),
+									.snappy(duration: 0.4),
 									value: etaService.isCalculatingETA
 								)
 								.animation(
-									.easeInOut(duration: 0.3),
+									.snappy(duration: 0.4),
 									value: etaService.formattedETA
 								)
 
@@ -135,7 +133,12 @@ struct ParkingDetailView: View {
 											)
 										}
 
-										Gauge(value: max(0, occupancyProgress)) {
+										Gauge(
+											value: min(
+												max(occupancyProgress, 0),
+												1
+											)
+										) {
 											Label("Value", systemImage: "car")
 										}
 										.gaugeStyle(.accessoryLinear)
@@ -270,7 +273,6 @@ struct ParkingDetailView: View {
 								.frame(width: 36, height: 36)
 
 								Button {
-									onDismiss()
 									dismiss()
 								} label: {
 									Label("Close", systemImage: "xmark")
@@ -293,7 +295,7 @@ struct ParkingDetailView: View {
 
 			/// Refresh and Calculate ETA when view appears
 			Task {
-				await refreshManager.refreshFacilityIfNeeded(facility)
+				await facilityManager.loadFacility(facility)
 				await calculateETAIfNeeded()
 			}
 		}
@@ -313,6 +315,7 @@ struct ParkingDetailView: View {
 	}
 
 	private func openInMaps() {
+		// TODO: Move the `mapItem` part out
 		// Create placemark for the facility
 		let placemark = MKPlacemark(
 			coordinate: CLLocationCoordinate2D(
@@ -504,8 +507,5 @@ struct InfoCard<Content: View>: View {
 #Preview {
 	ParkingDetailView(
 		facility: PreviewHelper.availableFacility(),
-		onDismiss: {
-			Logger.ui.info("Should close this view")
-		}
 	)
 }

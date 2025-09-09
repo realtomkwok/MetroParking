@@ -35,7 +35,7 @@ class ParkingTrendService: ObservableObject {
 				self.insights = insights.first
 			}
 		} catch {
-			Logger.facilityData.error("Error fetching data: \(error)")
+			Logger.facilityData.error("Error fetching data: \(error.localizedDescription)")
 		}
 	}
 }

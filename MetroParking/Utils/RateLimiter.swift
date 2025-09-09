@@ -18,7 +18,7 @@ class RateLimiter {
     func waitIfNeeded() async {
         let elapsed = Date().timeIntervalSince(lastRequestedTime)
         if elapsed < minInterval {
-            try ? await Task.sleep(
+            try? await Task.sleep(
                 nanoseconds: UInt64((minInterval - elapsed) * 1_000_000_000)
             )
         }

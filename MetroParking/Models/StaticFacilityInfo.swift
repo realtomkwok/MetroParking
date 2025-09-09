@@ -7,22 +7,10 @@
 
 import Foundation
 
-struct StaticFacilityInfo {
-	let facilityId: String
-	let name: String
-	let suburb: String
-	let address: String
-	let latitude: Double
-	let longitude: Double
-	let totalSpaces: Int
-	let tsn: String
-	let tfnswFacilityId: String
-}
-
 extension ParkingFacility {
 
-	static let staticFacilityData: [StaticFacilityInfo] = [
-		StaticFacilityInfo(
+	static let staticFacilityData: [ParkingFacility] = [
+		ParkingFacility(
 			facilityId: "6",
 			name: "Park&Ride - Gordon Henry St (north)",
 			suburb: "Gordon",
@@ -33,7 +21,7 @@ extension ParkingFacility {
 			tsn: "207210",
 			tfnswFacilityId: "207210TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "7",
 			name: "Park&Ride - Kiama",
 			suburb: "Kiama",
@@ -44,7 +32,7 @@ extension ParkingFacility {
 			tsn: "253330",
 			tfnswFacilityId: "253330TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "8",
 			name: "Park&Ride - Gosford",
 			suburb: "Gosford",
@@ -55,7 +43,7 @@ extension ParkingFacility {
 			tsn: "225040",
 			tfnswFacilityId: "225040TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "9",
 			name: "Park&Ride - Revesby",
 			suburb: "Revesby",
@@ -66,7 +54,7 @@ extension ParkingFacility {
 			tsn: "221210",
 			tfnswFacilityId: "221210TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "10",
 			name: "Park&Ride - Warriewood",
 			suburb: "Warriewood",
@@ -77,7 +65,7 @@ extension ParkingFacility {
 			tsn: "2101131",
 			tfnswFacilityId: "2101131TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "11",
 			name: "Park&Ride - Narrabeen",
 			suburb: "Narrabeen",
@@ -88,7 +76,7 @@ extension ParkingFacility {
 			tsn: "2101130",
 			tfnswFacilityId: "2101130TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "12",
 			name: "Park&Ride - Mona Vale",
 			suburb: "Mona Vale",
@@ -99,7 +87,7 @@ extension ParkingFacility {
 			tsn: "2103108",
 			tfnswFacilityId: "2103108TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "13",
 			name: "Park&Ride - Dee Why",
 			suburb: "Dee Why",
@@ -110,7 +98,7 @@ extension ParkingFacility {
 			tsn: "2099207",
 			tfnswFacilityId: "2099207TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "14",
 			name: "Park&Ride - West Ryde",
 			suburb: "West Ryde",
@@ -121,7 +109,7 @@ extension ParkingFacility {
 			tsn: "211420",
 			tfnswFacilityId: "211420TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "15",
 			name: "Park&Ride - Sutherland",
 			suburb: "Sutherland",
@@ -132,7 +120,7 @@ extension ParkingFacility {
 			tsn: "223210",
 			tfnswFacilityId: "223210TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "16",
 			name: "Park&Ride - Leppington",
 			suburb: "Leppington",
@@ -143,7 +131,7 @@ extension ParkingFacility {
 			tsn: "217933",
 			tfnswFacilityId: "217933TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "17",
 			name: "Park&Ride - Edmondson Park (south)",
 			suburb: "Edmondson Park",
@@ -154,7 +142,7 @@ extension ParkingFacility {
 			tsn: "217426",
 			tfnswFacilityId: "217426TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "18",
 			name: "Park&Ride - St Marys",
 			suburb: "St Marys",
@@ -165,7 +153,7 @@ extension ParkingFacility {
 			tsn: "276010",
 			tfnswFacilityId: "276010TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "19",
 			name: "Park&Ride - Campbelltown Farrow Rd (north)",
 			suburb: "Campbelltown",
@@ -176,7 +164,7 @@ extension ParkingFacility {
 			tsn: "256020",
 			tfnswFacilityId: "256020TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "20",
 			name: "Park&Ride - Campbelltown Hurley St",
 			suburb: "Campbelltown",
@@ -187,7 +175,7 @@ extension ParkingFacility {
 			tsn: "256020",
 			tfnswFacilityId: "256020TPR002"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "21",
 			name: "Park&Ride - Penrith (at-grade)",
 			suburb: "Penrith",
@@ -198,7 +186,7 @@ extension ParkingFacility {
 			tsn: "275010",
 			tfnswFacilityId: "275010TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "22",
 			name: "Park&Ride - Penrith (multi-level)",
 			suburb: "Penrith",
@@ -209,7 +197,7 @@ extension ParkingFacility {
 			tsn: "275010",
 			tfnswFacilityId: "275010TPR002"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "23",
 			name: "Park&Ride - Warwick Farm",
 			suburb: "Warwick Farm",
@@ -220,7 +208,7 @@ extension ParkingFacility {
 			tsn: "217010",
 			tfnswFacilityId: "217010TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "24",
 			name: "Park&Ride - Schofields",
 			suburb: "Schofields",
@@ -231,7 +219,7 @@ extension ParkingFacility {
 			tsn: "276220",
 			tfnswFacilityId: "276220TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "25",
 			name: "Park&Ride - Hornsby",
 			suburb: "Hornsby",
@@ -242,7 +230,7 @@ extension ParkingFacility {
 			tsn: "207720",
 			tfnswFacilityId: "207720TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "26",
 			name: "Park&Ride - Tallawong P1",
 			suburb: "Tallawong",
@@ -253,7 +241,7 @@ extension ParkingFacility {
 			tsn: "2155384",
 			tfnswFacilityId: "2155384TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "27",
 			name: "Park&Ride - Tallawong P2",
 			suburb: "Tallawong",
@@ -264,7 +252,7 @@ extension ParkingFacility {
 			tsn: "2155384",
 			tfnswFacilityId: "2155384TPR002"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "28",
 			name: "Park&Ride - Tallawong P3",
 			suburb: "Tallawong",
@@ -275,7 +263,7 @@ extension ParkingFacility {
 			tsn: "2155384",
 			tfnswFacilityId: "2155384TPR003"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "29",
 			name: "Park&Ride - Kellyville (north)",
 			suburb: "Kellyville",
@@ -286,7 +274,7 @@ extension ParkingFacility {
 			tsn: "2155382",
 			tfnswFacilityId: "2155382TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "30",
 			name: "Park&Ride - Kellyville (south)",
 			suburb: "Kellyville",
@@ -297,7 +285,7 @@ extension ParkingFacility {
 			tsn: "2155382",
 			tfnswFacilityId: "2155382TPR002"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "31",
 			name: "Park&Ride - Bella Vista",
 			suburb: "Bella Vista",
@@ -308,7 +296,7 @@ extension ParkingFacility {
 			tsn: "2153478",
 			tfnswFacilityId: "2153478TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "32",
 			name: "Park&Ride - Hills Showground",
 			suburb: "Castle Hill",
@@ -319,7 +307,7 @@ extension ParkingFacility {
 			tsn: "2154392",
 			tfnswFacilityId: "2154392TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "33",
 			name: "Park&Ride - Cherrybrook",
 			suburb: "Cherrybrook",
@@ -330,7 +318,7 @@ extension ParkingFacility {
 			tsn: "2126158",
 			tfnswFacilityId: "2126158TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "34",
 			name: "Park&Ride - Lindfield Village Green",
 			suburb: "Lindfield",
@@ -341,7 +329,7 @@ extension ParkingFacility {
 			tsn: "207010",
 			tfnswFacilityId: "207010TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "35",
 			name: "Park&Ride - Beverly Hills",
 			suburb: "Beverly Hills",
@@ -352,7 +340,7 @@ extension ParkingFacility {
 			tsn: "220910",
 			tfnswFacilityId: "220910TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "36",
 			name: "Park&Ride - Emu Plains",
 			suburb: "Emu Plains",
@@ -363,7 +351,7 @@ extension ParkingFacility {
 			tsn: "275020",
 			tfnswFacilityId: "275020TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "37",
 			name: "Park&Ride - Riverwood",
 			suburb: "Riverwood",
@@ -374,7 +362,7 @@ extension ParkingFacility {
 			tsn: "221010",
 			tfnswFacilityId: "221010TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "486",
 			name: "Park&Ride - Ashfield",
 			suburb: "Ashfield",
@@ -385,7 +373,7 @@ extension ParkingFacility {
 			tsn: "213110",
 			tfnswFacilityId: "213110TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "487",
 			name: "Park&Ride - Kogarah",
 			suburb: "Kogarah",
@@ -396,7 +384,7 @@ extension ParkingFacility {
 			tsn: "221710",
 			tfnswFacilityId: "221710TPR001"
 		),
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "488",
 			name: "Park&Ride - Seven Hills",
 			suburb: "Seven Hills",
@@ -408,7 +396,7 @@ extension ParkingFacility {
 			tfnswFacilityId: "214710TPR001"
 		),
 
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "489",
 			name: "Park&Ride - Manly Vale",
 			suburb: "Manly Vale",
@@ -420,7 +408,7 @@ extension ParkingFacility {
 			tfnswFacilityId: "2093117TPR001"
 		),
 
-		StaticFacilityInfo(
+		ParkingFacility(
 			facilityId: "490",
 			name: "Park&Ride - Brookvale",
 			suburb: "Brookvale",
@@ -433,29 +421,7 @@ extension ParkingFacility {
 		),
 	]
 
-	static func getAllStaticFacilities() -> [StaticFacilityInfo] {
+	static func getAllStaticFacilities() -> [ParkingFacility] {
 		return staticFacilityData
-	}
-
-	static func getFacilitiesSortedByDistance(from userLocation: (lat: Double, lon: Double)) -> [StaticFacilityInfo] {
-		return staticFacilityData.sorted { facility1, facility2 in
-			let dist1 = calculateDistance(
-				from: userLocation,
-				to: (facility1.latitude, facility1.longitude)
-			)
-			let dist2 = calculateDistance(
-				from: userLocation,
-				to: (facility2.latitude, facility2.longitude)
-			)
-			return dist1 < dist2
-		}
-	}
-
-	private static func calculateDistance(from: (lat: Double, lon: Double),
-	to: (lat: Double, lon: Double)) -> Double {
-		// TODO: Should be a viable distance retrieved from MapKit
-		let latDiff = from.lat - to.lat
-		let lonDiff = from.lon - to.lon
-		return sqrt(latDiff * latDiff + lonDiff * lonDiff)
 	}
 }

@@ -28,7 +28,7 @@ struct DistanceHelper {
 			longitude: to.longitude
 		)
 
-		return toLocation.distance(from: fromLocation) / 1000.0  // Covert to km
+		return toLocation.distance(from: fromLocation) / 1000.0  // Convert to km
 	}
 
 	static func distanceToFacility(

@@ -181,7 +181,7 @@ extension FacilityManager {
 
 		Logger.facilityRefresh
 			.debug(
-				"Loading \(smartLoadBatches.count) facilities (including \(smartLoadBatches.map { $0.displayName + ", " })"
+				"Loading \(smartLoadBatches.count) facilities (including \(smartLoadBatches.map(\.displayName).joined(separator: ", "))"
 			)
 
 		// Load in priority order, respecting API limits

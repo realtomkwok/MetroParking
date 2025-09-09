@@ -68,7 +68,7 @@ extension MapCameraManager {
 	{
 		guard !coordinates.isEmpty else {
 			Logger.mapCamera.debug("Coordinate not found.")
-			return CLLocationCoordinate2D()  // TODO: Fallback to all facilities ?
+			return sydneyRegionCentre
 		}
 
 		let latitudes = coordinates.map { $0.latitude }

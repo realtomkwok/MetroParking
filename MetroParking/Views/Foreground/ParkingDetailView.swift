@@ -6,9 +6,9 @@
 //
 
 import MapKit
+import OSLog
 import SwiftData
 import SwiftUI
-import OSLog
 
 struct ParkingDetailView: View {
 
@@ -133,7 +133,12 @@ struct ParkingDetailView: View {
 											)
 										}
 
-										Gauge(value: occupancyProgress) {
+										Gauge(
+											value: min(
+												max(occupancyProgress, 0),
+												1
+											)
+										) {
 											Label("Value", systemImage: "car")
 										}
 										.gaugeStyle(.accessoryLinear)
@@ -290,7 +295,7 @@ struct ParkingDetailView: View {
 
 			/// Refresh and Calculate ETA when view appears
 			Task {
-//				await facilityManager.loadFacility(facility)
+				await facilityManager.loadFacility(facility)
 				await calculateETAIfNeeded()
 			}
 		}
@@ -310,6 +315,7 @@ struct ParkingDetailView: View {
 	}
 
 	private func openInMaps() {
+		// TODO: Move the `mapItem` part out
 		// Create placemark for the facility
 		let placemark = MKPlacemark(
 			coordinate: CLLocationCoordinate2D(

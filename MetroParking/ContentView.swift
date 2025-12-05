@@ -17,8 +17,10 @@ struct ContentView: View {
 
 	@State private var searchText: String = ""
 	@State private var selectedSorting: SortingOption = .name
-	@State private var filterIsOn: Bool = false
+	@State private var selectedSortingOrder: SortingOrder = .ascending
+	@State private var filterIsOn: Bool = true
 	@State private var selectedFilter: FilterOption = .pinned
+	@State private var isSearchFieldFocused: Bool = false
 
 	@Query private var facilities: [ParkingFacility]
 
@@ -27,7 +29,7 @@ struct ContentView: View {
 			facilities
 			.filtered(by: filterIsOn ? selectedFilter : .all)
 			.searchFiltered(by: searchText)
-			.sorted(by: selectedSorting)
+			.sorted(by: selectedSorting, order: selectedSortingOrder)
 	}
 
 	private var navigationSubtitleText: String {
@@ -56,31 +58,29 @@ struct ContentView: View {
 	@available(iOS 26.0, *)
 	private var mainContentGlassy: some View {
 		ScrollView(.vertical) {
-			GlassEffectContainer(spacing: 8) {
-				LazyVStack(spacing: 8) {
-					FacilityList(
-						facilities: filteredFacilities
-					)
-				}
-				.padding()
+			LazyVStack(spacing: 8) {
+				FacilityList(
+					facilities: filteredFacilities
+				)
 			}
+			.padding()
 		}
+		.animation(.snappy, value: filteredFacilities.map(\.facilityId))
 		.navigationTitle("MetroParking")
 		.navigationSubtitle(navigationSubtitleText)
-		.transition(.blurReplace(.downUp))
 		.refreshable {
 			await facilityManager.performLoad(forced: true)
 		}
 		.toolbar {
 			TopBarActions()
 		}
+		.toolbarTitleDisplayMode(.inlineLarge)
 		.toolbar {
 			DefaultToolbarItem(kind: .search, placement: .bottomBar)
 			ToolbarSpacer(.flexible, placement: .bottomBar)
 			BottomBarActions()
 		}
-		.searchable(text: $searchText)
-		//		.searchPresentationToolbarBehavior(filterIsOn ? .minimize : .hidesForAllContent)
+		.searchable(text: $searchText, isPresented: $isSearchFieldFocused)
 	}
 
 	// TODO: main content for iOS versions under iOS 26
@@ -120,18 +120,24 @@ struct ContentView: View {
 		}
 
 		ToolbarItem(placement: .topBarTrailing) {
-			Menu {
-				// Settings section
-				Section {
-					Button {
-						// TODO: Navigate to settings
-					} label: {
-						Label("Settings", systemImage: "gear")
-					}
-				}
+			Button {
+				// TODO: Navigate to settings
 			} label: {
-				Label("More", systemImage: "ellipsis")
+				Label("Settings", systemImage: "ellipsis")
 			}
+
+			//			Menu {
+			//				// Settings section
+			//				Section {
+			//					Button {
+			//						// TODO: Navigate to settings
+			//					} label: {
+			//						Label("Settings", systemImage: "gear")
+			//					}
+			//				}
+			//			} label: {
+			//				Label("More", systemImage: "ellipsis")
+			//			}
 		}
 	}
 
@@ -139,38 +145,29 @@ struct ContentView: View {
 	@ToolbarContentBuilder
 	func BottomBarActions() -> some ToolbarContent {
 		ToolbarItem(placement: .bottomBar) {
-			HStack(spacing: 12) {
-				Toggle(
-					isOn: $filterIsOn
-				) {
-					Label(
-						"Filter",
-						systemImage: "line.3.horizontal.decrease"
-					)
-					.labelStyle(.iconOnly)
+			GlassEffectContainer(spacing: 2) {
+				HStack(spacing: 4) {
+					Toggle(
+						isOn: $filterIsOn
+					) {
+						Label(
+							"Filter",
+							systemImage: "line.3.horizontal.decrease"
+						)
+						.labelStyle(.iconOnly)
+					}
 
+					if filterIsOn {
+						FilterPicker(
+							selectedFilter: $selectedFilter,
+							selectedSorting: $selectedSorting,
+							selectedSortingOrder: $selectedSortingOrder
+						)
+						.transition(.blurReplace)
+					}
 				}
-				.transition(
-					.asymmetric(
-						insertion: .move(edge: .trailing).combined(
-							with: .opacity
-						),
-						removal: .move(edge: .trailing).combined(with: .opacity)
-					)
-				)
-
-				if filterIsOn {
-					FilterPicker(
-						selectedFilter: $selectedFilter,
-						selectedSorting: $selectedSorting
-					)
-
-				}
+				.animation(.snappy(duration: 0.35), value: filterIsOn)
 			}
-
-			.animation(.smooth(duration: 0.35), value: filterIsOn)
-			.padding(.horizontal, 8)
-			.padding(.vertical, 6)
 		}
 	}
 
@@ -178,6 +175,7 @@ struct ContentView: View {
 	struct FilterPicker: View {
 		@Binding var selectedFilter: FilterOption
 		@Binding var selectedSorting: SortingOption
+		@Binding var selectedSortingOrder: SortingOrder
 
 		var body: some View {
 			Menu {
@@ -192,22 +190,34 @@ struct ContentView: View {
 					selection: $selectedSorting,
 					options: SortingOption.allCases
 				)
-
+				Picker(
+					selectedSortingOrder.display.title,
+					systemImage: "arrow.up.arrow.down",
+					selection: $selectedSortingOrder
+				) {
+					ForEach(SortingOrder.allCases, id: \.self) { option in
+						Label(
+							option.display.title,
+							systemImage: option.display.systemImage
+						)
+					}
+				}
+				.pickerStyle(.menu)
 			} label: {
 				VStack(alignment: .leading) {
 					Text("Filtered by")
 						.font(.footnote)
 						.fontWeight(.semibold)
-					HStack(alignment: .firstTextBaseline, spacing: 2) {
+					HStack(alignment: .center, spacing: 2) {
 						Text(selectedFilter.display.title)
 							.font(.footnote)
 						Image(systemName: "chevron.down")
-							.font(.caption2)
+							.font(.system(size: 8))
 					}
 					.fontWeight(.medium)
-					.foregroundStyle(.regularMaterial)
+					.foregroundStyle(Color.accentColor)
 				}
-				.padding(.trailing, 8)
+				.padding(.trailing)
 			}
 		}
 	}
@@ -277,12 +287,13 @@ struct FacilityList: View {
 			.clear,
 			in: .rect(cornerRadius: 16, style: .continuous)
 		)
-
 	}
 
 	var body: some View {
 		ForEach(facilities, id: \.facilityId) { facility in
 			FacilityRowView(facility: facility)
+				.transition(.blurReplace)
+				.id(facility.facilityId)
 		}
 	}
 }

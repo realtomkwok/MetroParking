@@ -32,12 +32,19 @@ struct SortingOptionDisplay: BasicDisplayable {
 	}
 }
 
+struct SortingOrderDisplay: BasicDisplayable {
+	let title: String
+	let systemImage: String
+}
+
 struct FilterOptionDisplay: BasicDisplayable {
 	let title: String
 	let systemImage: String
 }
 
-enum SortingOption: String, CaseIterable, Codable, Hashable, PickerOptionDisplayable {
+enum SortingOption: String, CaseIterable, Codable, Hashable,
+	PickerOptionDisplayable
+{
 	case name
 	case lastUpdated
 	case distance
@@ -68,63 +75,117 @@ enum SortingOption: String, CaseIterable, Codable, Hashable, PickerOptionDisplay
 		}
 	}
 
-	var sortDescriptor: [SortDescriptor<ParkingFacility>] {
+	/// Get sort descriptors with the specified order
+	/// - Parameter order: The sorting order to apply
+	/// - Returns: Array of sort descriptors for SwiftData queries
+	func sortDescriptor(order: SortingOrder = .ascending) -> [SortDescriptor<ParkingFacility>] {
+		let sortOrder: SortOrder = order == .ascending ? .forward : .reverse
+		
 		switch self {
 		case .name:
-			[SortDescriptor(\.displayName)]
+			return [SortDescriptor(\.displayName, order: sortOrder)]
 		case .lastUpdated:
-			[SortDescriptor(\.lastUpdated, order: .reverse)]
+			// For lastUpdated, we typically want newest first as default
+			// So when "ascending" is selected, we show oldest first
+			// When "descending" is selected, we show newest first
+			return [SortDescriptor(\.lastUpdated, order: sortOrder)]
 		case .distance:
 			// Sort by distance with nil values at the end
 			// Then by name as a secondary sort for nil values
-			[
-				SortDescriptor(\.lastCalculatedDistance, order: .forward),
-				SortDescriptor(\.displayName)
+			return [
+				SortDescriptor(\.lastCalculatedDistance, order: sortOrder),
+				SortDescriptor(\.displayName, order: sortOrder),
 			]
 		}
 	}
 	
+	/// Legacy computed property for backward compatibility (uses ascending order)
+	var sortDescriptor: [SortDescriptor<ParkingFacility>] {
+		sortDescriptor(order: .ascending)
+	}
+
 	/// In-memory sorting comparator for ParkingFacility arrays
 	/// - Parameters:
 	///   - lhs: Left-hand side facility
 	///   - rhs: Right-hand side facility
+	///   - order: The sorting order (ascending or descending)
 	/// - Returns: true if lhs should come before rhs
-	func compare(_ lhs: ParkingFacility, _ rhs: ParkingFacility) -> Bool {
+	func compare(_ lhs: ParkingFacility, _ rhs: ParkingFacility, order: SortingOrder = .ascending) -> Bool {
+		let ascending: Bool
+		
 		switch self {
 		case .name:
-			return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
-			
+			ascending = lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+
 		case .lastUpdated:
-			// Newest first (reverse order)
-			return lhs.lastUpdated > rhs.lastUpdated
-			
+			// For lastUpdated: ascending means oldest first, descending means newest first
+			ascending = lhs.lastUpdated < rhs.lastUpdated
+
 		case .distance:
 			// Sort by distance with nil values at the end
 			switch (lhs.lastCalculatedDistance, rhs.lastCalculatedDistance) {
 			case (.none, .none):
 				// Both nil: sort by name
-				return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+				ascending = lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
 			case (.none, .some):
-				// Left is nil: goes after
-				return false
+				// Left is nil: goes after (regardless of order)
+				return order == .ascending ? false : false
 			case (.some, .none):
-				// Right is nil: goes after
-				return true
+				// Right is nil: goes after (regardless of order)
+				return order == .ascending ? true : true
 			case (.some(let lhsDistance), .some(let rhsDistance)):
 				// Both have values: compare distances
-				return lhsDistance < rhsDistance
+				ascending = lhsDistance < rhsDistance
 			}
+		}
+		
+		// Apply the order
+		return order == .ascending ? ascending : !ascending
+	}
+
+	/// Apply this sorting to an array of facilities with specified order
+	/// - Parameters:
+	///   - facilities: The facilities to sort
+	///   - order: The sorting order to apply
+	/// - Returns: Sorted array of facilities
+	func apply(to facilities: [ParkingFacility], order: SortingOrder = .ascending) -> [ParkingFacility] {
+		facilities.sorted { compare($0, $1, order: order) }
+	}
+}
+
+enum SortingOrder: String, CaseIterable, Codable, Hashable, PickerOptionDisplayable {
+	case ascending
+	case descending
+
+	var display: SortingOrderDisplay {
+		switch self {
+		case .ascending:
+			return SortingOrderDisplay(
+				title: "Ascending",
+				systemImage: "arrow.up"
+			)
+		case .descending:
+			return SortingOrderDisplay(
+				title: "Descending",
+				systemImage: "arrow.down"
+			)
 		}
 	}
 	
-	/// Apply this sorting to an array of facilities
-	/// - Parameter facilities: The facilities to sort
-	/// - Returns: Sorted array of facilities
-	func apply(to facilities: [ParkingFacility]) -> [ParkingFacility] {
-		facilities.sorted(by: compare)
+	/// Toggle between ascending and descending
+	mutating func toggle() {
+		self = self == .ascending ? .descending : .ascending
+	}
+	
+	/// Returns the opposite order
+	var toggled: SortingOrder {
+		self == .ascending ? .descending : .ascending
 	}
 }
-enum FilterOption: String, CaseIterable, Codable, Hashable, PickerOptionDisplayable {
+
+enum FilterOption: String, CaseIterable, Codable, Hashable,
+	PickerOptionDisplayable
+{
 	case all
 	case pinned
 	case available
@@ -175,7 +236,7 @@ enum FilterOption: String, CaseIterable, Codable, Hashable, PickerOptionDisplaya
 			}
 		}
 	}
-	
+
 	/// In-memory filtering function for ParkingFacility arrays
 	/// - Parameter facility: The facility to check
 	/// - Returns: true if the facility matches this filter option
@@ -191,7 +252,7 @@ enum FilterOption: String, CaseIterable, Codable, Hashable, PickerOptionDisplaya
 			return facility.lastVisited != nil
 		}
 	}
-	
+
 	/// Apply this filter to an array of facilities
 	/// - Parameter facilities: The facilities to filter
 	/// - Returns: Filtered array of facilities
@@ -200,49 +261,53 @@ enum FilterOption: String, CaseIterable, Codable, Hashable, PickerOptionDisplaya
 	}
 }
 
-	// MARK: - Array Extensions for Convenience
+// MARK: - Array Extensions for Convenience
 
 extension Array where Element == ParkingFacility {
-		/// Filter facilities by a filter option
-		/// - Parameter filter: The filter to apply
-		/// - Returns: Filtered array
+	/// Filter facilities by a filter option
+	/// - Parameter filter: The filter to apply
+	/// - Returns: Filtered array
 	func filtered(by filter: FilterOption) -> [ParkingFacility] {
 		filter.apply(to: self)
 	}
 
-		/// Sort facilities by a sorting option
-		/// - Parameter sorting: The sorting option to apply
-		/// - Returns: Sorted array
-	func sorted(by sorting: SortingOption) -> [ParkingFacility] {
-		sorting.apply(to: self)
+	/// Sort facilities by a sorting option
+	/// - Parameters:
+	///   - sorting: The sorting option to apply
+	///   - order: The sorting order (ascending or descending)
+	/// - Returns: Sorted array
+	func sorted(by sorting: SortingOption, order: SortingOrder = .ascending) -> [ParkingFacility] {
+		sorting.apply(to: self, order: order)
 	}
 
-		/// Filter by search text across name and suburb
-		/// - Parameter searchText: The text to search for
-		/// - Returns: Filtered array matching the search text
+	/// Filter by search text across name and suburb
+	/// - Parameter searchText: The text to search for
+	/// - Returns: Filtered array matching the search text
 	func searchFiltered(by searchText: String) -> [ParkingFacility] {
 		guard !searchText.isEmpty else { return self }
 
 		return filter { facility in
-			facility.displayName.localizedCaseInsensitiveContains(searchText) ||
-			facility.suburb.localizedCaseInsensitiveContains(searchText)
+			facility.displayName.localizedCaseInsensitiveContains(searchText)
+				|| facility.suburb.localizedCaseInsensitiveContains(searchText)
 		}
 	}
 
-		/// Apply filter, search, and sorting in one go
-		/// - Parameters:
-		///   - filter: The filter option to apply
-		///   - searchText: Optional search text (empty string means no search)
-		///   - sorting: The sorting option to apply
-		/// - Returns: Filtered, searched, and sorted array
+	/// Apply filter, search, and sorting in one go
+	/// - Parameters:
+	///   - filter: The filter option to apply
+	///   - searchText: Optional search text (empty string means no search)
+	///   - sorting: The sorting option to apply
+	///   - order: The sorting order (ascending or descending)
+	/// - Returns: Filtered, searched, and sorted array
 	func filtered(
 		by filter: FilterOption,
 		searchText: String = "",
-		sortedBy sorting: SortingOption
+		sortedBy sorting: SortingOption,
+		order: SortingOrder = .ascending
 	) -> [ParkingFacility] {
 		self
 			.filtered(by: filter)
 			.searchFiltered(by: searchText)
-			.sorted(by: sorting)
+			.sorted(by: sorting, order: order)
 	}
 }

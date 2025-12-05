@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import SwiftUI
 import MapKit
 import OSLog
 import SwiftData
@@ -29,7 +30,7 @@ final class ParkingFacility {
 	var lastVisited: Date?
 
 	var isFavourite: Bool
-	var notificationThreshold: Int?  // For feature "notify when under X spaces"
+	var notificationThreshold: Int?  // TODO: For feature "notify when under X spaces"
 
 	var lastRefreshed: Date = Date.distantPast
 	var retrievalFailures: Int = 0
@@ -99,7 +100,7 @@ final class ParkingFacility {
 		self.notificationThreshold = nil
 	}
 
-	// MARK: - Computed properties
+	// MARK: Computed properties
 	var displayName: String {
 		return name.removePrefix("Park&Ride - ").localizedCapitalized
 	}
@@ -128,10 +129,12 @@ final class ParkingFacility {
 		}
 	}
 
-	// MARK: - Refresh priority tier
+	// MARK: Refresh priority tier
 	var refreshTier: RefreshTier {
 		if self.isFavourite { return .critical }
-		if self.lastVisited?.timeIntervalSinceNow ?? -3600 > 3600 {
+		if let lastVisited = lastVisited,
+			lastVisited.timeIntervalSinceNow > -3600
+		{
 			return .standard
 		}
 		return .background
@@ -143,17 +146,11 @@ final class ParkingFacility {
 	}
 
 	var shouldShowCachedData: Bool {
-		// Show cached data if:
-		// 1. Cache is valid, OR
-		// 2. Cache is recently expired (grace period) AND we have previous data
-		if isOccupancyCacheValid {
-			return true
-		}
-
-		// Grace period: show old data for up to 2x cache validity time
-		let gracePeriod = refreshTier.cacheValiditySeconds * 2
 		let cacheAge = Date().timeIntervalSince(_occupancyCacheTime)
-		return cacheAge < gracePeriod && _cachedAvailableSpots > 0
+		// Show cached data if cache is valid OR in 2x cache validity time
+		return cacheAge < refreshTier.cacheValiditySeconds
+			|| (cacheAge < refreshTier.cacheValiditySeconds * 2)
+				&& _cachedAvailableSpots > 0
 	}
 
 	var timeSinceLastRefresh: TimeInterval {
@@ -172,13 +169,14 @@ final class ParkingFacility {
 			: "updated \(lastUpdated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))"
 	}
 
-	// MARK: - MapKit
+	// MARK: MapKit
 
 	var mapItem: MKMapItem {
 		let coordinate = CLLocationCoordinate2D(
 			latitude: latitude,
 			longitude: longitude
 		)
+
 		let placeMark = MKPlacemark(coordinate: coordinate)
 
 		// TODO: .init(placemark: placemark) is deprecated, there's a new method for creating a MapItem
@@ -234,10 +232,7 @@ extension ParkingFacility {
 
 	var currentOccupiedSpots: Int {
 		get {
-			if isOccupancyCacheValid {
-				return _cachedOccupancy
-			}
-			return 0
+			isOccupancyCacheValid ? _cachedOccupancy : 0
 		}
 		set {
 			_cachedOccupancy = newValue
@@ -247,19 +242,13 @@ extension ParkingFacility {
 	}
 
 	var currentAvailableSpots: Int {
-		if shouldShowCachedData {
-			return _cachedAvailableSpots
-		} else {
-			return -1
-		}
+		shouldShowCachedData ? _cachedAvailableSpots : -1
 	}
 
 	var displayAvailableSpots: String {
-		if currentAvailableSpots == -1 {
-			return "--"  // TODO: Localisation strings
-		} else {
-			return String(currentAvailableSpots)
-		}
+		currentAvailableSpots == -1
+			? "--"  // TODO: Localisation strings
+			: String(currentAvailableSpots)
 	}
 
 	var occupancy: Double {
@@ -272,7 +261,7 @@ extension ParkingFacility {
 	}
 }
 
-/// Route Enhancement
+// MARK: Route Enhancement
 extension ParkingFacility {
 
 	func updateRoutingData(
@@ -303,6 +292,32 @@ enum RefreshTier: CaseIterable {
 		case .critical: return 15  // 15 sec
 		case .standard: return 60  // 1 min
 		case .background: return 600  // 10 min
+		}
+	}
+}
+
+// Statuses of availability are based on TfNSW recommendation
+// Full: availableSpots < 1
+// Almost full: availableSpots < 10% of total
+
+enum AvailabilityStatus {
+	case available, almostFull, full, noData
+
+	var color: Color {
+		switch self {
+		case .available: return .green
+		case .almostFull: return .yellow
+		case .full: return .red
+		case .noData: return .gray
+		}
+	}
+
+	var text: String {
+		switch self {
+		case .available: return "Available"
+		case .almostFull: return "Almost Full"
+		case .full: return "Full"
+		case .noData: return "No Data"
 		}
 	}
 }

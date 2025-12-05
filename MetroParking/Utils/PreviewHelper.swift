@@ -5,7 +5,9 @@
 //  Created by Tom Kwok on 26/6/2025.
 //
 
-// TODO: Remove this or improve it for a better SwiftUI Preview/Testing experience
+// MARK: - SwiftUI Preview Helper
+// Provides utilities for creating realistic preview environments
+// with proper SwiftData model containers and app state simulation
 
 import Foundation
 import SwiftData
@@ -99,7 +101,15 @@ extension PreviewHelper {
 	}
 }
 
-// TODO: Add edge cases
+// MARK: - ContentView Preview Scenarios
+
+/// Different app states for ContentView previews
+enum ContentViewAppState {
+	case normal
+	case facilitySelected
+	case loading
+	case noData
+}
 
 extension PreviewHelper {
 
@@ -134,66 +144,82 @@ extension PreviewHelper {
 	@MainActor static func previewContainer(withSamplePins: Bool = true)
 		-> ModelContainer
 	{
-		withAnimation(.snappy) {
-			do {
+		do {
+			/// In-memory container with proper schema
+			let schema = Schema([
+				ParkingFacility.self,
+				ParkingZone.self,
+			])
+			let config = ModelConfiguration(
+				schema: schema,
+				isStoredInMemoryOnly: true
+			)
+			let container = try ModelContainer(
+				for: schema,
+				configurations: [config]
+			)
+			let context = container.mainContext
 
-				/// In-memory container
-				let config = ModelConfiguration(isStoredInMemoryOnly: true)
-				let container = try ModelContainer(
-					for: ParkingFacility.self,
-					configurations: config
-				)
-				let context = container.mainContext
+			// Configure the FacilityManager with the preview context
+			FacilityManager.shared.setModelContext(context)
 
-				if withSamplePins {
-					addSamplePinnedFacilities(to: context)
-				}
-
-				try context.save()
-				return container
-
-			} catch {
-				fatalError("Failed to create preview container: \(error.localizedDescription)")
+			if withSamplePins {
+				addSamplePinnedFacilities(to: context)
 			}
+
+			try context.save()
+			return container
+
+		} catch {
+			fatalError("Failed to create preview container: \(error.localizedDescription)")
 		}
+	}
+
+	/// Creates a fully initialized preview container that mimics the production app setup
+	@MainActor static func initializedPreviewContainer(withSamplePins: Bool = true) -> ModelContainer {
+		let container = previewContainer(withSamplePins: withSamplePins)
+		
+		// Simulate the app's initialization sequence
+		Task {
+			await FacilityManager.shared.loadStaticFacilitiesIfNeeded()
+		}
+		
+		return container
 	}
 
 	/// Add some realistic pinned facilities with varied occupancy
 	private static func addSamplePinnedFacilities(to context: ModelContext) {
-		let descriptor = FetchDescriptor<ParkingFacility>()
+		// First, insert all static facilities into the context
+		let allStaticFacilities = ParkingFacility.getAllStaticFacilities()
+		for facility in allStaticFacilities {
+			context.insert(facility)
+		}
+		
+		// Pin some realistic facilities with varied data
+		let facilitiesToPin = [
+			(name: "Kiama", occupancyRatio: 0.95),  // Almost full, small facility
+			(name: "Gosford", occupancyRatio: 0.3),  // Available, large facility
+			(name: "Leppington", occupancyRatio: 1.0),  // Full, very large facility
+			(name: "Gordon", occupancyRatio: 0.6),  // Moderate, medium facility
+		]
 
-		do {
-			let allFacilities = try context.fetch(descriptor)
+		for (facilityName, occupancyRatio) in facilitiesToPin {
+			if let facility = allStaticFacilities.first(where: {
+				$0.name.contains(facilityName)
+			}) {
+				facility.isFavourite = true
 
-			// Pin some realistic facilities with varied data
-			let facilitiesToPin = [
-				(name: "Kiama", occupancyRatio: 0.95),  // Almost full, small facility
-				(name: "Gosford", occupancyRatio: 0.3),  // Available, large facility
-				(name: "Leppington", occupancyRatio: 1.0),  // Full, very large facility
-				(name: "Gordon", occupancyRatio: 0.6),  // Moderate, medium facility
-			]
-
-			for (facilityName, occupancyRatio) in facilitiesToPin {
-				if let facility = allFacilities.first(where: {
-					$0.name.contains(facilityName)
-				}) {
-					facility.isFavourite = true
-
-					// Set realistic occupancy data
-					if occupancyRatio > 0 {
-						facility.currentOccupiedSpots = Int(
-							Double(facility.totalSpaces) * occupancyRatio
-						)
-					}
+				// Set realistic occupancy data
+				if occupancyRatio > 0 {
+					facility.currentOccupiedSpots = Int(
+						Double(facility.totalSpaces) * occupancyRatio
+					)
 				}
 			}
-
-			print(
-				"📌 Preview: Pinned \(facilitiesToPin.count) sample facilities"
-			)
-
-		} catch {
-			print("❌ Preview: Failed to add sample pins: \(error.localizedDescription)")
 		}
+
+		print(
+			"📌 Preview: Added \(allStaticFacilities.count) facilities and pinned \(facilitiesToPin.count) sample facilities"
+		)
 	}
 }

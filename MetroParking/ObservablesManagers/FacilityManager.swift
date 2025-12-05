@@ -1,33 +1,38 @@
-//
+///
 //  FacilityManager.swift
 //  MetroParking
 //
 //  Created by Tom Kwok on 31/8/2025.
 //
 
+/// This component serves as a middle layer between the view and model and manages the following functions:
+/// - Loading data from API ( plus bulk actions)
+/// - Saving to SwiftData
+/// - Auto-refresh logic
+/// - NO sorting and filtering logics as they're presentation logic
+
 import Foundation
 import OSLog
 import SwiftData
 import SwiftUI
 
-@MainActor
-class FacilityManager: ObservableObject {
+@Observable
+class FacilityManager {
 
 	static let shared = FacilityManager()
 
 	// MARK: - Live data
-	@Published var isRefreshing = false
-	@Published var lastRefreshTime: Date?
-	@Published var loadProgress: LoadProgress = .notStarted
+	var isRefreshing = false
+	var lastRefreshTime: Date?
+	var loadProgress: LoadProgress = .notStarted
 
 	// MARK: - Static data
-	@Published var isLoadingStaticData = false
-	@Published var staticDataLoadTime: Date?
+	var isLoadingStaticData = false
+	var staticDataLoadTime: Date?
 
 	private var modelContext: ModelContext?
 	private var currentAppState: AppState = .active
-	private var refreshTimer: Timer?
-	private weak var timeForCleanup: Timer?
+	private var refreshTask: Task<Void, Never>?
 
 	private init() {
 		setupAppStateObservers()
@@ -35,7 +40,7 @@ class FacilityManager: ObservableObject {
 
 	deinit {
 		NotificationCenter.default.removeObserver(self)
-		timeForCleanup?.invalidate()
+		refreshTask?.cancel()
 	}
 
 	func setModelContext(_ context: ModelContext) {
@@ -116,19 +121,17 @@ extension FacilityManager {
 
 		let descriptor = FetchDescriptor<ParkingFacility>()
 
-		withAnimation(.snappy) {
-			do {
-				let facilities = try context.fetch(descriptor)
-				for facility in facilities {
-					context.delete(facility)
-				}
-				try context.save()
-				Logger.facilityData.notice("🗑️ Cleared all facilities")
-			} catch {
-				Logger.facilityData.error(
-					"❌ Failed to clear facilities: \(error.localizedDescription)"
-				)
+		do {
+			let facilities = try context.fetch(descriptor)
+			for facility in facilities {
+				context.delete(facility)
 			}
+			try context.save()
+			Logger.facilityData.notice("🗑️ Cleared all facilities")
+		} catch {
+			Logger.facilityData.error(
+				"❌ Failed to clear facilities: \(error.localizedDescription)"
+			)
 		}
 
 	}
@@ -155,7 +158,8 @@ extension FacilityManager {
 		isRefreshing = true
 		loadProgress = .loading(0, 0)
 
-		let allFacilities = getAllFacilities()
+		// Fetch facilities asynchronously to avoid blocking
+		let allFacilities = await getAllFacilitiesAsync()
 
 		// Fix the refresh selection logic
 		let needsRefresh = allFacilities.filter { facility in
@@ -187,15 +191,28 @@ extension FacilityManager {
 		// Load in priority order, respecting API limits
 		let toLoad = forced ? smartLoadBatches : allFacilities
 
-		var processedCount = 0
-
 		await MainActor.run {
 			loadProgress = .loading(0, toLoad.count)
 		}
 
-		for facility in toLoad {
-			await loadFacility(facility)
-			processedCount += 1
+		// Load facilities concurrently in batches to improve performance
+		let batchSize = 3 // Load 3 facilities at once
+		var processedCount = 0
+
+		for i in stride(from: 0, to: toLoad.count, by: batchSize) {
+			let endIndex = min(i + batchSize, toLoad.count)
+			let batch = Array(toLoad[i..<endIndex])
+			
+			// Load batch concurrently
+			await withTaskGroup(of: Void.self) { group in
+				for facility in batch {
+					group.addTask {
+						await self.loadFacility(facility)
+					}
+				}
+			}
+			
+			processedCount += batch.count
 
 			await MainActor.run {
 				loadProgress = .loading(processedCount, toLoad.count)
@@ -211,6 +228,11 @@ extension FacilityManager {
 		Logger.facilityRefresh.notice(
 			"✅ \( processedCount ) facilities updated"
 		)
+		
+		// Schedule next refresh if app is active
+		if currentAppState == .active {
+			scheduleNextRefresh()
+		}
 	}
 
 	func loadFacility(_ facility: ParkingFacility) async {
@@ -244,34 +266,47 @@ extension FacilityManager {
 		}
 	}
 
+	/// Schedule the next refresh using modern async/await pattern
+	private func scheduleNextRefresh() {
+		stopAutoRefresh()
+		
+		let interval = currentAppState.refreshInterval
+		Logger.facilityRefresh.notice("⏰ Scheduling next refresh in \(interval)s")
+		
+		refreshTask = Task { @MainActor in
+			try? await Task.sleep(for: .seconds(interval))
+			
+			// Check if task was cancelled
+			guard !Task.isCancelled else {
+				Logger.facilityRefresh.debug("Refresh task was cancelled")
+				return
+			}
+			
+			// Only refresh if still active
+			guard self.currentAppState == .active else {
+				return
+			}
+			
+			await self.performLoad()
+		}
+	}
+
 	func startAutoRefresh() {
-		guard refreshTimer == nil else {
+		guard refreshTask == nil || refreshTask?.isCancelled == true else {
 			Logger.facilityRefresh.warning("⏩ Auto-refresh already running")
 			return
 		}
 
 		Logger.facilityRefresh.notice("🔄 Starting auto-refresh cycle...")
-
-		let interval = currentAppState.refreshInterval
-
-		refreshTimer =
-			Timer
-			.scheduledTimer(withTimeInterval: interval, repeats: false) {
-				[weak self] _ in
-				Task { @MainActor in
-					await self?.performLoad()
-				}
-			}
-
-		timeForCleanup = refreshTimer
-		Logger.facilityRefresh.notice(
-			"⏰ Auto refresh started"
-		)
+		
+		Task {
+			await performLoad()
+		}
 	}
 
 	func stopAutoRefresh() {
-		refreshTimer?.invalidate()
-		refreshTimer = nil
+		refreshTask?.cancel()
+		refreshTask = nil
 		Logger.facilityRefresh.notice("⏹️ Auto refresh stopped")
 	}
 }
@@ -279,7 +314,7 @@ extension FacilityManager {
 // MARK: - Helper Methods
 extension FacilityManager {
 
-	/// Get all facilities from SwiftData
+	/// Get all facilities from SwiftData (synchronous - use for main thread only)
 	func getAllFacilities() -> [ParkingFacility] {
 		guard let context = modelContext else { return [] }
 
@@ -293,13 +328,33 @@ extension FacilityManager {
 			return []
 		}
 	}
+	
+	/// Get all facilities from SwiftData (asynchronous - preferred for background operations)
+	private func getAllFacilitiesAsync() async -> [ParkingFacility] {
+		guard let context = modelContext else { return [] }
 
-	/// Save SwiftData context
+		let descriptor = FetchDescriptor<ParkingFacility>()
+		return await Task.detached {
+			do {
+				return try context.fetch(descriptor)
+			} catch {
+				Logger.facilityRefresh.error(
+					"❌ Failed to fetch all facilities: \(error.localizedDescription)"
+				)
+				return []
+			}
+		}.value
+	}
+
+	/// Save SwiftData context with error handling
 	private func saveContext() async {
 		guard let context = modelContext else { return }
 
 		do {
-			try context.save()
+			if context.hasChanges {
+				try context.save()
+				Logger.facilityRefresh.debug("💾 Context saved successfully")
+			}
 		} catch {
 			Logger.facilityRefresh
 				.error(

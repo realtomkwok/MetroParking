@@ -12,131 +12,283 @@ import SwiftUI
 struct ContentView: View {
 	@Namespace var namespace
 
-	/// Load SwiftData environment
-	@Environment(\.modelContext) private var modelContext
+	// Access FacilityManager from environment
+	@Environment(FacilityManager.self) private var facilityManager
 
-	@ObservedObject private var facilityManager = FacilityManager.shared
-	@ObservedObject private var appState = AppStateManager.shared
-	@ObservedObject private var mapCamera = MapCameraManager.shared
+	@State private var searchText: String = ""
+	@State private var selectedSorting: SortingOption = .name
+	@State private var filterIsOn: Bool = false
+	@State private var selectedFilter: FilterOption = .pinned
 
-	/// Location Manager
-	@ObservedObject private var locationManager = LocationManager.shared
+	@Query private var facilities: [ParkingFacility]
 
-	/// UI State
-	@State private var showingMainSheet = true
-	@State private var hasInitialised = false
-
-	private var shouldDisableMainSheetDismiss: Bool {
-		appState.showingFacilityDetail
-			|| appState.currentSheetDetent == .medium
-			|| appState.currentSheetDetent == .large
+	private var filteredFacilities: [ParkingFacility] {
+		return
+			facilities
+			.filtered(by: filterIsOn ? selectedFilter : .all)
+			.searchFiltered(by: searchText)
+			.sorted(by: selectedSorting)
 	}
 
-	private func initialisedApp() async {
-		/// Connect the data manager to SwiftData
-		facilityManager.setModelContext(modelContext)
-
-		/// Load static facilities
-		await facilityManager.loadStaticFacilitiesIfNeeded()
-
-		/// Start loading live data
-		await facilityManager.performLoad()
-
-		// Might just replace it with hardcoded coordinates
-		mapCamera.setupInitialCameraPosition()
-
-		facilityManager.startAutoRefresh()
+	private var navigationSubtitleText: String {
+		if facilityManager.isRefreshing {
+			return facilityManager.loadProgress.description
+		} else if let lastRefresh = facilityManager.lastRefreshTime {
+			return
+				"Updated \(lastRefresh.formatted(.relative(presentation: .named)))"
+		} else {
+			return "Pull down to refresh"
+		}
 	}
+
+	private var backgroundGradient: some View {
+		LinearGradient(
+			gradient: Gradient(colors: [
+				Color(.systemTeal),
+				Color(.systemBackground),
+			]),
+			startPoint: .top,
+			endPoint: .center
+		)
+		.edgesIgnoringSafeArea(.all)
+	}
+
+	@available(iOS 26.0, *)
+	private var mainContentGlassy: some View {
+		ScrollView(.vertical) {
+			GlassEffectContainer(spacing: 8) {
+				LazyVStack(spacing: 8) {
+					FacilityList(
+						facilities: filteredFacilities
+					)
+				}
+				.padding()
+			}
+		}
+		.navigationTitle("MetroParking")
+		.navigationSubtitle(navigationSubtitleText)
+		.transition(.blurReplace(.downUp))
+		.refreshable {
+			await facilityManager.performLoad(forced: true)
+		}
+		.toolbar {
+			TopBarActions()
+		}
+		.toolbar {
+			DefaultToolbarItem(kind: .search, placement: .bottomBar)
+			ToolbarSpacer(.flexible, placement: .bottomBar)
+			BottomBarActions()
+		}
+		.searchable(text: $searchText)
+		//		.searchPresentationToolbarBehavior(filterIsOn ? .minimize : .hidesForAllContent)
+	}
+
+	// TODO: main content for iOS versions under iOS 26
 
 	var body: some View {
-		ZStack {
-			BackgroundView()
-
-				// MARK: - Main sheet
-				.sheet(isPresented: $appState.showingMainSheet) {
-					ForegroundView()
-						.presentationCornerRadius(24)
-						.presentationBackground(.thinMaterial)
-						.presentationDetents(
-							[.fraction(0.2), .medium, .large],
-							selection: $appState.currentSheetDetent
-						)
-						.presentationDragIndicator(.visible)
-						.presentationBackgroundInteraction(.enabled)
-						.presentationContentInteraction(.automatic)
-						.interactiveDismissDisabled(
-							true
-						)
+		NavigationStack {
+			ZStack {
+				backgroundGradient
+				if #available(iOS 26.0, *) {
+					mainContentGlassy
+				} else {
+					// Fallback on earlier versions
 				}
+			}
 
-				// MARK: - Detail Sheet
-				.sheet(
-					isPresented: $appState.showingFacilityDetail,
-					onDismiss: {
-						appState.deselectFacility()
+		}
+	}
+
+	@ToolbarContentBuilder
+	func TopBarActions() -> some ToolbarContent {
+		ToolbarItem(placement: .topBarTrailing) {
+			Button {
+				Task {
+					await facilityManager.performLoad(
+						forced: true
+					)
+				}
+			} label: {
+				Image(systemName: "arrow.clockwise")
+					.symbolEffect(
+						.rotate,
+						isActive: facilityManager.isRefreshing
+					)
+			}
+			.accessibilityLabel("Refresh")
+			.disabled(facilityManager.isRefreshing)
+		}
+
+		ToolbarItem(placement: .topBarTrailing) {
+			Menu {
+				// Settings section
+				Section {
+					Button {
+						// TODO: Navigate to settings
+					} label: {
+						Label("Settings", systemImage: "gear")
 					}
-				) {
-					if let facility = appState.selectedFacility {
-						ParkingDetailView(
-							facility: facility,
-						)
-						.presentationDetents(
-							[.fraction(0.2), .medium, .large],
-							selection: $appState.currentSheetDetent
-						)
-						.presentationDragIndicator(.hidden)
-						.presentationBackgroundInteraction(.enabled)
-						.presentationBackground(.thinMaterial)
-						.interactiveDismissDisabled(true)
-					}
 				}
-				.task {
-					guard !hasInitialised else { return }
-					hasInitialised = true
-					await initialisedApp()
-				}
-				.fontDesign(.rounded)
-		}
-	}
-
-}
-
-enum ScreenView: String, CaseIterable, Identifiable {
-	case pinned
-	case all
-
-	var id: String { self.rawValue }
-
-	var displayName: String {
-		switch self {
-		case .pinned: "Pins & Recents"
-		case .all: "All Parking"
-		}
-	}
-
-	var iconName: String {
-		switch self {
-		case .pinned: "star"
-		case .all: "parkingsign.square"
-		}
-	}
-
-	@ViewBuilder
-	func destinationView() -> some View {
-		VStack(spacing: 8) {
-			Spacer()
-			switch self {
-			case .pinned:
-				PinnedAndRecents()
-
-			case .all:
-				AllFacilitiesView()
+			} label: {
+				Label("More", systemImage: "ellipsis")
 			}
 		}
 	}
+
+	@available(iOS 26.0, *)
+	@ToolbarContentBuilder
+	func BottomBarActions() -> some ToolbarContent {
+		ToolbarItem(placement: .bottomBar) {
+			HStack(spacing: 12) {
+				Toggle(
+					isOn: $filterIsOn
+				) {
+					Label(
+						"Filter",
+						systemImage: "line.3.horizontal.decrease"
+					)
+					.labelStyle(.iconOnly)
+
+				}
+				.transition(
+					.asymmetric(
+						insertion: .move(edge: .trailing).combined(
+							with: .opacity
+						),
+						removal: .move(edge: .trailing).combined(with: .opacity)
+					)
+				)
+
+				if filterIsOn {
+					FilterPicker(
+						selectedFilter: $selectedFilter,
+						selectedSorting: $selectedSorting
+					)
+
+				}
+			}
+
+			.animation(.smooth(duration: 0.35), value: filterIsOn)
+			.padding(.horizontal, 8)
+			.padding(.vertical, 6)
+		}
+	}
+
+	@available(iOS 26.0, *)
+	struct FilterPicker: View {
+		@Binding var selectedFilter: FilterOption
+		@Binding var selectedSorting: SortingOption
+
+		var body: some View {
+			Menu {
+				LabeledPickerSection(
+					title: "Filtered by",
+					selection: $selectedFilter,
+					options: FilterOption.allCases
+				)
+
+				LabeledPickerSection(
+					title: "Sort by",
+					selection: $selectedSorting,
+					options: SortingOption.allCases
+				)
+
+			} label: {
+				VStack(alignment: .leading) {
+					Text("Filtered by")
+						.font(.footnote)
+						.fontWeight(.semibold)
+					HStack(alignment: .firstTextBaseline, spacing: 2) {
+						Text(selectedFilter.display.title)
+							.font(.footnote)
+						Image(systemName: "chevron.down")
+							.font(.caption2)
+					}
+					.fontWeight(.medium)
+					.foregroundStyle(.regularMaterial)
+				}
+				.padding(.trailing, 8)
+			}
+		}
+	}
+
+	/// A reusable picker section for options with display properties
+	@available(iOS 26.0, *)
+	struct LabeledPickerSection<T>: View
+	where
+		T: CaseIterable & Hashable & PickerOptionDisplayable,
+		T.DisplayType: BasicDisplayable
+	{
+		let title: String
+		@Binding var selection: T
+		let options: [T]
+
+		var body: some View {
+			Section {
+				Picker(title, selection: $selection) {
+					ForEach(Array(options), id: \.self) { option in
+						Label(
+							option.display.title,
+							systemImage: option.display.systemImage
+						)
+						.tag(option)
+					}
+				}
+				.labelsVisibility(.visible)
+				.pickerStyle(.inline)
+			}
+		}
+	}
+
 }
 
-#Preview("Normal App State") {
+@available(iOS 26.0, *)
+struct FacilityList: View {
+	let facilities: [ParkingFacility]
+
+	@ViewBuilder
+	func FacilityRowView(facility: ParkingFacility) -> some View {
+		HStack(alignment: .top) {
+			VStack(alignment: .leading) {
+				Text(facility.displayName)
+					.font(.title2)
+					.fontWeight(.medium)
+					.foregroundStyle(.foreground)
+
+				Spacer()
+
+				Text(facility.availabilityStatus.text)
+					.font(.subheadline)
+					.foregroundStyle(.secondary)
+			}
+
+			Spacer()
+			Text(String(facility.displayAvailableSpots))
+				.font(.largeTitle)
+				.fontWeight(.regular)
+				.contentTransition(.numericText())
+		}
+		.frame(maxWidth: .infinity)
+		.containerShape(
+			.rect(cornerRadius: 16, style: .continuous)
+		)
+		.padding()
+		.glassEffect(
+			.clear,
+			in: .rect(cornerRadius: 16, style: .continuous)
+		)
+
+	}
+
+	var body: some View {
+		ForEach(facilities, id: \.facilityId) { facility in
+			FacilityRowView(facility: facility)
+		}
+	}
+}
+
+#Preview {
 	ContentView()
-		.modelContainer(PreviewHelper.previewContainer(withSamplePins: false))
+		.modelContainer(PreviewHelper.previewContainer(withSamplePins: true))
+		.environment(FacilityManager.shared)
 }

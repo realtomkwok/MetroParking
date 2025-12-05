@@ -5,8 +5,8 @@
 //  Created by Tom Kwok on 18/5/2025.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 @main
 struct MetroParkingApp: App {
@@ -15,12 +15,20 @@ struct MetroParkingApp: App {
 			ParkingFacility.self,
 			ParkingZone.self,
 		])
-		let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+		let modelConfiguration = ModelConfiguration(
+			schema: schema,
+			isStoredInMemoryOnly: false
+		)
 
 		do {
-			return try ModelContainer(for: schema, configurations: [modelConfiguration])
+			return try ModelContainer(
+				for: schema,
+				configurations: [modelConfiguration]
+			)
 		} catch {
-			fatalError("Could not create ModelContainer: \(error.localizedDescription)")
+			fatalError(
+				"Could not create ModelContainer: \(error.localizedDescription)"
+			)
 		}
 	}()
 
@@ -32,20 +40,39 @@ struct MetroParkingApp: App {
 		WindowGroup {
 			ContentView()
 				.modelContainer(sharedModelContainer)
+				.environment(FacilityManager.shared)
+				.task {
+					// Initialise on first appearance
+					await initializeFacilityManager()
+				}
 		}
 	}
 
 	private func setupConfiguration() {
-			// Access configuration properties to trigger validation
-			// Each property has built-in validation that will fatalError if invalid
+		// Access configuration properties to trigger validation
+		// Each property has built-in validation that will fatalError if invalid
 		_ = Configuration.tfnswApiKey
 		_ = Configuration.carParkBaseUrl
 		_ = Configuration.supabaseUrl
 		_ = Configuration.supabasePublishableKey
 
-#if DEBUG
-		Configuration.validateInDebug()
-		Configuration.printConfiguration()
-#endif
+		#if DEBUG
+			Configuration.validateInDebug()
+			Configuration.printConfiguration()
+		#endif
+	}
+
+	@MainActor
+	private func initializeFacilityManager() async {
+		let facilityManager = FacilityManager.shared
+		let context = sharedModelContainer.mainContext
+		
+		// Set up the manager with context
+		facilityManager.setModelContext(context)
+		
+		// Load initial data
+		await facilityManager.loadStaticFacilitiesIfNeeded()
+		await facilityManager.performLoad()
+		facilityManager.startAutoRefresh()
 	}
 }

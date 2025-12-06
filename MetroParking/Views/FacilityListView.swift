@@ -13,6 +13,7 @@ import SwiftUI
 struct FacilityList: View {
 	var nameSpace: Namespace.ID
 	let groupedFacilities: [(title: String?, facilities: [ParkingFacility])]
+
 	@State private var selectedFacility: ParkingFacility?
 	@Environment(\.modelContext) private var modelContext
 
@@ -64,14 +65,14 @@ struct FacilityList: View {
 			}
 		}
 		.contentTransition(.identity)
-		.animation(.smooth(duration: 0.4), value: sections.map { $0.id })
-		.animation(
-			.smooth(duration: 0.4),
-			value: sections.flatMap { $0.facilities.map(\.facilityId) }
-		)
+//		.animation(.smooth(duration: 0.4), value: sections.map { $0.id })
+//		.animation(
+//			.smooth(duration: 0.4),
+//			value: sections.flatMap { $0.facilities.map(\.facilityId) }
+//		)
 		.listStyle(.plain)
 		.navigationDestination(item: $selectedFacility) { facility in
-			FacilityDetailView(facility: facility)
+			FacilityDetailView(namespace: nameSpace, facility: facility)
 				.navigationTransition(
 					.zoom(sourceID: facility.facilityId, in: nameSpace)
 				)
@@ -86,7 +87,7 @@ struct FacilityList: View {
 		HStack(alignment: .center) {
 			VStack(alignment: .leading) {
 				HStack(alignment: .center, spacing: 4) {
-					Text(facility.displayName)
+					Text(facility.displayName.title)
 						.font(.title3)
 						.fontWeight(.medium)
 						.foregroundStyle(.foreground)
@@ -95,11 +96,11 @@ struct FacilityList: View {
 						Image(systemName: "star.fill")
 							.font(.caption2)
 							.foregroundStyle(.tertiary)
-							.transition(.scale.combined(with: .opacity))
-							.symbolEffect(.bounce, value: facility.isFavourite)
 					}
 				}
-				.animation(.smooth(duration: 0.3), value: facility.isFavourite)
+				Text(facility.displayName.subtitle)
+					.font(.headline)
+					.foregroundStyle(.secondary)
 
 				Spacer()
 
@@ -111,41 +112,41 @@ struct FacilityList: View {
 			Spacer()
 			VStack(alignment: .center) {
 				ParkingProgressGauge(
-					availableSpaces: facility.currentAvailableSpots,
-					displayAvailableSpots: facility.displayAvailableSpots,
+					vacancy: facility.currentVacancy,
+					displayVacancy: facility.displayVacancy,
 					totalSpaces: facility.totalSpaces,
 					availabilityStatus: facility.availabilityStatus
 				)
-				.scaleEffect(1.1)
+				.scaleEffect(1.2)
 			}
 			.padding(12)
-			.background(Circle().fill(.thinMaterial).opacity(0.6))
+			.background(Circle().fill(.thinMaterial).opacity(0.2))
 		}
+		.contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
 		.padding()
 	}
 
 	@ViewBuilder
 	private func facilityRow(for facility: ParkingFacility) -> some View {
+		let statusColor = facility.availabilityStatus.color
+		let cornerRadius: CGFloat = 24
+		let borderOpacity: CGFloat = 0.1
+		let tintOpacity: CGFloat = 0.04
+		
 		Button {
 			selectedFacility = facility
 		} label: {
 			FacilityRowView(facility: facility)
 		}
-		.contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-
 		.overlay(
-			RoundedRectangle(cornerRadius: 24, style: .continuous)
-				.stroke(
-					facility.availabilityStatus.color.opacity(0.1),
-					lineWidth: 1
-				)
-
+			RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+				.stroke(statusColor.opacity(borderOpacity), lineWidth: 1)
 		)
 		.glassEffect(
 			.clear
-				.tint(facility.availabilityStatus.color.opacity(0.04))
+				.tint(statusColor.opacity(tintOpacity))
 				.interactive(),
-			in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+			in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
 		)
 		.listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
 		.listRowBackground(Color.clear)
@@ -154,39 +155,47 @@ struct FacilityList: View {
 		.matchedTransitionSource(id: facility.facilityId, in: nameSpace)
 		.buttonStyle(.plain)
 		.swipeActions(edge: .leading) {
-			Button {
-				withAnimation {
-					facility.isFavourite.toggle()
-					// Save the context to persist the change
-					try? modelContext.save()
-				}
-			} label: {
-				Label(
-					facility.isFavourite ? "Unpin" : "Pin",
-					systemImage: facility.isFavourite ? "star.fill" : "star"
-				)
-			}
-			.tint(.yellow)
+			favouriteSwipeAction(for: facility)
 		}
 		.swipeActions(edge: .trailing) {
-			Button {
-				// TODO: Enable live activity/notifications
-				enableLiveActivity(for: facility)
-			} label: {
-				Label("Live", systemImage: "bell.badge")
-			}
-			.tint(.orange)
-			Button {
-				// TODO: Open in Maps app
-				openInMaps(facility: facility)
-			} label: {
-				Label(
-					"Go",
-					systemImage: "arrow.trianglehead.turn.up.right.diamond"
-				)
-			}
-			.tint(.blue)
+			trailingSwipeActions(for: facility)
 		}
+	}
+	
+	@ViewBuilder
+	private func favouriteSwipeAction(for facility: ParkingFacility) -> some View {
+		Button {
+			withAnimation {
+				facility.isFavourite.toggle()
+				// Save the context to persist the change
+				try? modelContext.save()
+			}
+		} label: {
+			Label(
+				facility.isFavourite ? "Unpin" : "Pin",
+				systemImage: facility.isFavourite ? "star.fill" : "star"
+			)
+		}
+		.tint(.yellow)
+	}
+	
+	@ViewBuilder
+	private func trailingSwipeActions(for facility: ParkingFacility) -> some View {
+		Button {
+			// TODO: Enable live activity/notifications
+			enableLiveActivity(for: facility)
+		} label: {
+			Label("Live", systemImage: "bell.badge")
+		}
+		.tint(.orange)
+		
+		Button {
+			// TODO: Open in Maps app
+			openInMaps(facility: facility)
+		} label: {
+			Label("Go", systemImage: "arrow.trianglehead.turn.up.right.diamond")
+		}
+		.tint(.blue)
 	}
 
 	@ViewBuilder

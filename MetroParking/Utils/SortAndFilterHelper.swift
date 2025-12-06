@@ -83,18 +83,27 @@ enum SortingOption: String, CaseIterable, Codable, Hashable,
 		
 		switch self {
 		case .name:
-			return [SortDescriptor(\.displayName, order: sortOrder)]
+			// Note: displayName is a computed property, so we sort by the actual name field
+			// We also add facilityId as a tiebreaker to ensure stable, consistent sorting
+			return [
+				SortDescriptor(\.name, order: sortOrder),
+				SortDescriptor(\.facilityId, order: sortOrder)
+			]
 		case .lastUpdated:
 			// For lastUpdated, we typically want newest first as default
 			// So when "ascending" is selected, we show oldest first
 			// When "descending" is selected, we show newest first
-			return [SortDescriptor(\.lastUpdated, order: sortOrder)]
+			return [
+				SortDescriptor(\.lastUpdated, order: sortOrder),
+				SortDescriptor(\.facilityId, order: sortOrder)
+			]
 		case .distance:
 			// Sort by distance with nil values at the end
-			// Then by name as a secondary sort for nil values
+			// Then by name and facilityId as secondary sorts
 			return [
 				SortDescriptor(\.lastCalculatedDistance, order: sortOrder),
-				SortDescriptor(\.displayName, order: sortOrder),
+				SortDescriptor(\.name, order: sortOrder),
+				SortDescriptor(\.facilityId, order: sortOrder),
 			]
 		}
 	}
@@ -115,7 +124,14 @@ enum SortingOption: String, CaseIterable, Codable, Hashable,
 		
 		switch self {
 		case .name:
-			ascending = lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+			// Sort by title first, then by subtitle if titles are equal
+			let titleComparison = lhs.displayName.title.localizedStandardCompare(rhs.displayName.title)
+			if titleComparison != .orderedSame {
+				ascending = titleComparison == .orderedAscending
+			} else {
+				// Titles are equal, compare subtitles
+				ascending = lhs.displayName.subtitle.localizedStandardCompare(rhs.displayName.subtitle) == .orderedAscending
+			}
 
 		case .lastUpdated:
 			// For lastUpdated: ascending means oldest first, descending means newest first
@@ -125,8 +141,13 @@ enum SortingOption: String, CaseIterable, Codable, Hashable,
 			// Sort by distance with nil values at the end
 			switch (lhs.lastCalculatedDistance, rhs.lastCalculatedDistance) {
 			case (.none, .none):
-				// Both nil: sort by name
-				ascending = lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+				// Both nil: sort by name (title, then subtitle)
+				let titleComparison = lhs.displayName.title.localizedStandardCompare(rhs.displayName.title)
+				if titleComparison != .orderedSame {
+					ascending = titleComparison == .orderedAscending
+				} else {
+					ascending = lhs.displayName.subtitle.localizedStandardCompare(rhs.displayName.subtitle) == .orderedAscending
+				}
 			case (.none, .some):
 				// Left is nil: goes after (regardless of order)
 				return order == .ascending ? false : false
@@ -228,7 +249,7 @@ enum FilterOption: String, CaseIterable, Codable, Hashable,
 		case .pinned: return #Predicate { $0.isFavourite }
 		case .available:
 			return #Predicate {
-				$0.currentAvailableSpots > 0
+				$0.currentVacancy > 0
 			}
 		case .recent:
 			return #Predicate {
@@ -247,7 +268,7 @@ enum FilterOption: String, CaseIterable, Codable, Hashable,
 		case .pinned:
 			return facility.isFavourite
 		case .available:
-			return facility.currentAvailableSpots > 0
+			return facility.currentVacancy > 0
 		case .recent:
 			return facility.lastVisited != nil
 		}
@@ -287,7 +308,8 @@ extension Array where Element == ParkingFacility {
 		guard !searchText.isEmpty else { return self }
 
 		return filter { facility in
-			facility.displayName.localizedCaseInsensitiveContains(searchText)
+			facility.displayName.title.localizedCaseInsensitiveContains(searchText)
+				|| facility.displayName.subtitle.localizedCaseInsensitiveContains(searchText)
 				|| facility.suburb.localizedCaseInsensitiveContains(searchText)
 		}
 	}

@@ -185,7 +185,7 @@ extension FacilityManager {
 
 		Logger.facilityRefresh
 			.debug(
-				"Loading \(smartLoadBatches.count) facilities (including \(smartLoadBatches.map(\.displayName).joined(separator: ", "))"
+				"Loading \(smartLoadBatches.count) facilities (including \(smartLoadBatches.map(\.displayName.title).joined(separator: ", "))"
 			)
 
 		// Load in priority order, respecting API limits
@@ -238,7 +238,9 @@ extension FacilityManager {
 	func loadFacility(_ facility: ParkingFacility) async {
 		guard !facility.isOccupancyCacheValid else {
 			Logger.facilityRefresh
-				.info("Cache still valid for \(facility.displayName)")
+				.info(
+					"Cache still valid for \(facility.displayName.title) - \(facility.displayName.subtitle)"
+				)
 			return
 		}
 
@@ -258,10 +260,13 @@ extension FacilityManager {
 				}
 			}
 
-			Logger.facilityRefresh.info("✅ Updated \(facility.displayName)")
+			Logger.facilityRefresh
+				.info(
+					"✅ Updated \(facility.displayName.title) - \(facility.displayName.subtitle)"
+				)
 		} catch {
 			Logger.facilityRefresh.error(
-				"❌ Failed to fetch \(facility.displayName): \(error.localizedDescription)"
+				"❌ Failed to fetch \(facility.displayName.title) - \(facility.displayName.subtitle): \(error.localizedDescription)"
 			)
 		}
 	}

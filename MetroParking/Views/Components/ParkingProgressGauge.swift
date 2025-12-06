@@ -8,17 +8,17 @@
 import SwiftUI
 
 struct ParkingProgressGauge: View {
-	let availableSpaces: Int
-	let displayAvailableSpots: String
+	let vacancy: Int
+	let displayVacancy: String
 	let totalSpaces: Int
 	let availabilityStatus: AvailabilityStatus
 
 	private var occupancyProgress: Double {
 		guard totalSpaces > 0 else { return 0 }
 
-		let clampedAvailableSpaces = max(0, min(availableSpaces, totalSpaces))
+		let clampedVacancy = max(0, min(vacancy, totalSpaces))
 
-		let currentOccupancy = totalSpaces - clampedAvailableSpaces
+		let currentOccupancy = totalSpaces - clampedVacancy
 
 		let progress = Double(currentOccupancy) / Double(totalSpaces)
 
@@ -29,11 +29,11 @@ struct ParkingProgressGauge: View {
 	var body: some View {
 		Gauge(value: occupancyProgress, in: 0...1) {
 		} currentValueLabel: {
-			Text("\(displayAvailableSpots)")
+			Text("\(displayVacancy)")
 //				.frame(maxWidth: .infinity)
 				.font(.title2)
 				.fontWeight(.semibold)
-				.contentTransition(.numericText(value: Double(availableSpaces)))
+				.contentTransition(.numericText(value: Double(vacancy)))
 		} minimumValueLabel: {
 			Text("\(totalSpaces)")
 				.font(.system(size: 8))
@@ -68,10 +68,10 @@ struct ParkingProgressGauge: View {
 			id: \.facilityId
 		) { facility in
 			ParkingProgressGauge(
-				availableSpaces: Int(facility.currentAvailableSpots),
-				displayAvailableSpots: facility.displayAvailableSpots,
+				vacancy: facility.currentVacancy,
+				displayVacancy: facility.displayVacancy,
 				totalSpaces: facility.totalSpaces,
-				availabilityStatus: facility.availabilityStatus,
+				availabilityStatus: facility.availabilityStatus
 			)
 		}
 	}

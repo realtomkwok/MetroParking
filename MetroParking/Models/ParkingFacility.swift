@@ -43,7 +43,7 @@ final class ParkingFacility {
 
 	// Occupancy cache
 	private var _cachedOccupancy: Int = 0
-	private var _cachedAvailableSpots: Int = 0
+	private var _cachedVacancy: Int = 0
 	private var _occupancyCacheTime: Date = Date.distantPast
 
 	@Relationship(deleteRule: .cascade, inverse: \ParkingZone.facility)
@@ -101,8 +101,21 @@ final class ParkingFacility {
 	}
 
 	// MARK: Computed properties
-	var displayName: String {
-		return name.removePrefix("Park&Ride - ").localizedCapitalized
+	var displayName: (title: String, subtitle: String) {
+		let stripped = name.removePrefix("Park&Ride - ").localizedCapitalized
+		
+		// Match pattern: "Title (Subtitle)"
+		// Captures: title before parentheses, and subtitle inside parentheses
+		let pattern = /^(.+?)\s*\((.+?)\)$/
+		
+		if let match = stripped.firstMatch(of: pattern) {
+			let title = String(match.1).trimmingCharacters(in: .whitespaces)
+			let subtitle = String(match.2).trimmingCharacters(in: .whitespaces)
+			return (title: title, subtitle: subtitle)
+		} else {
+			// No parentheses found
+			return (title: stripped, subtitle: "")
+		}
 	}
 
 	var coordinate: CLLocationCoordinate2D {
@@ -113,13 +126,13 @@ final class ParkingFacility {
 	}
 
 	var availabilityStatus: AvailabilityStatus {
-		let available = currentAvailableSpots
+		let vacancy = currentVacancy
 		let total = totalSpaces
 
-		if available >= 0 {
-			if available == 0 {
+		if vacancy >= 0 {
+			if vacancy == 0 {
 				return .full
-			} else if available < total / 10 {
+			} else if vacancy < total / 10 {
 				return .almostFull
 			} else {
 				return .available
@@ -150,7 +163,7 @@ final class ParkingFacility {
 		// Show cached data if cache is valid OR in 2x cache validity time
 		return cacheAge < refreshTier.cacheValiditySeconds
 			|| (cacheAge < refreshTier.cacheValiditySeconds * 2)
-				&& _cachedAvailableSpots > 0
+				&& _cachedVacancy > 0
 	}
 
 	var timeSinceLastRefresh: TimeInterval {
@@ -181,7 +194,9 @@ final class ParkingFacility {
 
 		// TODO: .init(placemark: placemark) is deprecated, there's a new method for creating a MapItem
 		let item = MKMapItem(placemark: placeMark)
-		item.name = displayName
+		item.name = displayName.subtitle.isEmpty
+		? displayName.title
+		: "\(displayName.title) - \(displayName.subtitle)"
 		return item
 	}
 }
@@ -227,8 +242,31 @@ extension ParkingFacility {
 	}
 }
 
-/// Occupancy and availability
+/// Vancancy
 extension ParkingFacility {
+
+	/// Structured vacancy information
+	struct VacancyInfo {
+		let available: Int
+		let total: Int
+		let occupied: Int
+
+		var isValid: Bool {
+			return available >= 0
+		}
+	}
+	
+	/// Grouped vacancy information
+	var vacancy: VacancyInfo? {
+		let available = currentVacancy
+		guard available >= 0 else { return nil }
+		
+		return VacancyInfo(
+			available: available,
+			total: totalSpaces,
+			occupied: currentOccupiedSpots
+		)
+	}
 
 	var currentOccupiedSpots: Int {
 		get {
@@ -237,18 +275,18 @@ extension ParkingFacility {
 		set {
 			_cachedOccupancy = newValue
 			_occupancyCacheTime = Date()
-			_cachedAvailableSpots = max(0, totalSpaces - newValue)
+			_cachedVacancy = max(0, totalSpaces - newValue)
 		}
 	}
 
-	var currentAvailableSpots: Int {
-		shouldShowCachedData ? _cachedAvailableSpots : -1
+	var currentVacancy: Int {
+		shouldShowCachedData ? _cachedVacancy : -1
 	}
 
-	var displayAvailableSpots: String {
-		currentAvailableSpots == -1
+	var displayVacancy: String {
+		currentVacancy == -1
 			? "--"  // TODO: Localisation strings
-			: String(currentAvailableSpots)
+			: String(currentVacancy)
 	}
 
 	var occupancy: Double {
@@ -297,8 +335,8 @@ enum RefreshTier: CaseIterable {
 }
 
 // Statuses of availability are based on TfNSW recommendation
-// Full: availableSpots < 1
-// Almost full: availableSpots < 10% of total
+// Full: vacancy < 1
+// Almost full: vacancy < 10% of total
 
 enum AvailabilityStatus {
 	case available, almostFull, full, noData

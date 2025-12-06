@@ -37,10 +37,25 @@ struct PreviewHelper {
 
 extension PreviewHelper {
 
+	/// Helper to create a new facility instance from a source facility
+	private static func createFacilityCopy(from source: ParkingFacility) -> ParkingFacility {
+		return ParkingFacility(
+			facilityId: source.facilityId,
+			name: source.name,
+			suburb: source.suburb,
+			address: source.address,
+			latitude: source.latitude,
+			longitude: source.longitude,
+			totalSpaces: source.totalSpaces,
+			tsn: source.tsn,
+			tfnswFacilityId: source.tfnswFacilityId
+		)
+	}
+
 	/// Scenarios
 	/// 🟢 Available - medium facility
 	static func availableFacility() -> ParkingFacility {
-		let facility = mediumFacility
+		let facility = createFacilityCopy(from: mediumFacility)
 
 		/// Simulate 20% occupancy
 		let occupancy = Int(Double(facility.totalSpaces) * 0.2)
@@ -51,7 +66,7 @@ extension PreviewHelper {
 
 	/// 🟡 Almost-full - small facility
 	static func almostFullFacility() -> ParkingFacility {
-		let facility = smallFacility
+		let facility = createFacilityCopy(from: smallFacility)
 
 		/// Simulate 95% occupancy
 		let occupancy = Int(Double(facility.totalSpaces) * 0.95)
@@ -62,7 +77,7 @@ extension PreviewHelper {
 
 	/// 🔴 Full - large facility
 	static func fullFacility() -> ParkingFacility {
-		let facility = largeFacility
+		let facility = createFacilityCopy(from: largeFacility)
 
 		facility.currentOccupiedSpots = facility.totalSpaces
 
@@ -71,7 +86,7 @@ extension PreviewHelper {
 
 	/// ⚪️ No recent data (cache expired)
 	static func noDataFacility() -> ParkingFacility {
-		let facility = smallFacility
+		let facility = createFacilityCopy(from: smallFacility)
 
 		/// `CurrentOccupancy` is undefined, and cache remains invalid
 		return facility
@@ -93,7 +108,9 @@ extension PreviewHelper {
 
 		let selectedFacilities = [small, medium, large].compactMap { $0 }
 
-		return selectedFacilities.enumerated().map { index, facility in
+		return selectedFacilities.enumerated().map { index, sourceFacility in
+			// Create a new copy for each facility
+			let facility = createFacilityCopy(from: sourceFacility)
 			facility.isFavourite = true
 			setVariedOccupancy(facility: facility, index: index)
 			return facility
@@ -158,16 +175,16 @@ extension PreviewHelper {
 				for: schema,
 				configurations: [config]
 			)
-			let context = container.mainContext
 
-			// Configure the FacilityManager with the preview context
-			FacilityManager.shared.setModelContext(context)
-
+			// Don't configure FacilityManager or add sample data during initialization
+			// This prevents race conditions and context conflicts
+			
 			if withSamplePins {
+				let context = container.mainContext
 				addSamplePinnedFacilities(to: context)
+				try context.save()
 			}
 
-			try context.save()
 			return container
 
 		} catch {
@@ -186,14 +203,18 @@ extension PreviewHelper {
 		
 		return container
 	}
+	
+	/// Creates a preview-ready FacilityManager configured with the given container
+	@MainActor static func previewFacilityManager(for container: ModelContainer) -> FacilityManager {
+		let manager = FacilityManager.shared
+		manager.setModelContext(container.mainContext)
+		return manager
+	}
 
 	/// Add some realistic pinned facilities with varied occupancy
 	private static func addSamplePinnedFacilities(to context: ModelContext) {
-		// First, insert all static facilities into the context
-		let allStaticFacilities = ParkingFacility.getAllStaticFacilities()
-		for facility in allStaticFacilities {
-			context.insert(facility)
-		}
+		// Get the static facility data (not SwiftData objects)
+		let staticFacilityData = ParkingFacility.getAllStaticFacilities()
 		
 		// Pin some realistic facilities with varied data
 		let facilitiesToPin = [
@@ -203,23 +224,39 @@ extension PreviewHelper {
 			(name: "Gordon", occupancyRatio: 0.6),  // Moderate, medium facility
 		]
 
-		for (facilityName, occupancyRatio) in facilitiesToPin {
-			if let facility = allStaticFacilities.first(where: {
-				$0.name.contains(facilityName)
-			}) {
+		// Create new facility instances directly in the context
+		for staticData in staticFacilityData {
+			// Create a new facility instance for this context
+			let facility = ParkingFacility(
+				facilityId: staticData.facilityId,
+				name: staticData.name,
+				suburb: staticData.suburb,
+				address: staticData.address,
+				latitude: staticData.latitude,
+				longitude: staticData.longitude,
+				totalSpaces: staticData.totalSpaces,
+				tsn: staticData.tsn,
+				tfnswFacilityId: staticData.tfnswFacilityId
+			)
+			
+			// Check if this facility should be pinned
+			if let pinConfig = facilitiesToPin.first(where: { staticData.name.contains($0.name) }) {
 				facility.isFavourite = true
-
+				
 				// Set realistic occupancy data
-				if occupancyRatio > 0 {
+				if pinConfig.occupancyRatio > 0 {
 					facility.currentOccupiedSpots = Int(
-						Double(facility.totalSpaces) * occupancyRatio
+						Double(facility.totalSpaces) * pinConfig.occupancyRatio
 					)
 				}
 			}
+			
+			// Insert into context
+			context.insert(facility)
 		}
 
 		print(
-			"📌 Preview: Added \(allStaticFacilities.count) facilities and pinned \(facilitiesToPin.count) sample facilities"
+			"📌 Preview: Created \(staticFacilityData.count) facilities and pinned \(facilitiesToPin.count) sample facilities"
 		)
 	}
 }

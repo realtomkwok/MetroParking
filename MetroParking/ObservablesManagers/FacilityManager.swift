@@ -159,7 +159,7 @@ extension FacilityManager {
 		loadProgress = .loading(0, 0)
 
 		// Fetch facilities asynchronously to avoid blocking
-		let allFacilities = await getAllFacilitiesAsync()
+		let allFacilities = await getAllFacilities()
 
 		// Fix the refresh selection logic
 		let needsRefresh = allFacilities.filter { facility in
@@ -314,23 +314,7 @@ extension FacilityManager {
 // MARK: - Helper Methods
 extension FacilityManager {
 
-	/// Get all facilities from SwiftData (synchronous - use for main thread only)
-	func getAllFacilities() -> [ParkingFacility] {
-		guard let context = modelContext else { return [] }
-
-		let descriptor = FetchDescriptor<ParkingFacility>()
-		do {
-			return try context.fetch(descriptor)
-		} catch {
-			Logger.facilityRefresh.error(
-				"❌ Failed to fetch all facilities: \(error.localizedDescription)"
-			)
-			return []
-		}
-	}
-	
-	/// Get all facilities from SwiftData (asynchronous - preferred for background operations)
-	private func getAllFacilitiesAsync() async -> [ParkingFacility] {
+	func getAllFacilities() async -> [ParkingFacility] {
 		guard let context = modelContext else { return [] }
 
 		let descriptor = FetchDescriptor<ParkingFacility>()

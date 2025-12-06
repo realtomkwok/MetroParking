@@ -39,8 +39,8 @@ class MapCameraManager: ObservableObject {
 
 extension MapCameraManager {
 
-	func setupInitialCameraPosition(animated: Bool = false) {
-		let facilities = facilityManager.getAllFacilities()
+	func setupInitialCameraPosition(animated: Bool = false) async {
+		let facilities = await facilityManager.getAllFacilities()
 		guard !facilities.isEmpty else {
 			Logger.mapCamera.debug(
 				"No facilities available for initial camera setup"

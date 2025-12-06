@@ -10,7 +10,7 @@ import SwiftData
 import SwiftUI
 
 struct ContentView: View {
-	@Namespace var namespace
+	@Namespace var navigationNamespace
 
 	// Access FacilityManager from environment
 	@Environment(FacilityManager.self) private var facilityManager
@@ -18,18 +18,58 @@ struct ContentView: View {
 	@State private var searchText: String = ""
 	@State private var selectedSorting: SortingOption = .name
 	@State private var selectedSortingOrder: SortingOrder = .ascending
-	@State private var filterIsOn: Bool = true
+	@State private var filterIsOn: Bool = false
 	@State private var selectedFilter: FilterOption = .pinned
 	@State private var isSearchFieldFocused: Bool = false
+	@State private var selectedFacility: ParkingFacility?
 
-	@Query private var facilities: [ParkingFacility]
+	// Two separate queries - SwiftData handles animations natively
+	@Query(filter: #Predicate<ParkingFacility> { $0.isFavourite == true })
+	private var pinnedFacilities: [ParkingFacility]
 
-	private var filteredFacilities: [ParkingFacility] {
+	@Query(filter: #Predicate<ParkingFacility> { $0.isFavourite == false })
+	private var unpinnedFacilities: [ParkingFacility]
+
+	private var filteredPinnedFacilities: [ParkingFacility] {
 		return
-			facilities
+			pinnedFacilities
 			.filtered(by: filterIsOn ? selectedFilter : .all)
 			.searchFiltered(by: searchText)
 			.sorted(by: selectedSorting, order: selectedSortingOrder)
+	}
+
+	private var filteredUnpinnedFacilities: [ParkingFacility] {
+		return
+			unpinnedFacilities
+			.filtered(by: filterIsOn ? selectedFilter : .all)
+			.searchFiltered(by: searchText)
+			.sorted(by: selectedSorting, order: selectedSortingOrder)
+	}
+
+	/// Grouped facilities with pinned items at the top
+	private var groupedFacilities:
+		[(title: String?, facilities: [ParkingFacility])]
+	{
+		var sections: [(title: String?, facilities: [ParkingFacility])] = []
+
+		if !filteredPinnedFacilities.isEmpty {
+			sections.append(
+				(title: "Pinned", facilities: filteredPinnedFacilities)
+			)
+		}
+
+		if !filteredUnpinnedFacilities.isEmpty {
+			sections
+				.append(
+					(
+						title: filteredPinnedFacilities.isEmpty
+							? nil : "More Parking",
+						facilities: filteredUnpinnedFacilities
+					)
+				)
+		}
+
+		return sections
 	}
 
 	private var navigationSubtitleText: String {
@@ -43,56 +83,76 @@ struct ContentView: View {
 		}
 	}
 
-	private var backgroundGradient: some View {
-		LinearGradient(
-			gradient: Gradient(colors: [
-				Color(.systemTeal),
-				Color(.systemBackground),
-			]),
-			startPoint: .top,
-			endPoint: .center
-		)
-		.edgesIgnoringSafeArea(.all)
-	}
+	struct BackgroundGradient: View {
+		@State private var isAnimating = false
 
-	@available(iOS 26.0, *)
-	private var mainContentGlassy: some View {
-		ScrollView(.vertical) {
-			LazyVStack(spacing: 8) {
-				FacilityList(
-					facilities: filteredFacilities
-				)
+		var body: some View {
+			MeshGradient(
+				width: 3,
+				height: 3,
+				points: [
+					[0.0, 0.0],
+					[0.5, 0.0],
+					[1.0, 0.0],
+					[0.0, 0.2],
+					[isAnimating ? 0.9 : 0.3, isAnimating ? 0.6 : 0.2],
+					[1.0, isAnimating ? 0.2 : 0.6],
+					[0.0, 1.0],
+					[0.5, 1.0],
+					[1.0, 1.0],
+				],
+				colors: [
+					.cyan.opacity(isAnimating ? 0.2 : 1.0),
+					.cyan,
+					.cyan,
+					.clear,
+					.clear,
+					.clear,
+					.clear,
+					.clear,
+					.clear,
+				],
+				smoothsColors: true
+			)
+			.edgesIgnoringSafeArea(.all)
+			.onAppear() {
+				withAnimation(.smooth(duration: 10.0).repeatForever(autoreverses: true)) {isAnimating.toggle()}
 			}
-			.padding()
 		}
-		.animation(.snappy, value: filteredFacilities.map(\.facilityId))
-		.navigationTitle("MetroParking")
-		.navigationSubtitle(navigationSubtitleText)
-		.refreshable {
-			await facilityManager.performLoad(forced: true)
-		}
-		.toolbar {
-			TopBarActions()
-		}
-		.toolbarTitleDisplayMode(.inlineLarge)
-		.toolbar {
-			DefaultToolbarItem(kind: .search, placement: .bottomBar)
-			ToolbarSpacer(.flexible, placement: .bottomBar)
-			BottomBarActions()
-		}
-		.searchable(text: $searchText, isPresented: $isSearchFieldFocused)
 	}
-
-	// TODO: main content for iOS versions under iOS 26
 
 	var body: some View {
 		NavigationStack {
 			ZStack {
-				backgroundGradient
+				BackgroundGradient()
 				if #available(iOS 26.0, *) {
-					mainContentGlassy
+					FacilityList(
+						nameSpace: navigationNamespace,
+						groupedFacilities: groupedFacilities
+					)
+					.navigationTitle("MetroParking")
+					.navigationSubtitle(navigationSubtitleText)
+					.refreshable {
+						await facilityManager.performLoad(forced: true)
+					}
+					.toolbar {
+						TopBarActions()
+					}
+					.toolbarTitleDisplayMode(.inlineLarge)
+					.toolbar {
+						DefaultToolbarItem(kind: .search, placement: .bottomBar)
+						ToolbarSpacer(.flexible, placement: .bottomBar)
+						BottomBarActions()
+					}
+					.searchable(
+						text: $searchText,
+						isPresented: $isSearchFieldFocused
+					)
+					.scrollEdgeEffectStyle(.soft, for: .vertical)
+					.scrollContentBackground(.hidden)
 				} else {
 					// Fallback on earlier versions
+					// TODO: main content for iOS versions under iOS 26
 				}
 			}
 
@@ -168,6 +228,7 @@ struct ContentView: View {
 				}
 				.animation(.snappy(duration: 0.35), value: filterIsOn)
 			}
+			.fixedSize()
 		}
 	}
 
@@ -252,54 +313,22 @@ struct ContentView: View {
 
 }
 
-@available(iOS 26.0, *)
-struct FacilityList: View {
-	let facilities: [ParkingFacility]
+#Preview("With Pinned Facilities") {
+	@Previewable @State var container = PreviewHelper.previewContainer(
+		withSamplePins: true
+	)
 
-	@ViewBuilder
-	func FacilityRowView(facility: ParkingFacility) -> some View {
-		HStack(alignment: .top) {
-			VStack(alignment: .leading) {
-				Text(facility.displayName)
-					.font(.title2)
-					.fontWeight(.medium)
-					.foregroundStyle(.foreground)
-
-				Spacer()
-
-				Text(facility.availabilityStatus.text)
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
-			}
-
-			Spacer()
-			Text(String(facility.displayAvailableSpots))
-				.font(.largeTitle)
-				.fontWeight(.regular)
-				.contentTransition(.numericText())
-		}
-		.frame(maxWidth: .infinity)
-		.containerShape(
-			.rect(cornerRadius: 16, style: .continuous)
-		)
-		.padding()
-		.glassEffect(
-			.clear,
-			in: .rect(cornerRadius: 16, style: .continuous)
-		)
-	}
-
-	var body: some View {
-		ForEach(facilities, id: \.facilityId) { facility in
-			FacilityRowView(facility: facility)
-				.transition(.blurReplace)
-				.id(facility.facilityId)
-		}
-	}
+	ContentView()
+		.modelContainer(container)
+		.environment(FacilityManager.shared)
 }
 
-#Preview {
+#Preview("Empty State") {
+	@Previewable @State var container = PreviewHelper.previewContainer(
+		withSamplePins: false
+	)
+
 	ContentView()
-		.modelContainer(PreviewHelper.previewContainer(withSamplePins: true))
+		.modelContainer(container)
 		.environment(FacilityManager.shared)
 }

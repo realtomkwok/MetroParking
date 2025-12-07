@@ -242,7 +242,7 @@ extension ParkingFacility {
 	}
 }
 
-/// Vancancy
+/// Vacancy
 extension ParkingFacility {
 
 	/// Structured vacancy information
@@ -338,7 +338,7 @@ enum RefreshTier: CaseIterable {
 // Full: vacancy < 1
 // Almost full: vacancy < 10% of total
 
-enum AvailabilityStatus {
+enum AvailabilityStatus: CaseIterable {
 	case available, almostFull, full, noData
 
 	var color: Color {
@@ -349,6 +349,11 @@ enum AvailabilityStatus {
 		case .noData: return .gray
 		}
 	}
+	
+	/// Returns an appropriate text color that contrasts with the status color
+	var adaptiveTextColor: Color {
+		return color.adaptedTextColor()
+	}
 
 	var text: String {
 		switch self {
@@ -357,5 +362,15 @@ enum AvailabilityStatus {
 		case .full: return "Full"
 		case .noData: return "No Data"
 		}
+	}
+	
+	/// Returns colors for the occupancy gradient (excludes noData)
+	static var gradientColors: [Color] {
+		return [available.color, almostFull.color, full.color]
+	}
+	
+	/// Returns all status colors including noData
+	static var allColors: [Color] {
+		return allCases.map { $0.color }
 	}
 }

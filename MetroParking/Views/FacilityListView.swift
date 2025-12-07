@@ -64,7 +64,7 @@ struct FacilityList: View {
 				}
 			}
 		}
-		.contentTransition(.identity)
+//		.contentTransition(.identity)
 //		.animation(.smooth(duration: 0.4), value: sections.map { $0.id })
 //		.animation(
 //			.smooth(duration: 0.4),

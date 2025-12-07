@@ -193,6 +193,92 @@ This program is free software: you can redistribute it and/or modify it under th
 License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
 version.
 
+## Changelog
+
+### v0.2.0 (December 2025)
+
+**New Features**
+- Redesigned `ContentView` with iOS 26 glass effects and improved navigation
+- New `FacilityDetailView` with sticky map header, parallax scrolling, and detailed vacancy information
+- Added `FacilityListView` as a dedicated list component with swipe actions (pin, live activity, directions)
+- Introduced `BackgroundGradient` with animated mesh gradient for visual polish
+- New filter and sorting UI with `GlassEffectContainer` bottom bar controls
+
+**Improvements**
+- Refactored sorting and filtering logic into `SortAndFilterHelper` with protocol-based design
+- Added `SortingOrder` enum for ascending/descending control
+- Improved `ParkingFacility.displayName` parsing with regex for cleaner title/subtitle extraction
+- Added `VacancyInfo` struct for grouped vacancy data
+- Enhanced preview helpers with `previewFacilityManager` for better SwiftUI previews
+
+**Architecture**
+- Separated list rendering from `ContentView` into dedicated `FacilityList` component
+- Added `TrailingIconLabelStyle` for consistent label styling
+- Improved navigation with `matchedTransitionSource` and zoom transitions
+
+### v0.1.0 (Initial Release)
+
+- Real-time parking availability for 37 NSW Park&Ride facilities
+- Interactive map with facility markers
+- Smart sorting by distance, availability, name, and capacity
+- Pinned facilities for quick access
+- ETA calculations using MapKit
+- SwiftData persistence
+
+---
+
+## Roadmap
+
+### Data Model & MapKit Improvements
+- [ ] Review and remove obsolete/redundant properties in `ParkingFacility` model
+- [ ] Rewrite MapKit implementation using `MKMapItem` and `MKAddress` from coordinates
+- [ ] Improve Apple Maps integration for better directions and place information
+- [ ] Add proper `CLPlacemark` reverse geocoding for facility addresses
+
+### API & Scaling Optimisation
+- [ ] Fix refresh logic to reduce API call frequency (currently too aggressive)
+- [ ] Implement server-side caching strategy for scaling to thousands of users
+- [ ] Review Supabase edge functions for batch processing efficiency
+- [ ] Add request coalescing and smarter refresh scheduling based on user activity
+
+### Real-Time Transit Integration
+- [ ] Integrate [TfNSW GTFS Realtime Trip Updates API](https://opendata.transport.nsw.gov.au/data/dataset/public-transport-realtime-trip-update-v2)
+- [ ] Show real-time train/metro arrivals for each Park&Ride facility
+- [ ] Display service alerts and delays affecting nearby stations
+- [ ] Add trip planning suggestions combining parking and transit
+
+### Traffic & Navigation
+- [ ] Add live traffic information from user location to selected facility
+- [ ] Display traffic status indicators (light, moderate, heavy)
+- [ ] Show traffic-aware ETA estimates
+- [ ] Implement route alternatives based on current conditions
+
+### Smart Parking Suggestions
+- [ ] Build alternative parking recommendation engine
+- [ ] Factor in vacancy rates, traffic conditions, and distance
+- [ ] Consider historical patterns from Supabase insights
+- [ ] Add "best time to arrive" suggestions based on trend data
+
+### Live Activities & Widgets
+- [ ] Implement Live Activities for tracking selected facility availability
+- [ ] Add home screen widgets (small, medium, large)
+- [ ] Create lock screen widgets for quick vacancy checks
+- [ ] Support Dynamic Island for active navigation sessions
+
+### Notifications
+- [ ] Add push notification support for vacancy alerts
+- [ ] Implement threshold-based notifications ("Alert when under X spaces")
+- [ ] Add departure reminders based on traffic conditions
+- [ ] Support notification scheduling for regular commute times
+
+### Location Services
+- [ ] Review and improve `LocationManager` implementation
+- [ ] Add background location updates for proximity alerts
+- [ ] Implement geofencing for automatic facility detection
+- [ ] Add "Always Allow" location permission flow for background features
+
+---
+
 ## Acknowledgments
 
 - Transport for NSW for providing the Car Park API

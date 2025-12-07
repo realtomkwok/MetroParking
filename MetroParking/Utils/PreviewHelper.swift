@@ -47,8 +47,6 @@ extension PreviewHelper {
 			latitude: source.latitude,
 			longitude: source.longitude,
 			totalSpaces: source.totalSpaces,
-			tsn: source.tsn,
-			tfnswFacilityId: source.tfnswFacilityId
 		)
 	}
 
@@ -235,8 +233,6 @@ extension PreviewHelper {
 				latitude: staticData.latitude,
 				longitude: staticData.longitude,
 				totalSpaces: staticData.totalSpaces,
-				tsn: staticData.tsn,
-				tfnswFacilityId: staticData.tfnswFacilityId
 			)
 			
 			// Check if this facility should be pinned

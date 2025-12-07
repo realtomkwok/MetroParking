@@ -64,12 +64,6 @@ struct FacilityList: View {
 				}
 			}
 		}
-//		.contentTransition(.identity)
-//		.animation(.smooth(duration: 0.4), value: sections.map { $0.id })
-//		.animation(
-//			.smooth(duration: 0.4),
-//			value: sections.flatMap { $0.facilities.map(\.facilityId) }
-//		)
 		.listStyle(.plain)
 		.navigationDestination(item: $selectedFacility) { facility in
 			FacilityDetailView(namespace: nameSpace, facility: facility)
@@ -89,8 +83,7 @@ struct FacilityList: View {
 				HStack(alignment: .center, spacing: 4) {
 					Text(facility.displayName.title)
 						.font(.title3)
-						.fontWeight(.medium)
-						.foregroundStyle(.foreground)
+						.fontWeight(.bold)
 
 					if facility.isFavourite {
 						Image(systemName: "star.fill")
@@ -100,7 +93,6 @@ struct FacilityList: View {
 				}
 				Text(facility.displayName.subtitle)
 					.font(.headline)
-					.foregroundStyle(.secondary)
 
 				Spacer()
 
@@ -122,13 +114,14 @@ struct FacilityList: View {
 			.padding(12)
 			.background(Circle().fill(.thinMaterial).opacity(0.2))
 		}
+		.opacity(facility.availabilityStatus == .noData ? 0.6 : 1)
 		.contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
 		.padding()
 	}
 
 	@ViewBuilder
 	private func facilityRow(for facility: ParkingFacility) -> some View {
-		let statusColor = facility.availabilityStatus.color
+		let statusColor = facility.availabilityStatus.fill
 		let cornerRadius: CGFloat = 24
 		let borderOpacity: CGFloat = 0.1
 		let tintOpacity: CGFloat = 0.04

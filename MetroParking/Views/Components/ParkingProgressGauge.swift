@@ -45,9 +45,9 @@ struct ParkingProgressGauge: View {
 		.gaugeStyle(.accessoryCircular)
 		.tint(
 			Gradient(colors: [
-				AvailabilityStatus.available.color,
-				AvailabilityStatus.almostFull.color,
-				AvailabilityStatus.full.color,
+				AvailabilityStatus.available.fill,
+				AvailabilityStatus.almostFull.fill,
+				AvailabilityStatus.full.fill,
 			])
 		)
 	}

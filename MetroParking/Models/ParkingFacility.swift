@@ -8,17 +8,15 @@
 //
 
 import Foundation
-import SwiftUI
 import MapKit
 import OSLog
 import SwiftData
+import SwiftUI
 
 @Model
 final class ParkingFacility {
 	var facilityId: String
 	var name: String
-	var tsn: String
-	var tfnswFacilityId: String
 
 	var suburb: String
 	var address: String
@@ -55,8 +53,6 @@ final class ParkingFacility {
 	init(from apiResponse: ParkingAPIResponse) {
 		self.facilityId = apiResponse.facilityId
 		self.name = apiResponse.facilityName
-		self.tsn = apiResponse.tsn
-		self.tfnswFacilityId = apiResponse.tfnswFacilityId
 		self.suburb = apiResponse.location.suburb
 		self.address = apiResponse.location.address
 		self.latitude = Double(apiResponse.location.latitude) ?? 0
@@ -81,14 +77,10 @@ final class ParkingFacility {
 		address: String,
 		latitude: Double,
 		longitude: Double,
-		totalSpaces: Int,
-		tsn: String,
-		tfnswFacilityId: String
+		totalSpaces: Int
 	) {
 		self.facilityId = facilityId
 		self.name = name
-		self.tsn = tsn
-		self.tfnswFacilityId = tfnswFacilityId
 		self.suburb = suburb
 		self.address = address
 		self.latitude = latitude
@@ -103,11 +95,11 @@ final class ParkingFacility {
 	// MARK: Computed properties
 	var displayName: (title: String, subtitle: String) {
 		let stripped = name.removePrefix("Park&Ride - ").localizedCapitalized
-		
+
 		// Match pattern: "Title (Subtitle)"
 		// Captures: title before parentheses, and subtitle inside parentheses
 		let pattern = /^(.+?)\s*\((.+?)\)$/
-		
+
 		if let match = stripped.firstMatch(of: pattern) {
 			let title = String(match.1).trimmingCharacters(in: .whitespaces)
 			let subtitle = String(match.2).trimmingCharacters(in: .whitespaces)
@@ -194,9 +186,10 @@ final class ParkingFacility {
 
 		// TODO: .init(placemark: placemark) is deprecated, there's a new method for creating a MapItem
 		let item = MKMapItem(placemark: placeMark)
-		item.name = displayName.subtitle.isEmpty
-		? displayName.title
-		: "\(displayName.title) - \(displayName.subtitle)"
+		item.name =
+			displayName.subtitle.isEmpty
+			? displayName.title
+			: "\(displayName.title) - \(displayName.subtitle)"
 		return item
 	}
 }
@@ -255,12 +248,12 @@ extension ParkingFacility {
 			return available >= 0
 		}
 	}
-	
+
 	/// Grouped vacancy information
 	var vacancy: VacancyInfo? {
 		let available = currentVacancy
 		guard available >= 0 else { return nil }
-		
+
 		return VacancyInfo(
 			available: available,
 			total: totalSpaces,
@@ -341,18 +334,22 @@ enum RefreshTier: CaseIterable {
 enum AvailabilityStatus: CaseIterable {
 	case available, almostFull, full, noData
 
-	var color: Color {
+	var fill: Color {
 		switch self {
 		case .available: return .green
 		case .almostFull: return .yellow
 		case .full: return .red
-		case .noData: return .gray
+		case .noData: return Color(.tertiarySystemBackground)
 		}
 	}
-	
+
 	/// Returns an appropriate text color that contrasts with the status color
-	var adaptiveTextColor: Color {
-		return color.adaptedTextColor()
+	var foreground: Color {
+		switch self {
+			case .noData: return .secondary.opacity(0.6)
+			default:
+				return fill.adaptedTextColor()
+		}
 	}
 
 	var text: String {
@@ -363,14 +360,14 @@ enum AvailabilityStatus: CaseIterable {
 		case .noData: return "No Data"
 		}
 	}
-	
+
 	/// Returns colors for the occupancy gradient (excludes noData)
 	static var gradientColors: [Color] {
-		return [available.color, almostFull.color, full.color]
+		return [available.fill, almostFull.fill, full.fill]
 	}
-	
+
 	/// Returns all status colors including noData
 	static var allColors: [Color] {
-		return allCases.map { $0.color }
+		return allCases.map { $0.fill }
 	}
 }

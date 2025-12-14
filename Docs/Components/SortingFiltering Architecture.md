@@ -1,4 +1,4 @@
-# App Architecture
+# Sorting/Filtering Architecture
 
 ## 
 ```text
@@ -9,7 +9,7 @@
 └─────────────────────────────────┘
             ↓ ↑
 ┌─────────────────────────────────┐
-│   Utilities & Helpers           │ ← SortOption.swift
+│   Utilities & Helpers           │ ← SortingFilterHelper.swift
 │   - Sorting logic               │
 │   - Filtering helpers           │
 └─────────────────────────────────┘

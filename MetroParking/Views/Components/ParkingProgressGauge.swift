@@ -8,34 +8,20 @@
 import SwiftUI
 
 struct ParkingProgressGauge: View {
-	let vacancy: Int
+	let occupancy: Double
+	let available: Int
 	let displayVacancy: String
-	let totalSpaces: Int
+	let total: Int
 	let availabilityStatus: AvailabilityStatus
 
-	private var occupancyProgress: Double {
-		guard totalSpaces > 0 else { return 0 }
-
-		let clampedVacancy = max(0, min(vacancy, totalSpaces))
-
-		let currentOccupancy = totalSpaces - clampedVacancy
-
-		let progress = Double(currentOccupancy) / Double(totalSpaces)
-
-		// Clamp the final result to 0...1 range
-		return max(0.0, min(1.0, progress))
-	}
-
 	var body: some View {
-		Gauge(value: occupancyProgress, in: 0...1) {
+		Gauge(value: occupancy, in: 0...1) {
 		} currentValueLabel: {
 			Text("\(displayVacancy)")
-//				.frame(maxWidth: .infinity)
 				.font(.title2)
 				.fontWeight(.semibold)
-				.contentTransition(.numericText(value: Double(vacancy)))
 		} minimumValueLabel: {
-			Text("\(totalSpaces)")
+			Text("\(total)")
 				.font(.system(size: 8))
 				.fontWidth(.init(0.1))
 				.foregroundStyle(.secondary)
@@ -50,14 +36,15 @@ struct ParkingProgressGauge: View {
 				AvailabilityStatus.full.fill,
 			])
 		)
+		.contentTransition(.numericText(value: Double(available)))
 	}
 }
 
 #Preview {
-	let availableFacility = PreviewHelper.availableFacility()
-	let almostFullFacility = PreviewHelper.almostFullFacility()
-	let FullFacility = PreviewHelper.fullFacility()
-	let noDataFacility = PreviewHelper.noDataFacility()
+	let availableFacility = ParkingFacility.sample(status: .available)
+	let almostFullFacility = ParkingFacility.sample(status: .almostFull)
+	let FullFacility = ParkingFacility.sample(status: .full)
+	let noDataFacility = ParkingFacility.sample(status : .noData)
 
 	HStack(spacing: 24) {
 		ForEach(
@@ -68,9 +55,10 @@ struct ParkingProgressGauge: View {
 			id: \.facilityId
 		) { facility in
 			ParkingProgressGauge(
-				vacancy: facility.currentVacancy,
-				displayVacancy: facility.displayVacancy,
-				totalSpaces: facility.totalSpaces,
+				occupancy: facility.vacancy.occupancy,
+				available: facility.vacancy.available,
+				displayVacancy: facility.vacancy.displayText,
+				total: facility.vacancy.total,
 				availabilityStatus: facility.availabilityStatus
 			)
 		}

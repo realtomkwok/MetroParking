@@ -12,7 +12,7 @@ class ParkingAPIService {
 	static let shared = ParkingAPIService()
 
 	private let session = URLSession.shared
-	private let rateLimiter = RateLimiter(minInterval: 0.3)
+	private let rateLimiter = RateLimiter(minInterval: 1)
 	private let decoder = JSONDecoder()
 
 	private init() {
@@ -22,6 +22,9 @@ class ParkingAPIService {
 
 	func fetchFacility(id: String) async throws -> ParkingAPIResponse {
 		await rateLimiter.waitIfNeeded()
+
+		// Record API usage
+		APIUsageMonitor.recordCall()
 
 		let url = try buildURL(for: id)
 		let request = buildRequest(for: url)

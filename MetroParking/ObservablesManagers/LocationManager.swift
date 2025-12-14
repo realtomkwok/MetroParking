@@ -11,16 +11,16 @@ import MapKit
 import OSLog
 import SwiftUI
 
-@MainActor
-class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+@Observable
+class LocationManager: NSObject, CLLocationManagerDelegate {
 
 	static let shared = LocationManager()
 
-	@Published var authorisationStatus: CLAuthorizationStatus = .notDetermined
-	@Published var currentLocation: CLLocation?
-	@Published var isLocationAvailable: Bool = false
-	@Published var isRefreshing: Bool = false
-	@Published var errorMsg: String?
+	var authorisationStatus: CLAuthorizationStatus = .notDetermined
+	var currentLocation: CLLocation?
+	var isLocationAvailable: Bool = false
+	var isRefreshing: Bool = false
+	var errorMsg: String?
 
 	private let locationManager = CLLocationManager()
 
@@ -31,8 +31,8 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
 	/// Call this when user explicitly wants to use location features
 	func requestLocationPermission() {
-		print(
-			"📍 User requested location permission. Current status: \(authorisationStatus)"
+		Logger.location.info(
+			"📍 User requested location permission. Current status: \(self.authorisationStatus.description)"
 		)
 
 		switch authorisationStatus {
@@ -40,6 +40,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 			locationManager.requestWhenInUseAuthorization()
 		case .denied, .restricted:
 			showLocationSettingsAlert()
+			openSettings()
 		case .authorizedAlways, .authorizedWhenInUse:
 			startLocationUpdates()
 		@unknown default:
@@ -47,40 +48,15 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 		}
 	}
 
-	/// Get current location or fallback to calculated centre of all facilities
-	var userLocation: CLLocationCoordinate2D {
-		return currentLocation?.coordinate ?? Self.defaultLocation
+	/// Check if we should show the permission view
+	var shouldShowPermissionPrompt: Bool {
+		return authorisationStatus == .notDetermined
 	}
 
-	/// Default location -> centre of all facilities
-	static let defaultLocation: CLLocationCoordinate2D = {
-
-		let facilities = ParkingFacility.getAllStaticFacilities()
-
-		let coordinates = facilities.map {
-			CLLocationCoordinate2D(
-				latitude: $0.latitude,
-				longitude: $0.longitude
-			)
-		}
-
-		guard !coordinates.isEmpty else {
-			return CLLocationCoordinate2D(
-				latitude: -33.8688,
-				longitude: 151.2093
-			)
-		}
-
-		let avgLat =
-			coordinates.reduce(0) { $0 + $1.latitude }
-			/ Double(coordinates.count)
-		let avgLon =
-			coordinates.reduce(0) { $0 + $1.longitude }
-			/ Double(coordinates.count)
-
-		return CLLocationCoordinate2D(latitude: avgLat, longitude: avgLon)
-
-	}()
+	/// Check if location permission was explicitly denied
+	var isLocationDenied: Bool {
+		return authorisationStatus == .denied || authorisationStatus == .restricted
+	}
 }
 
 // MARK: - Private methods
@@ -94,17 +70,22 @@ extension LocationManager {
 		/// Get current authorisation status
 		authorisationStatus = locationManager.authorizationStatus
 		updateLocationAvailability()
-
-		Logger.location.notice(
-			"📍 LocationManager initialised. Default centre: \(Self.defaultLocation.latitude), \(Self.defaultLocation.latitude)"
-		)
 	}
 
 	private func updateLocationAvailability() {
+		let wasAvailable = isLocationAvailable
 		isLocationAvailable =
 			(authorisationStatus == .authorizedWhenInUse
 				|| authorisationStatus == .authorizedAlways)
 			&& currentLocation != nil
+		
+		Logger.location.debug("📍 updateLocationAvailability()")
+		Logger.location.debug("  → Authorization: \(self.authorisationStatus.description)")
+		Logger.location
+			.debug(
+				" → Current location: \(self.currentLocation?.description ?? "Failed to get current location.")"
+			)
+		Logger.location.debug("  → isLocationAvailable: \(wasAvailable) → \(self.isLocationAvailable)")
 	}
 
 	private func startLocationUpdates() {
@@ -131,7 +112,10 @@ extension LocationManager {
 		errorMsg =
 			"Location access is required for this feature. Please enable it in Settings."
 		print("📍 Need to direct user to Settings")
-		// Actually open Settings
+	}
+
+	/// Open Settings app for user to change location permissions
+	func openSettings() {
 		Task { @MainActor in
 			if let settingsURL = URL(
 				string: UIApplication.openSettingsURLString
@@ -154,20 +138,24 @@ extension LocationManager {
 		guard let location = locations.last else { return }
 
 		Task { @MainActor in
+			Logger.location.debug("📍 didUpdateLocations")
+			Logger.location.debug("  → New location: \(location.coordinate.latitude, format: .fixed(precision: 6)), \(location.coordinate.longitude, format: .fixed(precision: 6))")
+			Logger.location.debug("  → Previous location: \(self.currentLocation?.description ?? "Failed to retrieve previous location")")
+			
 			isRefreshing = false
 
 			/// Only update if location is significantly different (100 m) from the first time
 			if currentLocation == nil
 				|| currentLocation!.distance(from: location) > 100
 			{
+				Logger.location.info("📍 Updating current location (significant change or first location)")
 				currentLocation = location
 				updateLocationAvailability()
-				print(
-					"📍 Location updated: \(location.coordinate.latitude), \(location.coordinate.longitude)"
-				)
 
 				// Invalidate cache
 				DistanceHelper.clearDistanceCache()
+			} else {
+				Logger.location.debug("  → Location change not significant (<100m), skipping update")
 			}
 		}
 	}
@@ -181,7 +169,7 @@ extension LocationManager {
 			isRefreshing = false
 
 			errorMsg = "Failed to get location: \(error.localizedDescription)"
-			print("❌ Location error: \(error.localizedDescription)")
+			Logger.location.error("❌ Location error: \(error.localizedDescription)")
 		}
 	}
 
@@ -190,22 +178,46 @@ extension LocationManager {
 		_ manager: CLLocationManager
 	) {
 		Task { @MainActor in
+			Logger.location.debug("📍 didChangeAuthorization")
+			Logger.location.debug("  → Old status: \(self.authorisationStatus.description)")
+			Logger.location.debug("  → New status: \(manager.authorizationStatus.description)")
+			
 			authorisationStatus = manager.authorizationStatus
 			updateLocationAvailability()
 
 			switch manager.authorizationStatus {
 			case .notDetermined:
-				print("📍 Location permission not determined")
+				Logger.location.info("📍 Location permission not determined")
 			case .denied, .restricted:
-				print("📍 Location permission denied/restricted")
+				Logger.location.info("📍 Location permission denied/restricted")
 				stopLocationUpdates()
 				currentLocation = nil
 			case .authorizedWhenInUse, .authorizedAlways:
-				print("📍 Location permission granted")
+				Logger.location.info("📍 Location permission granted - starting location updates")
 				startLocationUpdates()
 			@unknown default:
 				break
 			}
+		}
+	}
+}
+
+extension CLAuthorizationStatus {
+	var description: String {
+		switch self {
+
+			case .notDetermined:
+				return "notDetermined"
+			case .restricted:
+				return "restricted"
+			case .denied:
+				return "denied"
+			case .authorizedAlways:
+				return "authorizedAlways"
+			case .authorizedWhenInUse:
+				return "authorizedWhenInUse"
+			@unknown default:
+				return "unknown"
 		}
 	}
 }

@@ -45,7 +45,7 @@ MetroParking/
 │   │
 │   ├── Services/                   # External integrations
 │   │   ├── ParkingAPIService.swift # TfNSW API client
-│   │   ├── ETAService.swift        # MapKit route calculations
+│   │   ├── ETAManager.swift        # MapKit route calculations
 │   │   └── LocationManager.swift   # Location services wrapper
 │   │
 │   ├── Utils/                      # Helpers and extensions
@@ -143,8 +143,9 @@ SwiftData model for individual parking zones within a facility.
 2. Facility occupancy: `GET /carpark?facility={facilityID}`
 
 **Rate Limiting**:
-- Hard limit: 500ms between requests (enforced by `RateLimiter`)
+- Hard limit: 1 second between requests (enforced by `RateLimiter`)
 - Exponential backoff on failures
+- API rate limit debugger
 
 **Error Handling**:
 - Network errors: Retry with backoff
@@ -167,7 +168,7 @@ SwiftData model for individual parking zones within a facility.
 - **Models**: `{Entity}.swift` (e.g., `ParkingFacility`)
 - **Helpers**: `{Purpose}Helper.swift` (e.g., `SortAndFilterHelper`)
 
-### File Organization
+### File Organisation
 - Group related files in directories (`Models/`, `Views/`, etc.)
 - Keep views focused and composable
 - Extract reusable components into separate files
@@ -208,14 +209,14 @@ SwiftData model for individual parking zones within a facility.
 ## Known Issues & TODOs
 
 ### Critical
-- [ ] Refresh logic too aggressive (needs optimization)
+- [x] Refresh logic too aggressive (needs optimization)
 - [ ] Remove obsolete properties from `ParkingFacility` model
 - [ ] Distance caching incomplete (marked WIP in README)
+- [ ] Review and fix `LocationManager` implementation
 
 ### High Priority
 - [ ] Rewrite MapKit using `MKMapItem` and `MKAddress`
 - [ ] Implement server-side caching for scaling
-- [ ] Review and fix `LocationManager` implementation
 - [ ] Live Activities for vacancy tracking
 - [ ] Home/Lock screen widgets
 
@@ -301,7 +302,7 @@ When working on this project:
 
 **Author**: Tom Kwok
 **Copyright**: (C) 2025 Tom Kwok
-**Repository**: [Add repository URL]
+**Repository**: (https://github.com/realtomkwok/MetroParking)[]
 
 ---
 

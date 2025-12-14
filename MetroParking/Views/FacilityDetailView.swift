@@ -8,20 +8,35 @@
 import Foundation
 import MapKit
 import SwiftUI
+import SwiftUIBackports
 
-@available(iOS 26.0, *)
 struct FacilityDetailView: View {
 	var namespace: Namespace.ID
 	var facility: ParkingFacility
-	@Environment(FacilityManager.self) private var facilityManager
-	@Environment(\.dismiss) private var dismiss
+	var currentLocation: CLLocationCoordinate2D?
+	var eta: TimeInterval?
+
+	@Environment(FacilityManager.self) var facilityManager
+	@Environment(LookAroundManager.self) var lookAroundManager
+	@Environment(ETAManager.self) var etaManager
+	@Environment(LocationManager.self) var locationMgr
+
+	@State private var allowDismissalGesture:
+		AllowedNavigationDismissalGestures = .none
 
 	// Fixed camera position to prevent zoom issues
 	@State private var cameraPosition: MapCameraPosition
 
+	// Permission handling
+	@State private var showPermissionSheet: Bool = false
+
 	init(namespace: Namespace.ID, facility: ParkingFacility) {
 		self.namespace = namespace
 		self.facility = facility
+		// Note: Environment objects (locationMgr, etaManager) are not available during init
+		// currentLocation and eta will be nil here, but can be accessed in the body
+		self.currentLocation = nil
+		self.eta = nil
 		_cameraPosition = State(
 			initialValue: .camera(
 				MapCamera(
@@ -39,9 +54,7 @@ struct FacilityDetailView: View {
 		ToolbarItem(placement: .topBarTrailing) {
 			Button {
 				Task {
-					await facilityManager.performLoad(
-						forced: true
-					)
+					await facilityManager.loadFacility(facility)
 				}
 			} label: {
 				Image(systemName: "arrow.clockwise")
@@ -54,21 +67,6 @@ struct FacilityDetailView: View {
 			.accessibilityLabel("Refresh")
 			.disabled(facilityManager.isRefreshing)
 		}
-
-		ToolbarItem(placement: .topBarTrailing) {
-			Button {
-
-			} label: {
-				Label(
-					"Go",
-					systemImage: "arrow.trianglehead.turn.up.right.diamond.fill"
-				)
-				.labelStyle(.titleAndIcon)
-			}
-			.contentTransition(
-				.symbolEffect(.replace.magic(fallback: .downUp))
-			)
-		}
 	}
 
 	@ToolbarContentBuilder
@@ -80,7 +78,7 @@ struct FacilityDetailView: View {
 				Label(
 					"Pin",
 					systemImage: facility.isFavourite
-					? "star.slash.fill" : "star"
+						? "star.slash.fill" : "star"
 				)
 			}
 			.contentTransition(.symbolEffect(.replace.magic(fallback: .downUp)))
@@ -109,43 +107,46 @@ struct FacilityDetailView: View {
 				GeometryReader { geometry in
 					let minY = geometry.frame(in: .scrollView).minY
 					let size = geometry.size
-					let height = size.height + max(minY, 0)
+					let height = size.height + max(-minY, minY)
 
-					Map(position: .constant(cameraPosition)) {
-						Marker(
-							facility.displayName.title,
-							coordinate: facility.coordinate
-						)
-						.tint(.blue)
+					ZStack(alignment: .bottomTrailing) {
+						Map(position: .constant(cameraPosition)) {
+							Marker(
+								facility.displayName.title,
+								coordinate: facility.coordinate
+							)
+							.tint(.blue)
+						}
+						.safeAreaPadding(.leading, 26)
+						.safeAreaPadding(.bottom, 16)
+						.mapStyle(.standard())
+						.mapControlVisibility(.hidden)
+						.frame(width: size.width, height: height)
+						.backport.concentricClipShape()
+						.allowsHitTesting(false)
+						.offset(y: minY > 0 ? -minY : minY * 0.5)
+
 					}
-					.safeAreaPadding(.leading, 26)
-					.safeAreaPadding(.bottom, 16)
-					.mapStyle(.standard())
-					.mapControlVisibility(.hidden)
-					.frame(width: size.width, height: height)
-					.clipShape(
-						ConcentricRectangle(
-							corners: .concentric,
-							isUniform: true
-						)
-					)
-					.allowsHitTesting(false)
-					.offset(y: minY > 0 ? -minY : 0)  // Offset the map upward when pulled down
 				}
 				.frame(height: 400)
 				.zIndex(0)
 
 				// Detail Content with background that overlays the map
-				DetailContent(facility: facility)
-					.background(Color(.systemGroupedBackground))
-					.containerShape(.rect(cornerRadius: 48))
-					.zIndex(1)
+				VStack {
+					DetailContent(facility: facility)
+						.backport.concentricClipShape()
+				}
+				.padding()
+				.zIndex(1)
 			}
+			.containerShape(.rect(cornerRadius: 48))
+
 		}
+		.background(Color(UIColor.systemGroupedBackground))
 		.scrollTargetBehavior(.paging)
 		.scrollIndicators(.hidden)
 		.scrollBounceBehavior(.basedOnSize)
-		.ignoresSafeArea(edges: .top)  // Allow map to extend to top
+		.ignoresSafeArea(edges: .top)
 		.toolbarRole(.browser)
 		.toolbar {
 			TopBarActions()
@@ -158,69 +159,136 @@ struct FacilityDetailView: View {
 				? facility.displayName.title
 				: "\(facility.displayName.title) (\(facility.displayName.subtitle))"
 		)
-		.navigationSubtitle(
-			facility.address
+		.backport.navigationSubtitle(
+			Text(facility.address)
 		)
 		.toolbarTitleDisplayMode(.inline)
 		.toolbarBackgroundVisibility(.visible, for: .navigationBar)
 		.id(facility.facilityId)  // Ensure view resets when switching facilities
+		.task(id: facility.facilityId) {
+			// Update Look Around when facility changes
+			lookAroundManager.coordinate = facility.coordinate
+
+			// Run these concurrently for better performance
+			await withTaskGroup(of: Void.self) { group in
+				// Load Look Around preview
+				group.addTask {
+					await lookAroundManager.loadPreview()
+				}
+
+				// Calculate ETA if location available
+				group.addTask {
+					await calculateETAIfLocationAvailable()
+				}
+
+				// Handle dismissal gesture with delay
+				group.addTask {
+					try? await Task.sleep(for: .seconds(1))
+					await MainActor.run {
+						allowDismissalGesture = .all
+					}
+				}
+			}
+		}
+		.onChange(of: locationMgr.isLocationAvailable) { _, isAvailable in
+			if isAvailable {
+				// Location just became available, calculate ETA
+				// No need to wrap in Task - onChange can call async functions
+				Task {
+					await calculateETAIfLocationAvailable()
+				}
+			}
+		}
+		.navigationAllowDismissalGestures(allowDismissalGesture)
+		.sheet(isPresented: $showPermissionSheet) {
+			PermissionView()
+				.presentationDetents([.medium])
+				.presentationDragIndicator(.visible)
+		}
+	}
+
+	/// Calculate ETA if location is available, otherwise show permission prompt if needed
+	private func calculateETAIfLocationAvailable() async {
+		guard let userLocation = locationMgr.currentLocation?.coordinate else {
+			// No location available - check if we should prompt
+			if locationMgr.shouldShowPermissionPrompt {
+				showPermissionSheet = true
+			}
+			// If location is denied, respect user's choice and don't show anything
+			return
+		}
+
+		// Location is available, calculate ETA
+		await etaManager.calculateETA(
+			from: userLocation,
+			to: facility,
+			transportType: .automobile
+		)
 	}
 }
 
-@available(iOS 26.0, *)
 struct DetailContent: View {
 	var facility: ParkingFacility
+
+	@Environment(LookAroundManager.self) private var lookAroundMgr
+	@Environment(ETAManager.self) private var etaMgr
+	@Environment(LocationManager.self) private var locationMgr
+
+	@State private var lookAroundSceneIsReady: Bool = false
 
 	@ViewBuilder
 	func DetailCard<Content: View>(
 		label: (heading: String, icon: String, color: Color),
 		@ViewBuilder content: () -> Content
 	) -> some View {
-		GroupBox {
-			Spacer(minLength: 24)
-			content()
-				.padding(2)
-				.frame(
-					maxWidth: .infinity,
-					alignment: .leading
-				)
-		} label: {
+		VStack(alignment: .leading, spacing: 16) {
 			Label(label.heading, systemImage: label.icon)
 				.foregroundStyle(Color(label.color))
 				.font(.subheadline)
 				.fontWeight(.semibold)
-				.textCase(.uppercase)
-				.padding(.top, 2)
+				.backport.labelIconToTitle(4)
+
+			content()
+				.frame(
+					maxWidth: .infinity,
+					alignment: .leading
+				)
+				.contentTransition(.numericText())
 		}
-//		.labelIconToTitleSpacing(4)
-		.fontDesign(.rounded)
-		.backgroundStyle(Color(.secondarySystemGroupedBackground))
-		.clipShape(
-			.rect(corners: .concentric, isUniform: true)
+		.padding(.horizontal, 20)
+		.padding(.vertical, 18)
+		.frame(maxWidth: .infinity, alignment: .leading)
+		.backport.glassEffect(
+			.regular,
+			in: .rect(cornerRadius: 32, style: .circular)
+			// NOTE: ConcentricRectangle() filled the shape doesn't work
 		)
+		.clipShape(.rect(cornerRadius: 32, style: .circular))
+		.fontDesign(.rounded)
+		//		.background(Color(.secondarySystemGroupedBackground))
+
 	}
 
 	@ViewBuilder
 	func vacancyView() -> some View {
 		HStack(alignment: .center) {
 			VStack(alignment: .leading) {
-				HStack(alignment: .firstTextBaseline) {
-					if let vacancy = facility.vacancy {
-						HStack(
-							alignment: .firstTextBaseline,
-							spacing: 0
-						) {
-							Text("\(vacancy.available)")
-								.foregroundStyle(.primary)
-							Text("/\(vacancy.total)")
-								.foregroundStyle(.secondary)
-						}
-						.font(.title)
-						.fontWeight(.semibold)
-						Text("spaces")
-							.font(.callout)
+				HStack(alignment: .firstTextBaseline, spacing: 4) {
+					let vacancy = facility.vacancy
+					HStack(
+						alignment: .firstTextBaseline,
+						spacing: 0
+					) {
+						Text("\(vacancy.available)")
+							.foregroundStyle(.primary)
+						Text("/\(vacancy.total)")
 							.foregroundStyle(.secondary)
 					}
+					.font(.title)
+					.fontWeight(.semibold)
+					Text("spaces")
+						.font(.callout)
+						.foregroundStyle(.secondary)
 				}
 
 				Text("\(facility.availabilityStatus.text)")
@@ -229,93 +297,268 @@ struct DetailContent: View {
 
 			Spacer()
 
-			if let vacancy = facility.vacancy {
-				Gauge(
-					value: Double(vacancy.occupied),
-					in:
-						0...Double(
-							vacancy.total
-						)
-				) {
+			let vacancy = facility.vacancy
+			Gauge(
+				value: vacancy.occupancy,
+				in:
+					0...1
+			) {
+			}
+			.frame(width: 96)
+			.gaugeStyle(
+				.linearCapacity
+			)
+			.tint(
+				Gradient(
+					colors: AvailabilityStatus.gradientColors
+				)
+			)
+		}
+	}
+
+	@ViewBuilder
+	func trafficView() -> some View {
+		@Bindable var locationMgr = locationMgr
+		@Bindable var etaMgr = etaMgr
+
+		// Get ETA from facility's cached route data
+		let travelTime: String = {
+			
+			if let travelTime = facility.route?.travelTime {
+				return etaMgr.formatETA(travelTime)
+			}
+			return "Not Available"
+		}()
+
+		let distance: String = {
+			if let distance = facility.route?.distance {
+				return etaMgr.formatDistance(distance)
+			}
+			return ""
+		}()
+
+		HStack {
+			VStack(alignment: .leading, spacing: 8) {
+				if locationMgr.isLocationAvailable {
+					// Show ETA when location is available
+					HStack(
+						alignment: .firstTextBaseline,
+						spacing: 0
+					) {
+						if etaMgr.isCalculatingETA {
+							ProgressView()
+								.frame(
+									maxWidth: .infinity,
+									maxHeight: .infinity
+								)
+						} else {
+
+							VStack(alignment: .leading, spacing: 4) {
+								Text(travelTime)
+									.foregroundStyle(
+										facility.route != nil
+											? .primary : .secondary
+									)
+									.font(
+										facility.route != nil
+											? .title : .headline
+									)
+									.fontWeight(.semibold)
+
+								HStack(
+									alignment: .firstTextBaseline,
+									spacing: 4
+								) {
+									Text(distance)
+										.foregroundStyle(.primary)
+										.font(.headline)
+									Text("from")
+										.foregroundStyle(.secondary)
+										.font(.caption2)
+									Label(
+										"My Location",
+										systemImage: "location.fill"
+									)
+									.foregroundStyle(.secondary)
+									.font(.caption2)
+//									.labelIconToTitleSpacing(2)
+								}
+							}
+						}
+					}
+					.contentTransition(.opacity)
+
+				} else {
+					// Location not available
+					VStack(alignment: .leading, spacing: 6) {
+						HStack(alignment: .firstTextBaseline, spacing: 4) {
+							Text("Not Available")
+								.font(.title)
+								.fontWeight(.semibold)
+								.foregroundStyle(.tertiary)
+						}
+
+						if locationMgr.isLocationDenied {
+							Text("Location access denied")
+								.font(.subheadline)
+								.foregroundStyle(.secondary)
+						} else {
+							Text("Location required for ETA")
+								.font(.subheadline)
+								.foregroundStyle(.secondary)
+						}
+					}
 				}
-				.frame(width: 96)
-				.gaugeStyle(
-					.linearCapacity
-				)
-				.tint(
-					Gradient(
-						colors: AvailabilityStatus.gradientColors
+			}
+
+			Spacer()
+
+			if etaMgr.isDirectionAvailable && !etaMgr.isCalculatingETA {
+				Menu {
+					Button("Apple Maps", systemImage: "map.fill") {
+						Task {
+							let mapItem = await facility.getMapItem()
+							openInMapsWithDirections(mapItem)
+						}
+					}
+					Button("Google Maps") {
+
+					}
+				} label: {
+					Label(
+						"GO",
+						systemImage:
+							"arrow.trianglehead.turn.up.right.diamond.fill"
 					)
+					.fontWeight(.semibold)
+					.labelStyle(.titleAndIcon)
+				}
+				.menuStyle(.button)
+				.controlSize(.regular)
+				.backport.glassProminentButtonStyle()
+				.containerShape(.circle)
+				.contentTransition(
+					.symbolEffect(.replace.magic(fallback: .downUp))
 				)
+			}
+
+			//	Show enable button only if permission not granted
+			if !locationMgr.isLocationAvailable && !locationMgr.isLocationDenied
+			{
+				Button {
+					locationMgr.requestLocationPermission()
+				} label: {
+					Text("Enable")
+						.font(.subheadline)
+						.fontWeight(.semibold)
+				}
+				.buttonStyle(.borderedProminent)
+				.buttonBorderShape(.capsule)
+				.controlSize(.small)
 			}
 		}
 	}
 
-//	@ViewBuilder
-//	func
-
 	var body: some View {
-		VStack(spacing: 16) {
-			DetailCard(
-				label: (
-					"Vacancy",
-					"parkingsign.circle.fill",
-					.blue
-				),
-				content: vacancyView
-			)
-//			DetailCard(label: ("", "", .pink), content: <#T##() -> View#>)
+		DetailCard(
+			label: (
+				"Vacancy",
+				"parkingsign.circle.fill",
+				.blue
+			),
+			content: vacancyView
+		)
 
-			Spacer(minLength: 400)
+		DetailCard(
+			label: ("Travel Time", "location.north.circle.fill", .accentColor),
+			content: trafficView
+		)
+
+		HStack {
+			if let scene = lookAroundMgr.lookAroundScene {
+				if #available(iOS 26.0, *) {
+					LookAroundPreview(initialScene: scene)
+						.frame(height: 200)
+						.clipShape(.containerRelative)
+						.transition(.opacity)
+						.backport.glassEffect(
+							.clear,
+							in: .rect(
+								corners: .concentric,
+								isUniform: true
+							),
+							fallbackBackground: Color(
+								UIColor.secondarySystemGroupedBackground
+							)
+						)
+				} else {
+						// Fallback on earlier versions
+					LookAroundPreview(initialScene: scene)
+						.frame(height: 200)
+						.clipShape(.containerRelative)
+						.transition(.opacity)
+				}
+			} else {
+				DetailCard(
+					label: ("Look Around", "binoculars.fill", .accentColor)
+				) {
+					ProgressView()
+						.frame(maxWidth: .infinity)
+						.padding()
+				}
+				.transition(.opacity)
+			}
 		}
-		.padding()
+		.clipShape(.containerRelative)
+		.animation(
+			.snappy(duration: 0.4),
+			value: lookAroundMgr.lookAroundScene
+		)
+
+		//			Spacer(minLength: 120)
+
 	}
 }
 
 #Preview("Available Facility") {
 	@Previewable @Namespace var namespace
-	@Previewable @State var container = PreviewHelper.previewContainer(
-		withSamplePins: true
-	)
-
-	let facilityManager = PreviewHelper.previewFacilityManager(for: container)
 
 	NavigationStack {
 		if #available(iOS 26.0, *) {
-			let facility = PreviewHelper.availableFacility()
 			FacilityDetailView(
 				namespace: namespace,
-				facility: facility
+				facility: ParkingFacility.sample(status: .available)
 			)
-			.modelContainer(container)
-			.environment(facilityManager)
+			.environment(FacilityManager.shared)
+			.environment(LookAroundManager.shared)
+			.environment(ETAManager.shared)
+			.environment(LocationManager.shared)
+
 		} else {
 			// Fallback on earlier versions
 			Text("Preview unavailable")
 		}
 	}
+	.modelContainer(.preview())
 }
 
 #Preview("No Data") {
 	@Previewable @Namespace var namespace
-	@Previewable @State var container = PreviewHelper.previewContainer(
-		withSamplePins: true
-	)
-
-	let facilityManager = PreviewHelper.previewFacilityManager(for: container)
 
 	NavigationStack {
 		if #available(iOS 26.0, *) {
-			let facility = PreviewHelper.noDataFacility()
 			FacilityDetailView(
 				namespace: namespace,
-				facility: facility
+				facility: ParkingFacility.sample(status: .noData)
 			)
-			.modelContainer(container)
-			.environment(facilityManager)
+			.environment(FacilityManager.shared)
+			.environment(LookAroundManager.shared)
+			.environment(ETAManager.shared)
+			.environment(LocationManager.shared)
 		} else {
 			// Fallback on earlier versions
 			Text("Preview unavailable")
 		}
 	}
+	.modelContainer(.preview())
 }

@@ -9,12 +9,12 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-@available(iOS 26.0, *)
 struct FacilityList: View {
 	var nameSpace: Namespace.ID
 	let groupedFacilities: [(title: String?, facilities: [ParkingFacility])]
 
 	@State private var selectedFacility: ParkingFacility?
+
 	@Environment(\.modelContext) private var modelContext
 
 	// MARK: - Identifiable Section
@@ -37,16 +37,6 @@ struct FacilityList: View {
 			.map { FacilitySection(title: $0.title, facilities: $0.facilities) }
 	}
 
-	private func openInMaps(facility: ParkingFacility) {
-		// TODO: Implement opening in Maps
-		//		guard let coordinate = facility.coordinate else { return }
-		//		let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
-		//		mapItem.name = facility.displayName
-		//		mapItem.openInMaps(launchOptions: [
-		//			MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving
-		//		])
-	}
-
 	private func enableLiveActivity(for facility: ParkingFacility) {
 		// TODO: Implement live activity
 		print("Enable live activity for \(facility.displayName)")
@@ -56,12 +46,13 @@ struct FacilityList: View {
 		List {
 			ForEach(sections) { section in
 				Section {
-					ForEach(section.facilities, id: \.facilityId) { facility in
+					ForEach(section.facilities, id: \.persistentModelID) { facility in
 						facilityRow(for: facility)
 					}
 				} header: {
 					sectionHeader(title: section.title)
 				}
+				.containerShape(.rect(cornerRadius: 24, style: .circular))
 			}
 		}
 		.listStyle(.plain)
@@ -78,85 +69,89 @@ struct FacilityList: View {
 	@ViewBuilder
 	func FacilityRowView(facility: ParkingFacility) -> some View {
 
-		HStack(alignment: .center) {
-			VStack(alignment: .leading) {
-				HStack(alignment: .center, spacing: 4) {
-					Text(facility.displayName.title)
-						.font(.title3)
-						.fontWeight(.bold)
-
-					if facility.isFavourite {
-						Image(systemName: "star.fill")
-							.font(.caption2)
-							.foregroundStyle(.tertiary)
+		if #available(iOS 26.0, *) {
+			HStack(alignment: .center) {
+				VStack(alignment: .leading) {
+					HStack(alignment: .center, spacing: 4) {
+						Text(facility.displayName.title)
+							.font(.title3)
+							.fontWeight(.bold)
+    
+						if facility.isFavourite {
+							Image(systemName: "star.fill")
+								.font(.caption2)
+								.foregroundStyle(.tertiary)
+						}
 					}
+					Text(facility.displayName.subtitle)
+						.font(.headline)
+    
+					Spacer()
+    
+					Text(facility.availabilityStatus.text)
+						.font(.subheadline)
+						.fontWeight(.semibold)
+						.foregroundStyle(.secondary)
 				}
-				Text(facility.displayName.subtitle)
-					.font(.headline)
-
+    
 				Spacer()
-
-				Text(facility.availabilityStatus.text)
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
+				VStack(alignment: .center) {
+					ParkingProgressGauge(
+						occupancy: facility.vacancy.occupancy,
+						available: facility.vacancy.available,
+						displayVacancy: facility.vacancy.displayText,
+						total: facility.totalSpaces,
+						availabilityStatus: facility.availabilityStatus
+					)
+					.scaleEffect(1.2)
+				}
+				.padding(12)
+				.background(Circle().fill(.thinMaterial).opacity(0.4))
 			}
-
-			Spacer()
-			VStack(alignment: .center) {
-				ParkingProgressGauge(
-					vacancy: facility.currentVacancy,
-					displayVacancy: facility.displayVacancy,
-					totalSpaces: facility.totalSpaces,
-					availabilityStatus: facility.availabilityStatus
-				)
-				.scaleEffect(1.2)
-			}
-			.padding(12)
-			.background(Circle().fill(.thinMaterial).opacity(0.2))
+			.contentShape(.rect(corners: .concentric, isUniform: true))
+			.opacity(facility.availabilityStatus == .noData ? 0.6 : 1)
+			.padding()
+		} else {
+				// Fallback on earlier versions
 		}
-		.opacity(facility.availabilityStatus == .noData ? 0.6 : 1)
-		.contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-		.padding()
 	}
 
 	@ViewBuilder
 	private func facilityRow(for facility: ParkingFacility) -> some View {
-		let statusColor = facility.availabilityStatus.fill
-		let cornerRadius: CGFloat = 24
-		let borderOpacity: CGFloat = 0.1
-		let tintOpacity: CGFloat = 0.04
-		
-		Button {
-			selectedFacility = facility
-		} label: {
-			FacilityRowView(facility: facility)
-		}
-		.overlay(
-			RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-				.stroke(statusColor.opacity(borderOpacity), lineWidth: 1)
-		)
-		.glassEffect(
-			.clear
-				.tint(statusColor.opacity(tintOpacity))
-				.interactive(),
-			in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-		)
-		.listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-		.listRowBackground(Color.clear)
-		.listRowSeparator(.hidden)
-		.id(facility.facilityId)
-		.matchedTransitionSource(id: facility.facilityId, in: nameSpace)
-		.buttonStyle(.plain)
-		.swipeActions(edge: .leading) {
-			favouriteSwipeAction(for: facility)
-		}
-		.swipeActions(edge: .trailing) {
-			trailingSwipeActions(for: facility)
+		if #available(iOS 26.0, *) {
+			Button {
+				selectedFacility = facility
+			} label: {
+				FacilityRowView(facility: facility)
+			}
+			.glassEffect(
+				.clear
+					.interactive(),
+				in: .rect(corners: .concentric, isUniform: true)
+			)
+			.listRowInsets(
+				EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16)
+			)
+			.listRowBackground(Color.clear)
+			.listRowSeparator(.hidden)
+			.id(facility.facilityId)
+			.matchedTransitionSource(id: facility.facilityId, in: nameSpace)
+			.buttonStyle(.plain)
+			.swipeActions(edge: .leading) {
+				favouriteSwipeAction(for: facility)
+			}
+			.swipeActions(edge: .trailing) {
+				trailingSwipeActions(for: facility)
+			}
+		} else {
+				// Fallback on earlier versions
 		}
 	}
-	
+
 	@ViewBuilder
-	private func favouriteSwipeAction(for facility: ParkingFacility) -> some View {
+	private func favouriteSwipeAction(for facility: ParkingFacility)
+		-> some View
+	{
 		Button {
 			withAnimation {
 				facility.isFavourite.toggle()
@@ -171,9 +166,11 @@ struct FacilityList: View {
 		}
 		.tint(.yellow)
 	}
-	
+
 	@ViewBuilder
-	private func trailingSwipeActions(for facility: ParkingFacility) -> some View {
+	private func trailingSwipeActions(for facility: ParkingFacility)
+		-> some View
+	{
 		Button {
 			// TODO: Enable live activity/notifications
 			enableLiveActivity(for: facility)
@@ -181,10 +178,10 @@ struct FacilityList: View {
 			Label("Live", systemImage: "bell.badge")
 		}
 		.tint(.orange)
-		
+
 		Button {
 			// TODO: Open in Maps app
-			openInMaps(facility: facility)
+//			openInMaps(facility: facility)
 		} label: {
 			Label("Go", systemImage: "arrow.trianglehead.turn.up.right.diamond")
 		}
@@ -205,12 +202,7 @@ struct FacilityList: View {
 #Preview {
 	@Previewable @Namespace var namespace
 
-	let container = PreviewHelper.previewContainer(withSamplePins: true)
-	let context = container.mainContext
-
-	// Fetch all facilities from the preview container
-	let allFacilities =
-		(try? context.fetch(FetchDescriptor<ParkingFacility>())) ?? []
+	let allFacilities = ParkingFacility.samples()
 
 	// Create grouped facilities: Pinned and All Others
 	let pinnedFacilities = allFacilities.filter { $0.isFavourite }
@@ -233,5 +225,5 @@ struct FacilityList: View {
 			// Fallback on earlier versions
 		}
 	}
-	.modelContainer(container)
+	.modelContainer(.preview())
 }

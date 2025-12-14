@@ -89,7 +89,7 @@ Read more about configuration: [Configuration](Docs/CONFIGURATION.md)
 
 - **Services**:
     - `ParkingAPIService`: TfNSW API integration
-    - `ETAService`: MapKit-based route calculations
+    - `ETAManager`: MapKit-based route calculations
     - `LocationManager`: Core Location wrapper
 
 - **State Management**:

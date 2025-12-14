@@ -6,9 +6,9 @@
 //
 
 import MapKit
+import OSLog
 import SwiftData
 import SwiftUI
-import OSLog
 
 struct ContentView: View {
 	@Namespace var navigationNamespace
@@ -52,7 +52,9 @@ struct ContentView: View {
 		[(title: String?, facilities: [ParkingFacility])]
 	{
 
-		Logger.facilityData.info("\(pinnedFacilities.count) pinned, \(unpinnedFacilities.count) unpinned")
+		Logger.facilityData.info(
+			"\(pinnedFacilities.count) pinned, \(unpinnedFacilities.count) unpinned"
+		)
 
 		var sections: [(title: String?, facilities: [ParkingFacility])] = []
 
@@ -88,8 +90,6 @@ struct ContentView: View {
 	}
 
 	var body: some View {
-
-
 		NavigationStack {
 			ZStack {
 				BackgroundGradient()
@@ -107,6 +107,7 @@ struct ContentView: View {
 						TopBarActions()
 					}
 					.toolbarTitleDisplayMode(.inlineLarge)
+
 					.toolbar {
 						DefaultToolbarItem(kind: .search, placement: .bottomBar)
 						ToolbarSpacer(.flexible, placement: .bottomBar)
@@ -118,7 +119,8 @@ struct ContentView: View {
 					}
 					.searchable(
 						text: $searchText,
-						isPresented: $isSearchFieldFocused
+						isPresented: $isSearchFieldFocused,
+						placement: .toolbar
 					)
 					.scrollEdgeEffectStyle(.soft, for: .vertical)
 					.scrollContentBackground(.hidden)
@@ -127,8 +129,8 @@ struct ContentView: View {
 					// TODO: main content for iOS versions under iOS 26
 				}
 			}
-
 		}
+		.containerShape(.rect(cornerRadius: 24))
 	}
 
 	@ToolbarContentBuilder
@@ -155,11 +157,16 @@ struct ContentView: View {
 
 			Menu {
 				// Settings section
-				Section {
+				Section("Settings") {
 					Button {
 						// TODO: Navigate to settings
 					} label: {
 						Label("Notifications", systemImage: "bell.badge")
+					}
+				}
+				Section("Developer") {
+					NavigationLink(destination: APIUsageDebugView()) {
+						Label("API Debug", systemImage: "hammer")
 					}
 				}
 			} label: {
@@ -247,6 +254,7 @@ struct ContentView: View {
 				}
 				.padding(.trailing)
 			}
+			.menuStyle(.button)
 		}
 	}
 
@@ -281,21 +289,16 @@ struct ContentView: View {
 }
 
 #Preview("With Pinned Facilities") {
-	@Previewable @State var container = PreviewHelper.previewContainer(
-		withSamplePins: true
-	)
 
 	ContentView()
-		.modelContainer(container)
+		.modelContainer(.preview(includeSampleData: true, favoriteCount: 3))
 		.environment(FacilityManager.shared)
+		.environment(LookAroundManager.shared)
 }
 
 #Preview("Empty State") {
-	@Previewable @State var container = PreviewHelper.previewContainer(
-		withSamplePins: false
-	)
-
 	ContentView()
-		.modelContainer(container)
+		.modelContainer(.emptyPreview())
 		.environment(FacilityManager.shared)
+		.environment(LookAroundManager.shared)
 }

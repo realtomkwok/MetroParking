@@ -15,34 +15,36 @@ import SwiftUI
 
 @Model
 final class ParkingFacility {
-	var facilityId: String
+	@Attribute(.unique) var facilityId: String
 	var name: String
 
-	var suburb: String
-	var address: String
-	var latitude: Double
-	var longitude: Double
+	// Location data - stored properties for SwiftData
+	var _latitude: Double
+	var _longitude: Double
+	var _suburb: String
+	var _address: String
 
 	var totalSpaces: Int
-	var lastUpdated: Date
-	var lastVisited: Date?
 
+	// User preferences
 	var isFavourite: Bool
 	var notificationThreshold: Int?  // TODO: For feature "notify when under X spaces"
+	var lastVisited: Date?
 
-	var lastRefreshed: Date = Date.distantPast
-	var retrievalFailures: Int = 0
-	var lastFailureDate: Date?
+	// Occupancy cache - stored properties
+	private var _cachedOccupied: Int = 0
+	private var _cacheTimestamp: Date = Date.distantPast
 
-	// Route caching
-	var lastCalculatedDistance: CLLocationDistance?
-	var lastCalculatedTravelTime: TimeInterval?
-	var routingDataAge: Date?
+	// Refresh tracking - stored properties
+	private var _lastRefreshed: Date = Date.distantPast
+	private var _lastUpdated: Date = Date.distantPast
+	private var _retrievalFailures: Int = 0
+	private var _lastFailureDate: Date?
 
-	// Occupancy cache
-	private var _cachedOccupancy: Int = 0
-	private var _cachedVacancy: Int = 0
-	private var _occupancyCacheTime: Date = Date.distantPast
+	// Route caching - stored properties
+	private var _routeDistance: CLLocationDistance?
+	private var _routeTravelTime: TimeInterval?
+	private var _routeTimestamp: Date?
 
 	@Relationship(deleteRule: .cascade, inverse: \ParkingZone.facility)
 	var zones: [ParkingZone] = []
@@ -53,14 +55,14 @@ final class ParkingFacility {
 	init(from apiResponse: ParkingAPIResponse) {
 		self.facilityId = apiResponse.facilityId
 		self.name = apiResponse.facilityName
-		self.suburb = apiResponse.location.suburb
-		self.address = apiResponse.location.address
-		self.latitude = Double(apiResponse.location.latitude) ?? 0
-		self.longitude = Double(apiResponse.location.longitude) ?? 0
+		self._suburb = apiResponse.location.suburb
+		self._address = apiResponse.location.address
+		self._latitude = Double(apiResponse.location.latitude) ?? 0
+		self._longitude = Double(apiResponse.location.longitude) ?? 0
 		self.totalSpaces = Int(apiResponse.spots) ?? 0
 
 		let dateFormatter = ISO8601DateFormatter()
-		self.lastUpdated =
+		self._lastUpdated =
 			dateFormatter.date(from: apiResponse.messageDate) ?? Date()
 		self.lastVisited = nil
 
@@ -81,18 +83,152 @@ final class ParkingFacility {
 	) {
 		self.facilityId = facilityId
 		self.name = name
-		self.suburb = suburb
-		self.address = address
-		self.latitude = latitude
-		self.longitude = longitude
+		self._suburb = suburb
+		self._address = address
+		self._latitude = latitude
+		self._longitude = longitude
 		self.totalSpaces = totalSpaces
-		self.lastUpdated = Date.distantPast
+		self._lastUpdated = Date.distantPast
 		self.lastVisited = nil
 		self.isFavourite = false
 		self.notificationThreshold = nil
 	}
 
-	// MARK: Computed properties
+	// MARK: - Nested Types
+
+	/// Location information for a parking facility
+	struct Location {
+		let coordinate: CLLocationCoordinate2D
+		let suburb: String
+		let address: String
+
+		var latitude: Double { coordinate.latitude }
+		var longitude: Double { coordinate.longitude }
+	}
+
+	/// Route information to a parking facility
+	struct RouteInfo {
+		let distance: CLLocationDistance
+		let travelTime: TimeInterval
+		let calculatedAt: Date
+
+		var isValid: Bool {
+			calculatedAt.timeIntervalSinceNow > -3600  // Valid for 1 hour
+		}
+
+		var formattedDistance: String {
+			let formatter = MKDistanceFormatter()
+			formatter.unitStyle = .abbreviated
+			return formatter.string(fromDistance: distance)
+		}
+
+		var formattedTravelTime: String {
+			let duration: Duration = .seconds(travelTime)
+			return duration.formatted(.units(width: .wide))
+		}
+	}
+
+	/// Refresh and update tracking information
+	struct RefreshStatus {
+		let lastRefreshed: Date
+		let lastUpdated: Date
+		let failures: Int
+		let lastFailureDate: Date?
+
+		var timeSinceRefresh: TimeInterval {
+			Date().timeIntervalSince(lastRefreshed)
+		}
+
+		var hasRecentFailures: Bool {
+			failures > 0
+				&& lastFailureDate?.timeIntervalSinceNow ?? -.infinity > -300  // Within 5 min
+		}
+	}
+
+	/// Structured vacancy information with caching
+	struct VacancyInfo {
+		let available: Int
+		let occupied: Int
+		let total: Int
+		let cacheTimestamp: Date
+		let tier: RefreshTier
+
+		var vacancy: Int { available }
+		var occupancy: Double {
+			guard total > 0 else { return 0.0 }
+			return max(0, min(1.0, Double(occupied) / Double(total)))
+		}
+
+		var isValid: Bool { available >= 0 }
+
+		var isCacheValid: Bool {
+			let cacheAge = Date().timeIntervalSince(cacheTimestamp)
+			return cacheAge < tier.cacheValiditySeconds
+		}
+
+		var shouldShowData: Bool {
+			let cacheAge = Date().timeIntervalSince(cacheTimestamp)
+			// Show if valid OR within 2x validity with some spaces
+			return isCacheValid
+				|| (cacheAge < tier.cacheValiditySeconds * 2 && available > 0)
+		}
+
+		var displayText: String {
+			shouldShowData ? String(available) : "--"
+		}
+	}
+
+	// MARK: - Computed Properties
+
+	/// Consolidated location information
+	var location: Location {
+		Location(
+			coordinate: CLLocationCoordinate2D(
+				latitude: _latitude,
+				longitude: _longitude
+			),
+			suburb: _suburb,
+			address: _address
+		)
+	}
+
+	/// Consolidated vacancy information (single source of truth)
+	var vacancy: VacancyInfo {
+		let available = max(0, totalSpaces - _cachedOccupied)
+		return VacancyInfo(
+			available: available,
+			occupied: _cachedOccupied,
+			total: totalSpaces,
+			cacheTimestamp: _cacheTimestamp,
+			tier: refreshTier
+		)
+	}
+
+	/// Route information if available
+	var route: RouteInfo? {
+		guard let distance = _routeDistance,
+			let travelTime = _routeTravelTime,
+			let timestamp = _routeTimestamp
+		else {
+			return nil
+		}
+		return RouteInfo(
+			distance: distance,
+			travelTime: travelTime,
+			calculatedAt: timestamp
+		)
+	}
+
+	/// Refresh status information
+	var refreshStatus: RefreshStatus {
+		RefreshStatus(
+			lastRefreshed: _lastRefreshed,
+			lastUpdated: _lastUpdated,
+			failures: _retrievalFailures,
+			lastFailureDate: _lastFailureDate
+		)
+	}
+
 	var displayName: (title: String, subtitle: String) {
 		let stripped = name.removePrefix("Park&Ride - ").localizedCapitalized
 
@@ -110,31 +246,39 @@ final class ParkingFacility {
 		}
 	}
 
-	var coordinate: CLLocationCoordinate2D {
-		return CLLocationCoordinate2D(
-			latitude: latitude,
-			longitude: longitude
-		)
+	// Convenience accessors for backward compatibility and cleaner access
+	var coordinate: CLLocationCoordinate2D { location.coordinate }
+	var suburb: String { _suburb }
+	var address: String { _address }
+	var latitude: Double { _latitude }
+	var longitude: Double { _longitude }
+
+	/// Distance for sorting purposes (returns the cached route distance, or Double.infinity if not available)
+	/// This allows sorting by distance with nil values appearing at the end
+	var sortableDistance: Double {
+		_routeDistance ?? Double.infinity
 	}
 
 	var availabilityStatus: AvailabilityStatus {
-		let vacancy = currentVacancy
-		let total = totalSpaces
+		let vacancyInfo = vacancy
 
-		if vacancy >= 0 {
-			if vacancy == 0 {
-				return .full
-			} else if vacancy < total / 10 {
-				return .almostFull
-			} else {
-				return .available
-			}
-		} else {
+		guard vacancyInfo.shouldShowData else {
 			return .noData
+		}
+
+		let available = vacancyInfo.available
+
+		if available == 0 {
+			return .full
+		} else if available < totalSpaces / 10 {
+			return .almostFull
+		} else {
+			return .available
 		}
 	}
 
-	// MARK: Refresh priority tier
+	// MARK: - Refresh Priority
+
 	var refreshTier: RefreshTier {
 		if self.isFavourite { return .critical }
 		if let lastVisited = lastVisited,
@@ -145,67 +289,35 @@ final class ParkingFacility {
 		return .background
 	}
 
-	var isOccupancyCacheValid: Bool {
-		let cacheAge = Date().timeIntervalSince(_occupancyCacheTime)
-		return cacheAge < refreshTier.cacheValiditySeconds
-	}
-
-	var shouldShowCachedData: Bool {
-		let cacheAge = Date().timeIntervalSince(_occupancyCacheTime)
-		// Show cached data if cache is valid OR in 2x cache validity time
-		return cacheAge < refreshTier.cacheValiditySeconds
-			|| (cacheAge < refreshTier.cacheValiditySeconds * 2)
-				&& _cachedVacancy > 0
-	}
-
-	var timeSinceLastRefresh: TimeInterval {
-		return Date().timeIntervalSince(lastRefreshed)
-	}
-
-	var hasValidRoutingData: Bool {
-		guard let age = routingDataAge else { return false }
-		return age.timeIntervalSinceNow > -3600/// Valid for an hour
-	}
-
 	// TODO: Localisation
 	var formattedLastUpdated: String {
-		return lastUpdated == .distantPast
+		return _lastUpdated == .distantPast
 			? "--"
-			: "updated \(lastUpdated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))"
+			: "updated \(_lastUpdated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))"
 	}
 
-	// MARK: MapKit
-
-	var mapItem: MKMapItem {
-		let coordinate = CLLocationCoordinate2D(
-			latitude: latitude,
-			longitude: longitude
-		)
-
-		let placeMark = MKPlacemark(coordinate: coordinate)
-
-		// TODO: .init(placemark: placemark) is deprecated, there's a new method for creating a MapItem
-		let item = MKMapItem(placemark: placeMark)
-		item.name =
-			displayName.subtitle.isEmpty
-			? displayName.title
-			: "\(displayName.title) - \(displayName.subtitle)"
-		return item
-	}
 }
 
-/// Data refresh
+// MARK: - Data Refresh
 extension ParkingFacility {
 
+	/// Returns an MKMapItem for this facility
+	/// - Returns: A configured MKMapItem with the facility's location and details
+	func getMapItem() async -> MKMapItem {
+		return await MapsManager.shared.createMapItem(for: self)
+	}
+
 	func updateFromAPI(_ apiResponse: ParkingAPIResponse) {
-		// Update occupancy cache
-		self.currentOccupiedSpots = Int(apiResponse.occupancy.total ?? "0") ?? 0
+		// Update occupancy (single source of truth)
+		let newOccupied = Int(apiResponse.occupancy.total ?? "0") ?? 0
+		_cachedOccupied = newOccupied
+		_cacheTimestamp = Date()
 
 		// Update persistent data
-		self.lastUpdated = Date()
-		self.lastRefreshed = Date()
-		self.retrievalFailures = 0
-		self.lastFailureDate = nil
+		_lastUpdated = Date()
+		_lastRefreshed = Date()
+		_retrievalFailures = 0
+		_lastFailureDate = nil
 
 		// Update total spaces if it changed
 		let newTotalSpaces = Int(apiResponse.spots) ?? self.totalSpaces
@@ -215,18 +327,18 @@ extension ParkingFacility {
 	}
 
 	func markRefreshFailed() {
-		retrievalFailures += 1
-		lastFailureDate = Date()
+		_retrievalFailures += 1
+		_lastFailureDate = Date()
 
 		// Don't immediately invalidate cache on first few failures
 		// This prevents showing "noData" when API is temporarily down
-		if retrievalFailures >= 3 {
+		if _retrievalFailures >= 3 {
 			// Force cache invalidation after repeated failures
-			_occupancyCacheTime = Date.distantPast
+			_cacheTimestamp = Date.distantPast
 		}
 
 		Logger.facilityRefresh.error(
-			"❌ \(self.name): Failure #\(self.retrievalFailures)"
+			"❌ \(self.name): Failure #\(self._retrievalFailures)"
 		)
 	}
 
@@ -235,84 +347,28 @@ extension ParkingFacility {
 	}
 }
 
-/// Vacancy
-extension ParkingFacility {
-
-	/// Structured vacancy information
-	struct VacancyInfo {
-		let available: Int
-		let total: Int
-		let occupied: Int
-
-		var isValid: Bool {
-			return available >= 0
-		}
-	}
-
-	/// Grouped vacancy information
-	var vacancy: VacancyInfo? {
-		let available = currentVacancy
-		guard available >= 0 else { return nil }
-
-		return VacancyInfo(
-			available: available,
-			total: totalSpaces,
-			occupied: currentOccupiedSpots
-		)
-	}
-
-	var currentOccupiedSpots: Int {
-		get {
-			isOccupancyCacheValid ? _cachedOccupancy : 0
-		}
-		set {
-			_cachedOccupancy = newValue
-			_occupancyCacheTime = Date()
-			_cachedVacancy = max(0, totalSpaces - newValue)
-		}
-	}
-
-	var currentVacancy: Int {
-		shouldShowCachedData ? _cachedVacancy : -1
-	}
-
-	var displayVacancy: String {
-		currentVacancy == -1
-			? "--"  // TODO: Localisation strings
-			: String(currentVacancy)
-	}
-
-	var occupancy: Double {
-		guard totalSpaces > 0 else { return 0.0 }
-		guard isOccupancyCacheValid else { return -1.0 }
-
-		let occupancy = Double(currentOccupiedSpots) / Double(totalSpaces)
-
-		return max(0, occupancy)
-	}
-}
-
-// MARK: Route Enhancement
+// MARK: - Route Management
 extension ParkingFacility {
 
 	func updateRoutingData(
 		distance: CLLocationDistance,
 		travelTime: TimeInterval
 	) {
-		self.lastCalculatedDistance = distance
-		self.lastCalculatedTravelTime = travelTime
-		self.routingDataAge = Date()
+		self._routeDistance = distance
+		self._routeTravelTime = travelTime
+		self._routeTimestamp = Date()
 	}
 
 	func clearStaleRoutingData() {
-		if !hasValidRoutingData {
-			self.lastCalculatedDistance = nil
-			self.lastCalculatedTravelTime = nil
-			self.routingDataAge = nil
+		if route?.isValid == false {
+			self._routeDistance = nil
+			self._routeTravelTime = nil
+			self._routeTimestamp = nil
 		}
 	}
 }
 
+// MARK: - Refresh Priority
 enum RefreshTier: CaseIterable {
 	case critical
 	case standard
@@ -321,12 +377,13 @@ enum RefreshTier: CaseIterable {
 	var cacheValiditySeconds: TimeInterval {
 		switch self {
 		case .critical: return 15  // 15 sec
-		case .standard: return 60  // 1 min
+		case .standard: return 300  // 5 min
 		case .background: return 600  // 10 min
 		}
 	}
 }
 
+// MARK: - Availability Status
 // Statuses of availability are based on TfNSW recommendation
 // Full: vacancy < 1
 // Almost full: vacancy < 10% of total
@@ -346,9 +403,9 @@ enum AvailabilityStatus: CaseIterable {
 	/// Returns an appropriate text color that contrasts with the status color
 	var foreground: Color {
 		switch self {
-			case .noData: return .secondary.opacity(0.6)
-			default:
-				return fill.adaptedTextColor()
+		case .noData: return .secondary.opacity(0.6)
+		default:
+			return fill.adaptedTextColor()
 		}
 	}
 

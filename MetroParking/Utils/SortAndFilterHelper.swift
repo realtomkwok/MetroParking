@@ -94,14 +94,14 @@ enum SortingOption: String, CaseIterable, Codable, Hashable,
 			// So when "ascending" is selected, we show oldest first
 			// When "descending" is selected, we show newest first
 			return [
-				SortDescriptor(\.lastUpdated, order: sortOrder),
+				SortDescriptor(\.refreshStatus.lastUpdated, order: sortOrder),
 				SortDescriptor(\.facilityId, order: sortOrder)
 			]
 		case .distance:
-			// Sort by distance with nil values at the end
-			// Then by name and facilityId as secondary sorts
+			// Sort by distance using sortableDistance (computed property that returns Double.infinity for nil) -> to avoid SwiftData's failure of sorting by an optional relationship
+			// This ensures facilities without route data appear at the end
 			return [
-				SortDescriptor(\.lastCalculatedDistance, order: sortOrder),
+				SortDescriptor(\.sortableDistance, order: sortOrder),
 				SortDescriptor(\.name, order: sortOrder),
 				SortDescriptor(\.facilityId, order: sortOrder),
 			]
@@ -135,11 +135,11 @@ enum SortingOption: String, CaseIterable, Codable, Hashable,
 
 		case .lastUpdated:
 			// For lastUpdated: ascending means oldest first, descending means newest first
-			ascending = lhs.lastUpdated < rhs.lastUpdated
+			ascending = lhs.refreshStatus.lastUpdated < rhs.refreshStatus.lastUpdated
 
 		case .distance:
 			// Sort by distance with nil values at the end
-			switch (lhs.lastCalculatedDistance, rhs.lastCalculatedDistance) {
+			switch (lhs.route?.distance, rhs.route?.distance) {
 			case (.none, .none):
 				// Both nil: sort by name (title, then subtitle)
 				let titleComparison = lhs.displayName.title.localizedStandardCompare(rhs.displayName.title)
@@ -249,7 +249,9 @@ enum FilterOption: String, CaseIterable, Codable, Hashable,
 		case .pinned: return #Predicate { $0.isFavourite }
 		case .available:
 			return #Predicate {
-				$0.currentVacancy > 0
+				// Use vacancy.available which is computed from totalSpaces - _cachedOccupied
+				// Since we can't use computed properties in predicates, we need to compute it inline
+				$0.totalSpaces - $0.vacancy.occupied > 0
 			}
 		case .recent:
 			return #Predicate {
@@ -268,7 +270,7 @@ enum FilterOption: String, CaseIterable, Codable, Hashable,
 		case .pinned:
 			return facility.isFavourite
 		case .available:
-			return facility.currentVacancy > 0
+			return facility.vacancy.available > 0
 		case .recent:
 			return facility.lastVisited != nil
 		}

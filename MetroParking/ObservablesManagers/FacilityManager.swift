@@ -164,7 +164,7 @@ extension FacilityManager {
 		// Fix the refresh selection logic
 		let needsRefresh = allFacilities.filter { facility in
 			// Always refresh if cache is invalid
-			if !facility.isOccupancyCacheValid {
+			if !facility.vacancy.isCacheValid {
 				return true
 			}
 
@@ -181,41 +181,55 @@ extension FacilityManager {
 		let standard = needsRefresh.filter { $0.refreshTier == .standard }
 		let background = needsRefresh.filter { $0.refreshTier == .background }
 
-		let smartLoadBatches = (critical + standard + background)
+		// Build priority-ordered list: critical first, then standard, then background
+		let toLoad = critical + standard + background
 
 		Logger.facilityRefresh
 			.debug(
-				"Loading \(smartLoadBatches.count) facilities (including \(smartLoadBatches.map(\.displayName.title).joined(separator: ", "))"
+				"Loading \(toLoad.count) facilities (\(critical.count) critical, \(standard.count) standard, \(background.count) background)"
 			)
-
-		// Load in priority order, respecting API limits
-		let toLoad = forced ? smartLoadBatches : allFacilities
 
 		await MainActor.run {
 			loadProgress = .loading(0, toLoad.count)
 		}
 
-		// Load facilities concurrently in batches to improve performance
-		let batchSize = 3 // Load 3 facilities at once
+		// Load critical facilities first, individually and sequentially
 		var processedCount = 0
-
-		for i in stride(from: 0, to: toLoad.count, by: batchSize) {
-			let endIndex = min(i + batchSize, toLoad.count)
-			let batch = Array(toLoad[i..<endIndex])
-			
-			// Load batch concurrently
-			await withTaskGroup(of: Void.self) { group in
-				for facility in batch {
-					group.addTask {
-						await self.loadFacility(facility)
-					}
+		
+		if !critical.isEmpty {
+			Logger.facilityRefresh.notice("⭐️ Loading \(critical.count) critical facilities first...")
+			for facility in critical {
+				await loadFacility(facility)
+				processedCount += 1
+				await MainActor.run {
+					loadProgress = .loading(processedCount, toLoad.count)
 				}
 			}
+		}
+		
+		// Load standard and background facilities concurrently in batches
+		let remainingFacilities = standard + background
+		if !remainingFacilities.isEmpty {
+			let batchSize = 3 // Load 3 facilities at once
 			
-			processedCount += batch.count
+			for i in stride(from: 0, to: remainingFacilities.count, by: batchSize) {
+				let endIndex = min(i + batchSize, remainingFacilities.count)
+				let batch = Array(remainingFacilities[i..<endIndex])
+				
+				// Load batch concurrently
+				await withTaskGroup(of: Void.self) { group in
+					for facility in batch {
+						group.addTask {
+							await self.loadFacility(facility)
+						}
+					}
+				}
+				
+				processedCount += batch.count
 
-			await MainActor.run {
-				loadProgress = .loading(processedCount, toLoad.count)
+				await MainActor.run {
+					loadProgress = .loading(processedCount, toLoad.count)
+				}
 			}
 		}
 
@@ -236,7 +250,7 @@ extension FacilityManager {
 	}
 
 	func loadFacility(_ facility: ParkingFacility) async {
-		guard !facility.isOccupancyCacheValid else {
+		guard !facility.vacancy.isCacheValid else {
 			Logger.facilityRefresh
 				.info(
 					"Cache still valid for \(facility.displayName.title) - \(facility.displayName.subtitle)"

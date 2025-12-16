@@ -8,6 +8,7 @@
 import Foundation
 import SwiftData
 import SwiftUI
+import SwiftUIBackports
 
 struct FacilityList: View {
 	var nameSpace: Namespace.ID
@@ -46,7 +47,8 @@ struct FacilityList: View {
 		List {
 			ForEach(sections) { section in
 				Section {
-					ForEach(section.facilities, id: \.persistentModelID) { facility in
+					ForEach(section.facilities, id: \.persistentModelID) {
+						facility in
 						facilityRow(for: facility)
 					}
 				} header: {
@@ -56,6 +58,11 @@ struct FacilityList: View {
 			}
 		}
 		.listStyle(.plain)
+		// Animate when section structure changes OR when facilities move between sections
+		.animation(
+			.smooth,
+			value: sections.map { $0.facilities.map(\.persistentModelID) }
+		)
 		.navigationDestination(item: $selectedFacility) { facility in
 			FacilityDetailView(namespace: nameSpace, facility: facility)
 				.navigationTransition(
@@ -69,14 +76,14 @@ struct FacilityList: View {
 	@ViewBuilder
 	func FacilityRowView(facility: ParkingFacility) -> some View {
 
-		if #available(iOS 26.0, *) {
+
 			HStack(alignment: .center) {
 				VStack(alignment: .leading) {
 					HStack(alignment: .center, spacing: 4) {
 						Text(facility.displayName.title)
 							.font(.title3)
 							.fontWeight(.bold)
-    
+
 						if facility.isFavourite {
 							Image(systemName: "star.fill")
 								.font(.caption2)
@@ -85,15 +92,15 @@ struct FacilityList: View {
 					}
 					Text(facility.displayName.subtitle)
 						.font(.headline)
-    
+
 					Spacer()
-    
+
 					Text(facility.availabilityStatus.text)
 						.font(.subheadline)
 						.fontWeight(.semibold)
 						.foregroundStyle(.secondary)
 				}
-    
+
 				Spacer()
 				VStack(alignment: .center) {
 					ParkingProgressGauge(
@@ -108,12 +115,10 @@ struct FacilityList: View {
 				.padding(12)
 				.background(Circle().fill(.thinMaterial).opacity(0.4))
 			}
-			.contentShape(.rect(corners: .concentric, isUniform: true))
+			.contentShape(.rect(cornerRadius: 24, style: .circular))
 			.opacity(facility.availabilityStatus == .noData ? 0.6 : 1)
 			.padding()
-		} else {
-				// Fallback on earlier versions
-		}
+
 	}
 
 	@ViewBuilder
@@ -144,7 +149,7 @@ struct FacilityList: View {
 				trailingSwipeActions(for: facility)
 			}
 		} else {
-				// Fallback on earlier versions
+			// Fallback on earlier versions
 		}
 	}
 
@@ -153,7 +158,7 @@ struct FacilityList: View {
 		-> some View
 	{
 		Button {
-			withAnimation {
+			withAnimation(.snappy) {
 				facility.isFavourite.toggle()
 				// Save the context to persist the change
 				try? modelContext.save()
@@ -181,7 +186,7 @@ struct FacilityList: View {
 
 		Button {
 			// TODO: Open in Maps app
-//			openInMaps(facility: facility)
+			//			openInMaps(facility: facility)
 		} label: {
 			Label("Go", systemImage: "arrow.trianglehead.turn.up.right.diamond")
 		}

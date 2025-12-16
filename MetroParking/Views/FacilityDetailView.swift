@@ -20,6 +20,7 @@ struct FacilityDetailView: View {
 	@Environment(LookAroundManager.self) var lookAroundManager
 	@Environment(ETAManager.self) var etaManager
 	@Environment(LocationManager.self) var locationMgr
+	@Environment(\.modelContext) private var modelContext
 
 	@State private var allowDismissalGesture:
 		AllowedNavigationDismissalGestures = .none
@@ -73,7 +74,10 @@ struct FacilityDetailView: View {
 	func BottomBarActions() -> some ToolbarContent {
 		ToolbarItem(placement: .bottomBar) {
 			Button {
-				facility.isFavourite.toggle()
+				withAnimation(.smooth) {
+					facility.isFavourite.toggle()
+					try? modelContext.save()
+				}
 			} label: {
 				Label(
 					"Pin",
@@ -102,45 +106,7 @@ struct FacilityDetailView: View {
 
 	var body: some View {
 		ScrollView(.vertical) {
-			VStack(spacing: 0) {
-				// Sticky Map Header with fixed camera
-				GeometryReader { geometry in
-					let minY = geometry.frame(in: .scrollView).minY
-					let size = geometry.size
-					let height = size.height + max(-minY, minY)
-
-					ZStack(alignment: .bottomTrailing) {
-						Map(position: .constant(cameraPosition)) {
-							Marker(
-								facility.displayName.title,
-								coordinate: facility.coordinate
-							)
-							.tint(.blue)
-						}
-						.safeAreaPadding(.leading, 26)
-						.safeAreaPadding(.bottom, 16)
-						.mapStyle(.standard())
-						.mapControlVisibility(.hidden)
-						.frame(width: size.width, height: height)
-						.backport.concentricClipShape()
-						.allowsHitTesting(false)
-						.offset(y: minY > 0 ? -minY : minY * 0.5)
-
-					}
-				}
-				.frame(height: 400)
-				.zIndex(0)
-
-				// Detail Content with background that overlays the map
-				VStack {
-					DetailContent(facility: facility)
-						.backport.concentricClipShape()
-				}
-				.padding()
-				.zIndex(1)
-			}
-			.containerShape(.rect(cornerRadius: 48))
-
+			ScrollContent
 		}
 		.background(Color(UIColor.systemGroupedBackground))
 		.scrollTargetBehavior(.paging)
@@ -168,32 +134,11 @@ struct FacilityDetailView: View {
 		.task(id: facility.facilityId) {
 			// Update Look Around when facility changes
 			lookAroundManager.coordinate = facility.coordinate
-
-			// Run these concurrently for better performance
-			await withTaskGroup(of: Void.self) { group in
-				// Load Look Around preview
-				group.addTask {
-					await lookAroundManager.loadPreview()
-				}
-
-				// Calculate ETA if location available
-				group.addTask {
-					await calculateETAIfLocationAvailable()
-				}
-
-				// Handle dismissal gesture with delay
-				group.addTask {
-					try? await Task.sleep(for: .seconds(1))
-					await MainActor.run {
-						allowDismissalGesture = .all
-					}
-				}
-			}
+			await performInitialTasks()
 		}
 		.onChange(of: locationMgr.isLocationAvailable) { _, isAvailable in
 			if isAvailable {
 				// Location just became available, calculate ETA
-				// No need to wrap in Task - onChange can call async functions
 				Task {
 					await calculateETAIfLocationAvailable()
 				}
@@ -204,6 +149,72 @@ struct FacilityDetailView: View {
 			PermissionView()
 				.presentationDetents([.medium])
 				.presentationDragIndicator(.visible)
+		}
+	}
+
+	private var ScrollContent: some View {
+		VStack(spacing: 0) {
+			MapHeader
+			// Detail Content with background that overlays the map
+			VStack {
+				DetailContent(facility: facility)
+					.backport.concentricClipShape()
+			}
+			.padding()
+			.zIndex(1)
+		}
+		.containerShape(.rect(cornerRadius: 48))
+	}
+
+	private var MapHeader: some View {
+		// Sticky Map Header with fixed camera
+		GeometryReader { geometry in
+			let minY = geometry.frame(in: .scrollView).minY
+			let size = geometry.size
+			let height = size.height + max(-minY, minY)
+
+			ZStack(alignment: .bottomTrailing) {
+				Map(position: .constant(cameraPosition)) {
+					Marker(
+						facility.displayName.title,
+						coordinate: facility.coordinate
+					)
+					.tint(.blue)
+				}
+				.safeAreaPadding(.leading, 26)
+				.safeAreaPadding(.bottom, 16)
+				.mapStyle(.standard())
+				.mapControlVisibility(.hidden)
+				.frame(width: size.width, height: height)
+				.backport.concentricClipShape()
+				.allowsHitTesting(false)
+				.offset(y: minY > 0 ? -minY : minY * 0.5)
+
+			}
+		}
+		.frame(height: 400)
+		.zIndex(0)
+	}
+
+	private func performInitialTasks() async {
+		await withTaskGroup(of: Void.self) { group in
+				// Load Look Around preview
+			group.addTask {
+				await lookAroundManager.loadPreview()
+			}
+
+				// Calculate ETA if location available
+			group.addTask {
+				await calculateETAIfLocationAvailable()
+			}
+
+				// Handle dismissal gesture with delay
+			group.addTask {
+				try? await Task.sleep(for: .seconds(1))
+				await MainActor.run {
+					allowDismissalGesture = .all
+				}
+			}
 		}
 	}
 
@@ -323,7 +334,7 @@ struct DetailContent: View {
 
 		// Get ETA from facility's cached route data
 		let travelTime: String = {
-			
+
 			if let travelTime = facility.route?.travelTime {
 				return etaMgr.formatETA(travelTime)
 			}
@@ -352,7 +363,6 @@ struct DetailContent: View {
 									maxHeight: .infinity
 								)
 						} else {
-
 							VStack(alignment: .leading, spacing: 4) {
 								Text(travelTime)
 									.foregroundStyle(
@@ -365,23 +375,25 @@ struct DetailContent: View {
 									)
 									.fontWeight(.semibold)
 
-								HStack(
-									alignment: .firstTextBaseline,
-									spacing: 4
-								) {
-									Text(distance)
-										.foregroundStyle(.primary)
-										.font(.headline)
-									Text("from")
+								if !distance.isEmpty {
+									HStack(
+										alignment: .firstTextBaseline,
+										spacing: 4
+									) {
+										Text(distance)
+											.foregroundStyle(.primary)
+											.font(.headline)
+										Text("from")
+											.foregroundStyle(.secondary)
+											.font(.caption2)
+										Label(
+											"My Location",
+											systemImage: "location.fill"
+										)
 										.foregroundStyle(.secondary)
 										.font(.caption2)
-									Label(
-										"My Location",
-										systemImage: "location.fill"
-									)
-									.foregroundStyle(.secondary)
-									.font(.caption2)
-//									.labelIconToTitleSpacing(2)
+										.backport.labelIconToTitle(2)
+									}
 								}
 							}
 						}

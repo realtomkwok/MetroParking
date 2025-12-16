@@ -24,55 +24,44 @@ struct ContentView: View {
 	@State private var isSearchFieldFocused: Bool = false
 	@State private var selectedFacility: ParkingFacility?
 
-	// Two separate queries - SwiftData handles animations natively
-	@Query(filter: #Predicate<ParkingFacility> { $0.isFavourite == true })
-	private var pinnedFacilities: [ParkingFacility]
-
-	@Query(filter: #Predicate<ParkingFacility> { $0.isFavourite == false })
-	private var unpinnedFacilities: [ParkingFacility]
-
-	private var filteredPinnedFacilities: [ParkingFacility] {
-		return
-			pinnedFacilities
-			.filtered(by: filterIsOn ? selectedFilter : .all)
-			.searchFiltered(by: searchText)
-			.sorted(by: selectedSorting, order: selectedSortingOrder)
-	}
-
-	private var filteredUnpinnedFacilities: [ParkingFacility] {
-		return
-			unpinnedFacilities
-			.filtered(by: filterIsOn ? selectedFilter : .all)
-			.searchFiltered(by: searchText)
-			.sorted(by: selectedSorting, order: selectedSortingOrder)
-	}
+	// Single query for all facilities - let SwiftData handle animations smoothly
+	@Query(animation: .snappy)
+	private var allFacilities: [ParkingFacility]
 
 	/// Grouped facilities with pinned items at the top
 	private var groupedFacilities:
 		[(title: String?, facilities: [ParkingFacility])]
 	{
-
+		// Filter and sort all facilities once
+		let filteredFacilities = allFacilities
+			.filtered(by: filterIsOn ? selectedFilter : .all)
+			.searchFiltered(by: searchText)
+			.sorted(by: selectedSorting, order: selectedSortingOrder)
+		
+		// Separate into pinned and unpinned after filtering/sorting
+		let pinnedFacilities = filteredFacilities.filter { $0.isFavourite }
+		let unpinnedFacilities = filteredFacilities.filter { !$0.isFavourite }
+		
 		Logger.facilityData.info(
 			"\(pinnedFacilities.count) pinned, \(unpinnedFacilities.count) unpinned"
 		)
 
 		var sections: [(title: String?, facilities: [ParkingFacility])] = []
 
-		if !filteredPinnedFacilities.isEmpty {
+		if !pinnedFacilities.isEmpty {
 			sections.append(
-				(title: "Pinned", facilities: filteredPinnedFacilities)
+				(title: "Pinned", facilities: pinnedFacilities)
 			)
 		}
 
-		if !filteredUnpinnedFacilities.isEmpty {
-			sections
-				.append(
-					(
-						title: filteredPinnedFacilities.isEmpty
-							? nil : "More Parking",
-						facilities: filteredUnpinnedFacilities
-					)
+		if !unpinnedFacilities.isEmpty {
+			sections.append(
+				(
+					title: pinnedFacilities.isEmpty
+						? nil : "More Parking",
+					facilities: unpinnedFacilities
 				)
+			)
 		}
 
 		return sections
@@ -130,6 +119,8 @@ struct ContentView: View {
 				}
 			}
 		}
+		.backport.concentricClipShape()
+		.ignoresSafeArea()
 		.containerShape(.rect(cornerRadius: 24))
 	}
 

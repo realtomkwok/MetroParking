@@ -178,13 +178,20 @@ struct FacilityDetailView: View {
 				Map(position: .constant(cameraPosition)) {
 					Marker(
 						facility.displayName.title,
+						systemImage: "parkingsign.circle.fill",
 						coordinate: facility.coordinate
 					)
-					.tint(.blue)
+					.tint(Color.accentColor)
 				}
 				.safeAreaPadding(.leading, 26)
 				.safeAreaPadding(.bottom, 16)
-				.mapStyle(.standard())
+				.mapStyle(
+					.standard(
+						elevation: .realistic,
+						emphasis: .muted,
+						showsTraffic: true,
+					)
+				)
 				.mapControlVisibility(.hidden)
 				.frame(width: size.width, height: height)
 				.backport.concentricClipShape()
@@ -275,7 +282,6 @@ struct DetailContent: View {
 		)
 		.clipShape(.rect(cornerRadius: 24, style: .circular))
 		.fontDesign(.rounded)
-		.contentTransition(.interpolate)
 	}
 
 	@ViewBuilder
@@ -290,18 +296,26 @@ struct DetailContent: View {
 					) {
 						Text("\(vacancy.available)")
 							.foregroundStyle(.primary)
+							.contentTransition(
+								.numericText(value: Double(vacancy.available))
+							)
 						Text("/\(vacancy.total)")
 							.foregroundStyle(.secondary)
+							.contentTransition(
+								.numericText(value: Double(vacancy.total))
+							)
 					}
 					.font(.title)
 					.fontWeight(.semibold)
 					Text("spaces")
 						.font(.callout)
 						.foregroundStyle(.secondary)
+						.contentTransition(.identity)
 				}
 
 				Text("\(facility.availabilityStatus.text)")
 					.font(.headline)
+					.foregroundStyle(.secondary)
 					.transition(.blurReplace)
 			}
 
@@ -337,7 +351,7 @@ struct DetailContent: View {
 			if let travelTime = facility.route?.travelTime {
 				return etaMgr.formatETA(travelTime)
 			}
-			return "Not Available"
+			return "--"
 		}()
 
 		let distance: String = {

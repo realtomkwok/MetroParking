@@ -141,6 +141,7 @@ extension FacilityManager {
 extension FacilityManager {
 
 	/// When the app is opened for the first time, awakened from the background, or it is requested by the user, run this function to load the data immediately
+	@MainActor
 	func performLoad(forced: Bool = false) async {
 		guard !isRefreshing else {
 			Logger.facilityRefresh
@@ -159,27 +160,30 @@ extension FacilityManager {
 		loadProgress = .loading(0, 0)
 
 		// Fetch facilities asynchronously to avoid blocking
-		let allFacilities = await getAllFacilities()
+		let allFacilities: [ParkingFacility] = await getAllFacilities()
 
-		// Fix the refresh selection logic
-		let needsRefresh = allFacilities.filter { facility in
-			// Always refresh if cache is invalid
-			if !facility.vacancy.isCacheValid {
-				return true
+		// Single-pass filtering and categorisation
+		var critical: [ParkingFacility] = []
+		var standard: [ParkingFacility] = []
+		var background: [ParkingFacility] = []
+		
+		for facility in allFacilities {
+			// Determine if facility needs refresh
+			let needsRefresh = !facility.vacancy.isCacheValid 
+				|| (forced && facility.refreshTier == .critical)
+			
+			guard needsRefresh else { continue }
+			
+			// Categorise by tier in one pass
+			switch facility.refreshTier {
+			case .critical:
+				critical.append(facility)
+			case .standard:
+				standard.append(facility)
+			case .background:
+				background.append(facility)
 			}
-
-			// For forced refresh, include high-priority facilities even with valid cache
-			if forced && facility.refreshTier == .critical {
-				return true
-			}
-
-			return false
 		}
-
-		// Separate by priority for ordered loading
-		let critical = needsRefresh.filter { $0.refreshTier == .critical }
-		let standard = needsRefresh.filter { $0.refreshTier == .standard }
-		let background = needsRefresh.filter { $0.refreshTier == .background }
 
 		// Build priority-ordered list: critical first, then standard, then background
 		let toLoad = critical + standard + background
@@ -189,33 +193,37 @@ extension FacilityManager {
 				"Loading \(toLoad.count) facilities (\(critical.count) critical, \(standard.count) standard, \(background.count) background)"
 			)
 
-		await MainActor.run {
-			loadProgress = .loading(0, toLoad.count)
-		}
+		loadProgress = .loading(0, toLoad.count)
 
 		// Load critical facilities first, individually and sequentially
 		var processedCount = 0
-		
+
 		if !critical.isEmpty {
-			Logger.facilityRefresh.notice("⭐️ Loading \(critical.count) critical facilities first...")
+			Logger.facilityRefresh.notice(
+				"⭐️ Loading \(critical.count) critical facilities first..."
+			)
 			for facility in critical {
 				await loadFacility(facility)
 				processedCount += 1
-				await MainActor.run {
-					loadProgress = .loading(processedCount, toLoad.count)
-				}
+
+				loadProgress = .loading(processedCount, toLoad.count)
+
 			}
 		}
-		
+
 		// Load standard and background facilities concurrently in batches
 		let remainingFacilities = standard + background
 		if !remainingFacilities.isEmpty {
-			let batchSize = 3 // Load 3 facilities at once
-			
-			for i in stride(from: 0, to: remainingFacilities.count, by: batchSize) {
+			let batchSize = 3  // Load 3 facilities at once
+
+			for i in stride(
+				from: 0,
+				to: remainingFacilities.count,
+				by: batchSize
+			) {
 				let endIndex = min(i + batchSize, remainingFacilities.count)
 				let batch = Array(remainingFacilities[i..<endIndex])
-				
+
 				// Load batch concurrently
 				await withTaskGroup(of: Void.self) { group in
 					for facility in batch {
@@ -224,7 +232,7 @@ extension FacilityManager {
 						}
 					}
 				}
-				
+
 				processedCount += batch.count
 
 				await MainActor.run {
@@ -242,13 +250,14 @@ extension FacilityManager {
 		Logger.facilityRefresh.notice(
 			"✅ \( processedCount ) facilities updated"
 		)
-		
+
 		// Schedule next refresh if app is active
 		if currentAppState == .active {
 			scheduleNextRefresh()
 		}
 	}
 
+	@MainActor
 	func loadFacility(_ facility: ParkingFacility) async {
 		guard !facility.vacancy.isCacheValid else {
 			Logger.facilityRefresh
@@ -268,8 +277,9 @@ extension FacilityManager {
 				id: facility.facilityId
 			)
 
+			// Wrap the update in an animation to trigger content transitions
 			await MainActor.run {
-				withAnimation(.snappy(duration: 0.2)) {
+				withAnimation(.snappy) {
 					facility.updateFromAPI(response)
 				}
 			}
@@ -288,24 +298,26 @@ extension FacilityManager {
 	/// Schedule the next refresh using modern async/await pattern
 	private func scheduleNextRefresh() {
 		stopAutoRefresh()
-		
+
 		let interval = currentAppState.refreshInterval
-		Logger.facilityRefresh.notice("⏰ Scheduling next refresh in \(interval)s")
-		
+		Logger.facilityRefresh.notice(
+			"⏰ Scheduling next refresh in \(interval)s"
+		)
+
 		refreshTask = Task { @MainActor in
 			try? await Task.sleep(for: .seconds(interval))
-			
+
 			// Check if task was cancelled
 			guard !Task.isCancelled else {
 				Logger.facilityRefresh.debug("Refresh task was cancelled")
 				return
 			}
-			
+
 			// Only refresh if still active
 			guard self.currentAppState == .active else {
 				return
 			}
-			
+
 			await self.performLoad()
 		}
 	}
@@ -317,7 +329,7 @@ extension FacilityManager {
 		}
 
 		Logger.facilityRefresh.notice("🔄 Starting auto-refresh cycle...")
-		
+
 		Task {
 			await performLoad()
 		}
@@ -337,16 +349,14 @@ extension FacilityManager {
 		guard let context = modelContext else { return [] }
 
 		let descriptor = FetchDescriptor<ParkingFacility>()
-		return await Task.detached {
-			do {
-				return try context.fetch(descriptor)
-			} catch {
-				Logger.facilityRefresh.error(
-					"❌ Failed to fetch all facilities: \(error.localizedDescription)"
-				)
-				return []
-			}
-		}.value
+		do {
+			return try context.fetch(descriptor)
+		} catch {
+			Logger.facilityRefresh.error(
+				"❌ Failed to fetch all facilities: \(error.localizedDescription)"
+			)
+			return []
+		}
 	}
 
 	/// Save SwiftData context with error handling

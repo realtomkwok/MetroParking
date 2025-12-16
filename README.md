@@ -230,16 +230,16 @@ version.
 ## Roadmap
 
 ### Data Model & MapKit Improvements
-- [ ] Review and remove obsolete/redundant properties in `ParkingFacility` model
-- [ ] Rewrite MapKit implementation using `MKMapItem` and `MKAddress` from coordinates
-- [ ] Improve Apple Maps integration for better directions and place information
-- [ ] Add proper `CLPlacemark` reverse geocoding for facility addresses
+- [x] Review and remove obsolete/redundant properties in `ParkingFacility` model
+- [x] Rewrite MapKit implementation using `MKMapItem` and `MKAddress` from coordinates
+- [x] Improve Apple Maps integration for better directions and place information
+- [x] Add proper `CLPlacemark` reverse geocoding for facility addresses
 
 ### API & Scaling Optimisation
-- [ ] Fix refresh logic to reduce API call frequency (currently too aggressive)
+- [x] Fix refresh logic to reduce API call frequency (currently too aggressive)
 - [ ] Implement server-side caching strategy for scaling to thousands of users
 - [ ] Review Supabase edge functions for batch processing efficiency
-- [ ] Add request coalescing and smarter refresh scheduling based on user activity
+- [x] Add request coalescing and smarter refresh scheduling based on user activity
 
 ### Real-Time Transit Integration
 - [ ] Integrate [TfNSW GTFS Realtime Trip Updates API](https://opendata.transport.nsw.gov.au/data/dataset/public-transport-realtime-trip-update-v2)
@@ -248,9 +248,9 @@ version.
 - [ ] Add trip planning suggestions combining parking and transit
 
 ### Traffic & Navigation
-- [ ] Add live traffic information from user location to selected facility
+- [x] Add live traffic information from user location to selected facility
 - [ ] Display traffic status indicators (light, moderate, heavy)
-- [ ] Show traffic-aware ETA estimates
+- [x] Show traffic-aware ETA estimates
 - [ ] Implement route alternatives based on current conditions
 
 ### Smart Parking Suggestions

@@ -130,7 +130,8 @@ struct FacilityDetailView: View {
 		)
 		.toolbarTitleDisplayMode(.inline)
 		.toolbarBackgroundVisibility(.visible, for: .navigationBar)
-		.id(facility.facilityId)  // Ensure view resets when switching facilities
+		// Ensure view resets when switching facilities
+		.id(facility.facilityId)
 		.task(id: facility.facilityId) {
 			// Update Look Around when facility changes
 			lookAroundManager.coordinate = facility.coordinate
@@ -189,7 +190,6 @@ struct FacilityDetailView: View {
 				.backport.concentricClipShape()
 				.allowsHitTesting(false)
 				.offset(y: minY > 0 ? -minY : minY * 0.5)
-
 			}
 		}
 		.frame(height: 400)
@@ -198,17 +198,17 @@ struct FacilityDetailView: View {
 
 	private func performInitialTasks() async {
 		await withTaskGroup(of: Void.self) { group in
-				// Load Look Around preview
+			// Load Look Around preview
 			group.addTask {
 				await lookAroundManager.loadPreview()
 			}
 
-				// Calculate ETA if location available
+			// Calculate ETA if location available
 			group.addTask {
 				await calculateETAIfLocationAvailable()
 			}
 
-				// Handle dismissal gesture with delay
+			// Handle dismissal gesture with delay
 			group.addTask {
 				try? await Task.sleep(for: .seconds(1))
 				await MainActor.run {
@@ -264,20 +264,18 @@ struct DetailContent: View {
 					maxWidth: .infinity,
 					alignment: .leading
 				)
-				.contentTransition(.numericText())
 		}
 		.padding(.horizontal, 20)
 		.padding(.vertical, 18)
 		.frame(maxWidth: .infinity, alignment: .leading)
 		.backport.glassEffect(
 			.regular,
-			in: .rect(cornerRadius: 32, style: .circular)
+			in: .rect(cornerRadius: 24, style: .circular)
 			// NOTE: ConcentricRectangle() filled the shape doesn't work
 		)
-		.clipShape(.rect(cornerRadius: 32, style: .circular))
+		.clipShape(.rect(cornerRadius: 24, style: .circular))
 		.fontDesign(.rounded)
-		//		.background(Color(.secondarySystemGroupedBackground))
-
+		.contentTransition(.interpolate)
 	}
 
 	@ViewBuilder
@@ -304,6 +302,7 @@ struct DetailContent: View {
 
 				Text("\(facility.availabilityStatus.text)")
 					.font(.headline)
+					.transition(.blurReplace)
 			}
 
 			Spacer()
@@ -362,6 +361,7 @@ struct DetailContent: View {
 									maxWidth: .infinity,
 									maxHeight: .infinity
 								)
+								.transition(.blurReplace)
 						} else {
 							VStack(alignment: .leading, spacing: 4) {
 								Text(travelTime)
@@ -374,6 +374,11 @@ struct DetailContent: View {
 											? .title : .headline
 									)
 									.fontWeight(.semibold)
+									.contentTransition(
+										.numericText(
+											value: etaMgr.currentETA ?? 0
+										)
+									)
 
 								if !distance.isEmpty {
 									HStack(
@@ -394,17 +399,22 @@ struct DetailContent: View {
 										.font(.caption2)
 										.backport.labelIconToTitle(2)
 									}
+									.transition(
+										.move(edge: .leading).combined(
+											with: .opacity
+										)
+									)
 								}
 							}
+							.transition(.blurReplace)
 						}
 					}
-					.contentTransition(.opacity)
 
 				} else {
 					// Location not available
 					VStack(alignment: .leading, spacing: 6) {
 						HStack(alignment: .firstTextBaseline, spacing: 4) {
-							Text("Not Available")
+							Text("--")
 								.font(.title)
 								.fontWeight(.semibold)
 								.foregroundStyle(.tertiary)
@@ -420,8 +430,12 @@ struct DetailContent: View {
 								.foregroundStyle(.secondary)
 						}
 					}
+					.transition(.blurReplace)
 				}
 			}
+			.animation(.snappy, value: locationMgr.isLocationAvailable)
+			.animation(.snappy, value: etaMgr.isCalculatingETA)
+			.animation(.snappy, value: facility.route?.travelTime)
 
 			Spacer()
 
@@ -452,6 +466,7 @@ struct DetailContent: View {
 				.contentTransition(
 					.symbolEffect(.replace.magic(fallback: .downUp))
 				)
+				.transition(.blurReplace)
 			}
 
 			//	Show enable button only if permission not granted
@@ -467,7 +482,15 @@ struct DetailContent: View {
 				.buttonStyle(.borderedProminent)
 				.buttonBorderShape(.capsule)
 				.controlSize(.small)
+				.transition(.blurReplace)
 			}
+		}
+	}
+
+	@ViewBuilder
+	func nearbyFacilitiesView() -> some View {
+		LazyHStack(alignment: .center) {
+
 		}
 	}
 
@@ -482,7 +505,7 @@ struct DetailContent: View {
 		)
 
 		DetailCard(
-			label: ("Travel Time", "location.north.circle.fill", .accentColor),
+			label: ("Traffics", "location.north.circle.fill", .accentColor),
 			content: trafficView
 		)
 
@@ -504,11 +527,11 @@ struct DetailContent: View {
 							)
 						)
 				} else {
-						// Fallback on earlier versions
+					// Fallback on earlier versions
 					LookAroundPreview(initialScene: scene)
 						.frame(height: 200)
 						.clipShape(.containerRelative)
-						.transition(.opacity)
+						.transition(.blurReplace)
 				}
 			} else {
 				DetailCard(
@@ -518,17 +541,14 @@ struct DetailContent: View {
 						.frame(maxWidth: .infinity)
 						.padding()
 				}
-				.transition(.opacity)
+				.transition(.blurReplace)
 			}
 		}
 		.clipShape(.containerRelative)
 		.animation(
-			.snappy(duration: 0.4),
+			.snappy,
 			value: lookAroundMgr.lookAroundScene
 		)
-
-		//			Spacer(minLength: 120)
-
 	}
 }
 

@@ -60,7 +60,7 @@ struct FacilityList: View {
 		.listStyle(.plain)
 		// Animate when section structure changes OR when facilities move between sections
 		.animation(
-			.smooth,
+			.snappy(duration: 0.4),
 			value: sections.map { $0.facilities.map(\.persistentModelID) }
 		)
 		.navigationDestination(item: $selectedFacility) { facility in
@@ -75,23 +75,26 @@ struct FacilityList: View {
 
 	@ViewBuilder
 	func FacilityRowView(facility: ParkingFacility) -> some View {
-
-
 			HStack(alignment: .center) {
 				VStack(alignment: .leading) {
 					HStack(alignment: .center, spacing: 4) {
 						Text(facility.displayName.title)
 							.font(.title3)
 							.fontWeight(.bold)
+							.contentTransition(.identity)
 
 						if facility.isFavourite {
 							Image(systemName: "star.fill")
 								.font(.caption2)
 								.foregroundStyle(.tertiary)
+								.transition(.scale.combined(with: .opacity))
 						}
 					}
+					.animation(.snappy(duration: 0.3), value: facility.isFavourite)
+					
 					Text(facility.displayName.subtitle)
 						.font(.headline)
+						.contentTransition(.identity)
 
 					Spacer()
 
@@ -114,6 +117,7 @@ struct FacilityList: View {
 				}
 				.padding(12)
 				.background(Circle().fill(.thinMaterial).opacity(0.4))
+				
 			}
 			.contentShape(.rect(cornerRadius: 24, style: .circular))
 			.opacity(facility.availabilityStatus == .noData ? 0.6 : 1)
@@ -139,7 +143,6 @@ struct FacilityList: View {
 			)
 			.listRowBackground(Color.clear)
 			.listRowSeparator(.hidden)
-			.id(facility.facilityId)
 			.matchedTransitionSource(id: facility.facilityId, in: nameSpace)
 			.buttonStyle(.plain)
 			.swipeActions(edge: .leading) {

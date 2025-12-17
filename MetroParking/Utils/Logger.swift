@@ -27,4 +27,9 @@ extension Logger {
 	static let location = Logger(subsystem: subsystem, category: "Location Services")
 
 	static let eta = Logger(subsystem: subsystem, category: "ETA Services")
+
+	static let widget = Logger(
+		subsystem: subsystem,
+		category: "Widget"
+	)
 }

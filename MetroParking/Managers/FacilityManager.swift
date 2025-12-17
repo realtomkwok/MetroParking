@@ -284,6 +284,11 @@ extension FacilityManager {
 				}
 			}
 
+			// Update widget if this facility is selected
+			await MainActor.run {
+				SharedDataManager.shared.updateWidgetIfSelected(facility)
+			}
+
 			Logger.facilityRefresh
 				.info(
 					"✅ Updated \(facility.displayName.title) - \(facility.displayName.subtitle)"

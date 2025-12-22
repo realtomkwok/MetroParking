@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.tomkwok.MetroParking.refresh</string>
+		<string>com.tomkwok.MetroParking.process</string>
+	</array>
 	<key>CAR_PARK_BASE_URL</key>
 	<string>$(CAR_PARK_BASE_URL)</string>
 	<key>CFBundleDocumentTypes</key>
@@ -17,7 +22,10 @@
 	</array>
 	<key>MKDirectionsApplicationSupportedModes</key>
 	<array>
+		<string>MKDirectionsModeBike</string>
+		<string>MKDirectionsModeBus</string>
 		<string>MKDirectionsModeCar</string>
+		<string>MKDirectionsModeOther</string>
 		<string>MKDirectionsModePedestrian</string>
 		<string>MKDirectionsModeSubway</string>
 	</array>
@@ -31,6 +39,7 @@
 	<array>
 		<string>fetch</string>
 		<string>location</string>
+		<string>processing</string>
 	</array>
 </dict>
 </plist>

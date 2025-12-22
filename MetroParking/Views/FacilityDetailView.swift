@@ -402,22 +402,10 @@ struct DetailContent: View {
 										Text(distance)
 											.foregroundStyle(.primary)
 											.font(.headline)
-										Text("from")
+										Text("away")
 											.foregroundStyle(.secondary)
 											.font(.caption2)
-										Label(
-											"My Location",
-											systemImage: "location.fill"
-										)
-										.foregroundStyle(.secondary)
-										.font(.caption2)
-										.backport.labelIconToTitle(2)
 									}
-									.transition(
-										.move(edge: .leading).combined(
-											with: .opacity
-										)
-									)
 								}
 							}
 							.transition(.blurReplace)

@@ -31,15 +31,17 @@ class FacilityManager {
 	var staticDataLoadTime: Date?
 
 	private var modelContext: ModelContext?
-	private var currentAppState: AppState = .active
 	private var refreshTask: Task<Void, Never>?
+	
+	// MARK: - Concurrency Control
+	private var currentOperationId: UUID?
+	private var lastScheduleTime: Date?
 
-	private init() {
-		setupAppStateObservers()
-	}
+	private init() {}
 
+	/// Note: `deinit` will never be called for a singleton, but included
+	/// for safety if architecture changes to non-singleton pattern
 	deinit {
-		NotificationCenter.default.removeObserver(self)
 		refreshTask?.cancel()
 	}
 
@@ -141,39 +143,55 @@ extension FacilityManager {
 extension FacilityManager {
 
 	/// When the app is opened for the first time, awakened from the background, or it is requested by the user, run this function to load the data immediately
+	/// - Parameters:
+	///   - forced: Force refresh critical facilities even if cache is valid
+	///   - context: Optional ModelContext to use (for background operations). If nil, uses stored context
+	///   - shouldScheduleNext: Whether to schedule the next auto-refresh cycle (default: true)
 	@MainActor
-	func performLoad(forced: Bool = false) async {
-		guard !isRefreshing else {
+	func performLoad(forced: Bool = false, context: ModelContext? = nil, shouldScheduleNext: Bool = true) async {
+		// Prevent concurrent refresh operations
+		let operationId = UUID()
+		if let currentOp = self.currentOperationId {
 			Logger.facilityRefresh
-				.warning("Refresh has already started, not refreshing")
+				.warning("⏩ Refresh operation \(currentOp) already in progress, skipping new operation")
 			return
 		}
+		
+		self.currentOperationId = operationId
+		defer {
+			if self.currentOperationId == operationId {
+				self.currentOperationId = nil
+			}
+		}
 
-		guard modelContext != nil else {
+		// Use provided context or fall back to stored context
+		let workingContext = context ?? self.modelContext
+		guard workingContext != nil else {
 			Logger.facilityRefresh
 				.error("Model Context not found, not refreshing")
 			return
 		}
 
-		Logger.facilityRefresh.info("Starting loading data")
+		Logger.facilityRefresh.info("🔄 Starting refresh operation \(operationId)")
 		isRefreshing = true
 		loadProgress = .loading(0, 0)
 
-		// Fetch facilities asynchronously to avoid blocking
-		let allFacilities: [ParkingFacility] = await getAllFacilities()
+		// Fetch facilities using the working context
+		let allFacilities: [ParkingFacility] = await getFacilities(from: workingContext!)
 
 		// Single-pass filtering and categorisation
 		var critical: [ParkingFacility] = []
 		var standard: [ParkingFacility] = []
 		var background: [ParkingFacility] = []
-		
+
 		for facility in allFacilities {
 			// Determine if facility needs refresh
-			let needsRefresh = !facility.vacancy.isCacheValid 
+			let needsRefresh =
+				!facility.vacancy.isCacheValid
 				|| (forced && facility.refreshTier == .critical)
-			
+
 			guard needsRefresh else { continue }
-			
+
 			// Categorise by tier in one pass
 			switch facility.refreshTier {
 			case .critical:
@@ -245,14 +263,20 @@ extension FacilityManager {
 		loadProgress = .completed
 		lastRefreshTime = Date()
 
-		await saveContext()
+		// Save the working context (could be different from stored context in background operations)
+		await saveContext(workingContext!)
 
 		Logger.facilityRefresh.notice(
 			"✅ \( processedCount ) facilities updated"
 		)
 
-		// Schedule next refresh if app is active
-		if currentAppState == .active {
+		// Trigger widget reload if any data changed (budget-aware)
+		if processedCount > 0 {
+			WidgetBudgetTracker.shared.requestReload()
+		}
+
+		// Schedule next refresh only if requested and app is active
+		if shouldScheduleNext && AppStateManager.shared.appState == .active {
 			scheduleNextRefresh()
 		}
 	}
@@ -284,10 +308,9 @@ extension FacilityManager {
 				}
 			}
 
-			// Update widget if this facility is selected
-			await MainActor.run {
-				SharedDataManager.shared.updateWidgetIfSelected(facility)
-			}
+			// Update widget data in shared storage (but don't reload yet - batched later)
+			// Widget updates are coordinated to prevent concurrent writes
+			await WidgetUpdateCoordinator.shared.updateIfNeeded(facility)
 
 			Logger.facilityRefresh
 				.info(
@@ -302,12 +325,21 @@ extension FacilityManager {
 
 	/// Schedule the next refresh using modern async/await pattern
 	private func scheduleNextRefresh() {
+		// Don't schedule if already scheduled recently (debounce)
+		if let lastSchedule = lastScheduleTime,
+		   Date().timeIntervalSince(lastSchedule) < 5.0 {
+			Logger.facilityRefresh.debug("⏭️ Skipping refresh schedule (too soon since last schedule)")
+			return
+		}
+		
 		stopAutoRefresh()
 
-		let interval = currentAppState.refreshInterval
+		let interval = AppStateManager.shared.appState.refreshInterval
 		Logger.facilityRefresh.notice(
 			"⏰ Scheduling next refresh in \(interval)s"
 		)
+		
+		lastScheduleTime = Date()
 
 		refreshTask = Task { @MainActor in
 			try? await Task.sleep(for: .seconds(interval))
@@ -317,12 +349,6 @@ extension FacilityManager {
 				Logger.facilityRefresh.debug("Refresh task was cancelled")
 				return
 			}
-
-			// Only refresh if still active
-			guard self.currentAppState == .active else {
-				return
-			}
-
 			await self.performLoad()
 		}
 	}
@@ -350,9 +376,8 @@ extension FacilityManager {
 // MARK: - Helper Methods
 extension FacilityManager {
 
-	func getAllFacilities() async -> [ParkingFacility] {
-		guard let context = modelContext else { return [] }
-
+	/// Fetch all facilities from a given context
+	private func getFacilities(from context: ModelContext) async -> [ParkingFacility] {
 		let descriptor = FetchDescriptor<ParkingFacility>()
 		do {
 			return try context.fetch(descriptor)
@@ -364,13 +389,20 @@ extension FacilityManager {
 		}
 	}
 
+	/// Fetch all facilities from the stored context (for convenience)
+	func getContext() async -> [ParkingFacility] {
+		guard let context = modelContext else { return [] }
+		return await getFacilities(from: context)
+	}
+
 	/// Save SwiftData context with error handling
-	private func saveContext() async {
-		guard let context = modelContext else { return }
+	private func saveContext(_ context: ModelContext? = nil) async {
+		let contextToSave = context ?? modelContext
+		guard let contextToSave = contextToSave else { return }
 
 		do {
-			if context.hasChanges {
-				try context.save()
+			if contextToSave.hasChanges {
+				try contextToSave.save()
 				Logger.facilityRefresh.debug("💾 Context saved successfully")
 			}
 		} catch {
@@ -385,51 +417,47 @@ extension FacilityManager {
 // MARK: - App lifecycle management
 extension FacilityManager {
 
-	private func setupAppStateObservers() {
-		NotificationCenter.default.addObserver(
-			self,
-			selector: #selector(appDidBecomeActive),
-			name: UIApplication.didBecomeActiveNotification,
-			object: nil
-		)
+	/// Update widget with the most recent data before app goes to background
+	/// Called by AppStateManager when app is backgrounding
+	@MainActor
+	func updateWidgetBeforeBackground() async {
+		// Get all widget facility IDs
+		let widgetFacilityIds = SharedDataManager.shared.getWidgetFacilityIDs()
 
-		NotificationCenter.default
-			.addObserver(
-				self,
-				selector: #selector(appWillResignActive),
-				name: UIApplication.willResignActiveNotification,
-				object: nil
+		guard !widgetFacilityIds.isEmpty else {
+			Logger.widget.debug("No widget facilities registered")
+			return
+		}
+
+		let allFacilities = await getContext()
+		var updatedCount = 0
+
+		// Update all widget facilities with latest data
+		for facilityId in widgetFacilityIds {
+			if let facility = allFacilities.first(where: {
+				$0.facilityId == facilityId
+			}) {
+				SharedDataManager.shared.updateWidget(
+					with: facility,
+					triggerReload: false  // Don't trigger reload for each facility
+				)
+				updatedCount += 1
+			}
+		}
+
+		// Trigger a single widget reload after all updates
+		if updatedCount > 0 {
+			WidgetBudgetTracker.shared.requestReload()
+			Logger.widget.notice(
+				"📤 Updated \(updatedCount) widget facilities before background transition"
 			)
-	}
-
-	@objc private func appDidBecomeActive() {
-		Logger.facilityRefresh.notice("📱 App became active")
-		currentAppState = .active
-		Task {
-			await performLoad()
 		}
 	}
-
-	@objc private func appWillResignActive() {
-		Logger.facilityRefresh.notice("🌙 App entered background")
-		currentAppState = .background
-		stopAutoRefresh()
-	}
 }
+
+// AppState is defined in RefreshConfiguration.swift
 
 // MARK: - Supporting types
-enum AppState {
-	case active
-	case background
-
-	var refreshInterval: TimeInterval {
-		switch self {
-		case .active: return 15.0
-		case .background: return 300.0
-		}
-	}
-}
-
 enum LoadProgress {
 	typealias Current = Int
 	typealias Total = Int
@@ -469,3 +497,39 @@ enum LoadProgress {
 		}
 	}
 }
+// MARK: - Widget Update Coordinator
+
+/// Coordinates widget data updates to prevent concurrent writes and excessive updates
+actor WidgetUpdateCoordinator {
+	static let shared = WidgetUpdateCoordinator()
+	
+	private var lastUpdate: Date?
+	private var updateInProgress = false
+	
+	private init() {}
+	
+	/// Update widget data if enough time has passed since last update
+	/// Prevents concurrent updates and excessive writes
+	func updateIfNeeded(_ facility: ParkingFacility) async {
+		// Prevent concurrent updates
+		guard !updateInProgress else {
+			Logger.widget.debug("Widget update already in progress, skipping")
+			return
+		}
+		
+		// Rate limit updates (minimum 1 second between updates)
+		if let last = lastUpdate,
+		   Date().timeIntervalSince(last) < 1.0 {
+			Logger.widget.debug("Widget updated too recently, skipping")
+			return
+		}
+		
+		updateInProgress = true
+		defer { updateInProgress = false }
+		
+		// Perform the actual update
+		SharedDataManager.shared.cacheWidgetDataIfSelected(facility)
+		lastUpdate = Date()
+	}
+}
+

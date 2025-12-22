@@ -187,7 +187,25 @@ struct APIUsageDebugView: View {
             }
         }
     }
-    
+
+	private var backgroundTaskSection: some View {
+		Section("Background Tasks") {
+			LabeledContent("Widget Budget Used") {
+				Text("\(WidgetBudgetTracker.shared.reloadsInLast24Hours())/60 today")
+			}
+
+			LabeledContent("Last Widget Reload") {
+				Text("\(WidgetBudgetTracker.shared.reloadsInLast24Hours())/60 today")
+			}
+
+			Button("Simulate App Refresh") {
+				Task {
+					await BackgroundTaskManager.shared.performQuickRefresh()
+				}
+			}
+		}
+	}
+
     private var usageColor: Color {
         let percentage = Double(APIUsageMonitor.dailyUsage) / 60000.0
         

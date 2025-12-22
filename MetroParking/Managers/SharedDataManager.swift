@@ -6,22 +6,29 @@
 //
 
 import Foundation
+import OSLog
 import SwiftData
 import WidgetKit
-import OSLog
 
 class SharedDataManager {
 
 	// App Group
-	static let appGroupIdentifier: String = "group.com.tomkwok.metroparking"
+	static let appGroupIdentifier: String = "group.com.tomkwok.MetroParking"
 
 	static var shared = SharedDataManager()
 
 	private init() {}
 
 	// MARK: - SwiftData Container
+
+	/// Schema version for destructive migration (pre-launch only)
+	private static let schemaVersion = "v4"
+	private static let schemaVersionKey = "ModelSchemaVersion"
+
+	/// Shared ModelContainer instance used by both app and widget
+	/// This ensures both targets read from the same SwiftData store
 	@MainActor
-	static func makeSharedContainer() -> ModelContainer {
+	static let sharedContainer: ModelContainer = {
 		let schema = Schema([
 			ParkingFacility.self,
 			ParkingZone.self,
@@ -34,16 +41,80 @@ class SharedDataManager {
 		)
 
 		do {
-			return try ModelContainer(
-				for: schema,
-				configurations: modelConfiguration
+			// Check if schema version has changed
+			let storedVersion = UserDefaults.standard.string(
+				forKey: schemaVersionKey
 			)
-		} catch {
-			fatalError("Could not create ModelContainer: \(error)")
-		}
-	}
+			let needsMigration =
+				storedVersion != nil && storedVersion != schemaVersion
 
-	// MARK: - Widget Data cache
+			if needsMigration {
+				Logger.facilityData.info(
+					"📦 Schema version changed from \(storedVersion ?? "unknown") to \(schemaVersion)"
+				)
+				Logger.facilityData.info(
+					"🗑️ Clearing old data store for migration..."
+				)
+
+				// Clean up old store files
+				let storeURL = modelConfiguration.url
+				try? FileManager.default.removeItem(at: storeURL)
+				try? FileManager.default.removeItem(
+					at: storeURL.appendingPathExtension("shm")
+				)
+				try? FileManager.default.removeItem(
+					at: storeURL.appendingPathExtension("wal")
+				)
+			}
+
+			let container = try ModelContainer(
+				for: schema,
+				configurations: [modelConfiguration]
+			)
+
+			// Save current schema version
+			UserDefaults.standard.set(schemaVersion, forKey: schemaVersionKey)
+
+			return container
+		} catch {
+			// Schema migration failed - likely due to model changes
+			Logger.facilityData.error(
+				"⚠️ ModelContainer creation failed: \(error.localizedDescription)"
+			)
+
+			do {
+				// Try creating the container again with fresh store
+				let container = try ModelContainer(
+					for: schema,
+					configurations: [modelConfiguration]
+				)
+
+				// Save schema version after successful recovery
+				UserDefaults.standard.set(
+					schemaVersion,
+					forKey: schemaVersionKey
+				)
+
+				return container
+			} catch {
+				fatalError(
+					"Could not create ModelContainer after cleanup: \(error.localizedDescription)"
+				)
+			}
+		}
+	}()
+
+	/// Get the shared UserDefaults for App Group
+	private var sharedDefaults: UserDefaults? {
+		UserDefaults(suiteName: Self.appGroupIdentifier)
+	}
+}
+
+extension SharedDataManager {
+
+	private static let widgetFacilityIdsKey: String = "widgetFacilityIds"
+
+	// MARK: - Widget Data Strucure
 	/// Cache structure
 	struct WidgetFacilityData: Codable {
 		let facilityId: String
@@ -74,57 +145,144 @@ class SharedDataManager {
 			default: return "gray"
 			}
 		}
+
+		/// Check if the cached data is stale (older than 15 minutes)
+		var isStale: Bool {
+			let staleThreshold: TimeInterval = 15 * 60  // 15 minutes
+			return Date().timeIntervalSince(cacheTimestamp) > staleThreshold
+		}
+
+		/// Human-readable time since last update
+		var timeSinceUpdate: String {
+			lastUpdated
+				.formatted(
+					.relative(presentation: .named, unitsStyle: .abbreviated)
+				)
+		}
 	}
 
-	/// Get the shared UserDefaults for App Group
-	private var sharedDefaults: UserDefaults? {
-		UserDefaults(suiteName: Self.appGroupIdentifier)
-	}
-}
+	func registerWidgetFacility(_ facilityId: String) {
+		guard let userDefaults = sharedDefaults else {
+			Logger.widget.error("❌ Failed to access shared UserDefaults")
+			return
+		}
 
-extension SharedDataManager {
-		// MARK: - Widget data
-	func saveWidgetData(_ data: WidgetFacilityData) {
+		var ids = getWidgetFacilityIDs()
+		if !ids.contains(facilityId) {
+			ids.append(facilityId)
+			userDefaults.set(ids, forKey: Self.widgetFacilityIdsKey)
+			userDefaults.synchronize()
+
+			Logger.widget.info("✅ Registered facility ID: \(facilityId)")
+		}
+	}
+
+	// TODO: Unregister the widget when being removed from the home screen
+	func deregisterWidgetFacility(_ facilityId: String) {
+		guard let userDefaults = sharedDefaults else {
+			Logger.widget.error("❌ Failed to access shared UserDefaults")
+			return
+		}
+		
+		var ids = getWidgetFacilityIDs()
+		ids.removeAll { $0 == facilityId }
+		userDefaults.set(ids, forKey: Self.widgetFacilityIdsKey)
+		userDefaults.synchronize()
+
+		Logger.widget.info("✅ Deregistered facility ID: \(facilityId)")
+	}
+
+	// MARK: - Widget Data Cache (Multi-Widget Support)
+
+	private static let widgetDataCacheKey: String = "widgetDataCache"
+
+	/// Save widget data cache for a specific facility
+	/// Supports multiple widgets by storing data keyed by facilityId
+	/// - Parameters:
+	///   - data: The facility data to save
+	///   - triggerReload: Whether to trigger an immediate widget reload (budget-aware)
+	func saveWidgetData(_ data: WidgetFacilityData, triggerReload: Bool = false)
+	{
 		guard let defaults = sharedDefaults else {
 			Logger.widget.error("❌ Failed to access shared UserDefaults")
 			return
 		}
 
+		// Load existing cache dictionary
+		var cache = loadWidgetDataCache()
+
+		// Update cache for this facility
+		cache[data.facilityId] = data
+
+		// Save updated cache
 		do {
 			let encoder = JSONEncoder()
 			encoder.dateEncodingStrategy = .iso8601
-			let encoded = try encoder.encode(data)
-			defaults.set(encoded, forKey: "selectedFacility")
+			let encoded = try encoder.encode(cache)
+			defaults.set(encoded, forKey: Self.widgetDataCacheKey)
 			defaults.synchronize()
 
-			WidgetCenter.shared.reloadAllTimelines()
+			if triggerReload {
+				WidgetBudgetTracker.shared.requestReload()
+			}
 
-			Logger.widget
-				.info(
-					"✅ Widget data saved for: \(data.displayTitle) - \(data.cacheTimestamp)"
-				)
+			Logger.widget.info(
+				"✅ Widget data saved for: \(data.displayTitle) (\(data.facilityId))"
+			)
 
 		} catch {
-			Logger.widget.error("❌ Failed to encode widget data: \(error)")
+			Logger.widget.error("❌ Failed to encode widget data cache: \(error)")
 		}
 	}
 
-	func loadWidgetData() -> WidgetFacilityData? {
-		guard let defaults = sharedDefaults,
-			  let data = defaults.data(forKey: "selectedFacility") else {
-			Logger.widget.error("❌ No widget data found")
-			return nil
+	/// Load all cached widget data as a dictionary [facilityId: WidgetFacilityData]
+	private func loadWidgetDataCache() -> [String: WidgetFacilityData] {
+		guard let defaults = sharedDefaults else {
+			Logger.widget.error("❌ Failed to access shared UserDefaults")
+			return [:]
+		}
+
+		guard let data = defaults.data(forKey: Self.widgetDataCacheKey) else {
+			return [:]
 		}
 
 		do {
 			let decoder = JSONDecoder()
 			decoder.dateDecodingStrategy = .iso8601
-			let decoded = try decoder.decode(WidgetFacilityData.self, from: data)
-			return decoded
+			let cache = try decoder.decode(
+				[String: WidgetFacilityData].self,
+				from: data
+			)
+			return cache
 		} catch {
-			Logger.widget.error("❌ Failed to decode widget data: \(error)")
-			return nil
+			Logger.widget.error("❌ Failed to decode widget data cache: \(error)")
+			return [:]
 		}
+	}
+
+	/// Load widget data for a specific facility ID (used by AppIntent widgets)
+	func loadWidgetData(forFacilityId facilityId: String) -> WidgetFacilityData?
+	{
+		let cache = loadWidgetDataCache()
+		return cache[facilityId]
+	}
+
+	/// Get all currently cached widget data for registered widget facilities
+	func getAllWidgetData() -> [WidgetFacilityData] {
+		let cache = loadWidgetDataCache()
+		let widgetFacilityIds = getWidgetFacilityIDs()
+
+		return widgetFacilityIds.compactMap { cache[$0] }
+	}
+
+	/// Legacy method - loads the first widget facility data for backward compatibility
+	/// - Note: Deprecated - Use `loadWidgetData(forFacilityId:)` or `getAllWidgetData()` instead
+	@available(*, deprecated, message: "Use loadWidgetData(forFacilityId:) or getAllWidgetData() for multi-widget support")
+	func loadWidgetData() -> WidgetFacilityData? {
+		// Return the first registered widget facility's data
+		let widgetIds = getWidgetFacilityIDs()
+		guard let firstId = widgetIds.first else { return nil }
+		return loadWidgetData(forFacilityId: firstId)
 	}
 
 	func makeWidgetData(from facility: ParkingFacility) -> WidgetFacilityData {
@@ -148,16 +306,41 @@ extension SharedDataManager {
 		)
 	}
 
-	func updateWidget(with facility: ParkingFacility) {
+	/// Update widget with facility data and trigger reload
+	/// - Parameters:
+	///   - facility: The facility to display in the widget
+	///   - triggerReload: Whether to trigger an immediate widget reload (default: true, budget-aware)
+	func updateWidget(
+		with facility: ParkingFacility,
+		triggerReload: Bool = true
+	) {
 		let widgetData = makeWidgetData(from: facility)
-		saveWidgetData(widgetData)
+		saveWidgetData(widgetData, triggerReload: triggerReload)
 	}
 
-		/// Update widget only if this facility is currently selected in the widget
+	/// Cache widget data without triggering a reload
+	/// Use this during batch updates to avoid exceeding widget budget
+	/// Call `WidgetBudgetTracker.shared.requestReload()` once after all updates
+	func cacheWidgetDataIfSelected(_ facility: ParkingFacility) {
+		// Check if this facility is registered in any widget
+		guard isCurrentlyInWidget(facility.facilityId) else {
+			// This facility is not shown in any widget
+			return
+		}
+
+		// Update cache without triggering reload
+		let widgetData = makeWidgetData(from: facility)
+		saveWidgetData(widgetData, triggerReload: false)
+		Logger.widget.debug(
+			"💾 Cached widget data for: \(facility.displayName.title)"
+		)
+	}
+
+	/// Update widget only if this facility is currently selected in the widget
 	func updateWidgetIfSelected(_ facility: ParkingFacility) {
-		guard let currentData = loadWidgetData(),
-			  currentData.facilityId == facility.facilityId else {
-			// This facility is not the one shown in the widget
+		// Check if this facility is registered in any widget
+		guard isCurrentlyInWidget(facility.facilityId) else {
+			// This facility is not shown in any widget
 			return
 		}
 
@@ -167,45 +350,19 @@ extension SharedDataManager {
 			.info("🔄 Widget updated for: \(facility.displayName.title)")
 	}
 
-	// MARK: - Favourites cache
-	func cacheFavourites(_ favourites: [String]) {
-		sharedDefaults?.set(favourites, forKey: "favouriteFacilityIds")
-		sharedDefaults?.synchronize()
+	/// Get all facility IDs currently displayed in widgets
+	func getWidgetFacilityIDs() -> [String] {
+		guard let userDefaults = sharedDefaults else {
+			Logger.widget.warning("Couldn't find user defaults.")
+			return []
+		}
+
+		return userDefaults.stringArray(forKey: Self.widgetFacilityIdsKey) ?? []
 	}
 
-	func getCachedFavourites() -> [String]? {
-		sharedDefaults?.stringArray(forKey: "favouriteFacilityIds") ?? []
-	}
-}
-
-
-// MARK: - Helper functions
-extension SharedDataManager.WidgetFacilityData {
-	/// Create sample data for previews
-	static func sample(status: AvailabilityStatus = .available) -> Self {
-		let (available, total): (Int, Int) = {
-			switch status {
-				case .available: return (45, 100)
-				case .almostFull: return (8, 100)
-				case .full: return (0, 100)
-				case .noData: return (0, 100)
-			}
-		}()
-
-		return SharedDataManager.WidgetFacilityData(
-			facilityId: "6",
-			name: "Park&Ride - Gordon Henry St (north)",
-			displayTitle: "Gordon",
-			displaySubtitle: "Henry St (north)",
-			address: "Henry Street",
-			availableSpaces: available,
-			totalSpaces: total,
-			occupancyRatio: Double(total - available) / Double(total),
-			availabilityStatus: status.text,
-			distance: 2500.0,
-			travelTime: 420.0,
-			lastUpdated: Date(),
-			cacheTimestamp: Date()
-		)
+	/// Check if a facility is currently displayed in any widget
+	func isCurrentlyInWidget(_ facilityId: String) -> Bool {
+		return getWidgetFacilityIDs().contains(facilityId)
 	}
 }
+

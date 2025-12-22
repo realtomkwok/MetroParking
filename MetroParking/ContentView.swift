@@ -41,10 +41,6 @@ struct ContentView: View {
 		// Separate into pinned and unpinned after filtering/sorting
 		let pinnedFacilities = filteredFacilities.filter { $0.isFavourite }
 		let unpinnedFacilities = filteredFacilities.filter { !$0.isFavourite }
-		
-		Logger.facilityData.info(
-			"\(pinnedFacilities.count) pinned, \(unpinnedFacilities.count) unpinned"
-		)
 
 		var sections: [(title: String?, facilities: [ParkingFacility])] = []
 

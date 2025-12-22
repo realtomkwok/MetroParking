@@ -7,67 +7,74 @@
 
 import Foundation
 import MapKit
+import OSLog
 import SwiftUI
 
-@MainActor
-class AppStateManager: ObservableObject {
+@Observable
+class AppStateManager {
 
 	static let shared = AppStateManager()
 
-	@Published var showingMainSheet: Bool = true
-	@Published var showingFacilityDetail: Bool = false
-	@Published var selectedFacility: ParkingFacility? = nil
-	@Published var currentSheetDetent: PresentationDetent = .medium
+	// MARK: - App Lifecycle State
+	var appState: AppState = .active
 
-	private let mapCamera = MapCameraManager.shared
+	private let facilityManager = FacilityManager.shared
 
+	private init() {
+		setupLifecycleObservers()
+	}
+
+	deinit {
+		NotificationCenter.default.removeObserver(self)
+	}
 }
 
-// MARK: - Core methods
+
+// MARK: - App Lifecycle Management
 extension AppStateManager {
-	func selectFacility(_ facility: ParkingFacility) {
-		selectedFacility = facility
-		showingMainSheet = false
-		showingFacilityDetail = true
-		setSheetDetent(.medium)
-		mapCamera.focusOnFacility(facility)
+
+	private func setupLifecycleObservers() {
+		NotificationCenter.default.addObserver(
+			self,
+			selector: #selector(appDidBecomeActive),
+			name: UIApplication.didBecomeActiveNotification,
+			object: nil
+		)
+
+		NotificationCenter.default.addObserver(
+			self,
+			selector: #selector(appWillResignActive),
+			name: UIApplication.willResignActiveNotification,
+			object: nil
+		)
+
+		Logger.app.notice("👀 App lifecycle observers registered")
 	}
 
-	func deselectFacility() {
-		mapCamera.zoomToAll()
-		selectedFacility = nil
-		showingMainSheet.toggle()
-		showingFacilityDetail = false
-		setSheetDetent(.medium)
+	@objc private func appDidBecomeActive() {
+		Logger.app.notice("📱 App became active")
+		appState = .active
+
+		// Trigger data refresh when returning to foreground
+		Task {
+			await facilityManager.performLoad()
+		}
 	}
 
-	func selectFacilityWithContext(
-		_ centre: CLLocationCoordinate2D,
-		nearby: [ParkingFacility]
-	) {
+	@objc private func appWillResignActive() {
+		Logger.app.notice("🌙 App entering background")
+		appState = .background
 
-		// Show selected facility with context of nearby facilities
-		let coordinates = nearby.map {
-			CLLocationCoordinate2D(
-				latitude: $0.latitude,
-				longitude: $0.longitude
-			)
+		// Stop auto-refresh to conserve resources
+		facilityManager.stopAutoRefresh()
+
+		// Update widget with latest data before backgrounding
+		Task {
+			await facilityManager.updateWidgetBeforeBackground()
 		}
 
-		mapCamera.updateCameraPosition(
-			trueCentre: centre,
-			context: .single,
-			animated: true,
-			coordinates: coordinates
-		)
-	}
-
-	func toggleFacilityDetail() {
-		showingFacilityDetail.toggle()
-	}
-
-	func setSheetDetent(_ detent: PresentationDetent) {
-		guard detent != currentSheetDetent else { return }
-		currentSheetDetent = detent
+		// Schedule background refresh task
+		BackgroundTaskManager.shared.scheduleAppRefresh()
 	}
 }
+

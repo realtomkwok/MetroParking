@@ -280,12 +280,19 @@ final class ParkingFacility {
 	// MARK: - Refresh Priority
 
 	var refreshTier: RefreshTier {
+		// Set critical -> Favourites OR displayed in any widget
 		if self.isFavourite { return .critical }
-		if let lastVisited = lastVisited,
-			lastVisited.timeIntervalSinceNow > -3600
-		{
+		if SharedDataManager.shared.isCurrentlyInWidget(self.facilityId) {
+			return .critical
+		}
+
+		// Standard: recently visited (within 1 hour)
+		if let lastVisited = self.lastVisited,
+		   lastVisited.timeIntervalSinceNow > -3600 {
+
 			return .standard
 		}
+
 		return .background
 	}
 
@@ -368,20 +375,7 @@ extension ParkingFacility {
 	}
 }
 
-// MARK: - Refresh Priority
-enum RefreshTier: CaseIterable {
-	case critical
-	case standard
-	case background
-
-	var cacheValiditySeconds: TimeInterval {
-		switch self {
-		case .critical: return 15  // 15 sec
-		case .standard: return 300  // 5 min
-		case .background: return 600  // 10 min
-		}
-	}
-}
+// RefreshTier is defined in RefreshConfiguration.swift
 
 // MARK: - Availability Status
 // Statuses of availability are based on TfNSW recommendation

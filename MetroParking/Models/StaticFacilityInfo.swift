@@ -345,6 +345,26 @@ extension ParkingFacility {
 			longitude: 151.269667,
 			totalSpaces: 246
 		),
+
+		ParkingFacility(
+			facilityId: "38",
+			name: "Park&Ride - North Rocks",
+			suburb: "North Rocks",
+			address: "Barclay Rd",
+			latitude: -33.765539,
+			longitude: 151.014131,
+			totalSpaces: 139
+		),
+
+		ParkingFacility(
+			facilityId: "39",
+			name: "Park&Ride - Edmonson Park (north)",
+			suburb: "Edmondson Park",
+			address: "Gula Court",
+			latitude: -33.9691,
+			longitude: 150.8616,
+			totalSpaces: 917
+		)
 	]
 
 	static func getAllStaticFacilities() -> [ParkingFacility] {

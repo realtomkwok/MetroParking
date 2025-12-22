@@ -20,7 +20,7 @@ struct FocusedFacilityWidgetView: View {
 
 	var body: some View {
 		if let facility = entry.facilityData {
-			facilityContentView(facility: facility)
+			facilityContentView(facility: facility, isStale: entry.isStale)
 		} else {
 			emptyStateView
 		}
@@ -30,35 +30,37 @@ struct FocusedFacilityWidgetView: View {
 
 	@ViewBuilder
 	private func facilityContentView(
-		facility: SharedDataManager.WidgetFacilityData
+		facility: SharedDataManager.WidgetFacilityData,
+		isStale: Bool
 	) -> some View {
 		switch widgetFamily {
 		case .systemSmall:
-			smallWidgetView(facility: facility)
+			smallWidgetView(facility: facility, isStale: isStale)
 		case .systemMedium:
-			mediumWidgetView(facility: facility)
+			mediumWidgetView(facility: facility, isStale: isStale)
 		default:
-			smallWidgetView(facility: facility)
+			smallWidgetView(facility: facility, isStale: isStale)
 		}
 	}
 
 	// MARK: - Small Widget View
 
 	@ViewBuilder
-	private func smallWidgetView(facility: SharedDataManager.WidgetFacilityData)
-		-> some View
-	{
+	private func smallWidgetView(
+		facility: SharedDataManager.WidgetFacilityData,
+		isStale: Bool
+	) -> some View {
 
-		let statusColourFill: Color = statusColour(
-			facility.availabilityStatus
-		).fill
+		let statusColourFill: Color =
+			isStale
+			? .gray
+			: statusColour(facility.availabilityStatus).fill
 
 		ZStack {
 			VStack {
 				Image("WidgetBackground_signs")
 					.resizable()
 					.widgetAccentedRenderingMode(.accentedDesaturated)
-				//					.scaledToFill()
 			}
 			.opacity(0.2)
 			.blendMode(.luminosity)
@@ -71,9 +73,10 @@ struct FocusedFacilityWidgetView: View {
 							.foregroundStyle(.primary)
 
 						Spacer()
+
 					}
 
-					if facility.displaySubtitle.isEmpty != true {
+					if !facility.displaySubtitle.isEmpty {
 						Text(facility.displaySubtitle)
 							.font(.subheadline)
 							.opacity(0.7)
@@ -91,6 +94,7 @@ struct FocusedFacilityWidgetView: View {
 					HStack(alignment: .firstTextBaseline, spacing: 2) {
 						Text("\(facility.availableSpaces)")
 							.font(.largeTitle)
+							.fontWeight(.semibold)
 							.foregroundStyle(
 								statusColourFill.mix(with: .primary, by: 0.4)
 							)
@@ -107,16 +111,17 @@ struct FocusedFacilityWidgetView: View {
 									value: Double(facility.totalSpaces)
 								)
 							)
+							.foregroundStyle(.secondary)
+					}
+
+					HStack(alignment: .firstTextBaseline, spacing: 4) {
+						Text("\(facility.availabilityStatus)")
+							.font(.headline)
+							.fontWeight(.semibold)
 							.foregroundStyle(
-								statusColourFill.mix(with: .secondary, by: 0.8)
+								statusColourFill.mix(with: .primary, by: 0.4)
 							)
 					}
-					Text("\(facility.availabilityStatus)")
-						.font(.default)
-						.fontWeight(.semibold)
-						.foregroundStyle(
-							statusColourFill.mix(with: .primary, by: 0.4)
-						)
 				}
 				.frame(maxWidth: .infinity, alignment: .topLeading)
 
@@ -152,11 +157,13 @@ struct FocusedFacilityWidgetView: View {
 	// MARK: - Medium Widget View
 
 	private func mediumWidgetView(
-		facility: SharedDataManager.WidgetFacilityData
+		facility: SharedDataManager.WidgetFacilityData,
+		isStale: Bool
 	) -> some View {
-		let statusColourFill: Color = statusColour(
-			facility.availabilityStatus
-		).fill
+		let statusColourFill: Color =
+			isStale
+			? .gray
+			: statusColour(facility.availabilityStatus).fill
 
 		return ZStack {
 			VStack {
@@ -201,11 +208,21 @@ struct FocusedFacilityWidgetView: View {
 							)
 					}
 
-					Text("\(facility.availabilityStatus)")
-						.font(.title3.weight(.semibold))
-						.foregroundStyle(
-							statusColourFill.mix(with: .primary, by: 0.4)
-						)
+					HStack(spacing: 4) {
+						Text("\(facility.availabilityStatus)")
+							.font(.title3.weight(.semibold))
+							.foregroundStyle(
+								statusColourFill.mix(with: .primary, by: 0.4)
+							)
+
+						if isStale {
+							Text("·")
+								.foregroundStyle(.secondary)
+							Text(facility.timeSinceUpdate)
+								.font(.caption)
+								.foregroundStyle(.secondary)
+						}
+					}
 				}
 				.frame(maxWidth: .infinity, alignment: .leading)
 
@@ -218,6 +235,13 @@ struct FocusedFacilityWidgetView: View {
 							.font(.title2)
 
 						Spacer()
+
+						//						// Show stale indicator
+						//						if isStale {
+						//							Image(systemName: "clock.arrow.circlepath")
+						//								.font(.subheadline)
+						//								.foregroundStyle(.secondary)
+						//						}
 					}
 
 					Spacer()
@@ -280,9 +304,9 @@ struct FocusedFacilityWidgetView: View {
 			.blendMode(.luminosity)
 
 			VStack(alignment: .center, spacing: 8) {
-//				Image(systemName: "parkingsign.circle")
-//					.font(.largeTitle)
-//					.foregroundStyle(.secondary)
+				//				Image(systemName: "parkingsign.circle")
+				//					.font(.largeTitle)
+				//					.foregroundStyle(.secondary)
 
 				Text("No Carpark")
 					.font(.headline)

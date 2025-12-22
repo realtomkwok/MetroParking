@@ -22,7 +22,8 @@ struct MetroParkingWidgetBundle: WidgetBundle {
 		date: Date(),
 		facilityData: .sample(status: .available),
 		isPlaceholder: false,
-		configuration: SelectFacilityIntent()
+		isStale: false,
+		configuration: FocusedFacilityWidgetConfigs()
 	)
 }
 
@@ -34,7 +35,8 @@ struct MetroParkingWidgetBundle: WidgetBundle {
 		date: Date(),
 		facilityData: .sample(status: .almostFull),
 		isPlaceholder: false,
-		configuration: SelectFacilityIntent()
+		isStale: false,
+		configuration: FocusedFacilityWidgetConfigs()
 	)
 }
 
@@ -45,7 +47,8 @@ struct MetroParkingWidgetBundle: WidgetBundle {
 		date: Date(),
 		facilityData: .sample(status: .full),
 		isPlaceholder: false,
-		configuration: SelectFacilityIntent()
+		isStale: false,
+		configuration: FocusedFacilityWidgetConfigs()
 	)
 }
 
@@ -56,7 +59,20 @@ struct MetroParkingWidgetBundle: WidgetBundle {
 		date: Date(),
 		facilityData: .sample(status: .noData),
 		isPlaceholder: false,
-		configuration: SelectFacilityIntent()
+		isStale: false,
+		configuration: FocusedFacilityWidgetConfigs()
+	)
+}
+
+#Preview("Small - Stale Data", as: .systemSmall) {
+	FacilityWidget()
+} timeline: {
+	FacilityEntry(
+		date: Date(),
+		facilityData: .sample(status: .available),
+		isPlaceholder: false,
+		isStale: true,
+		configuration: FocusedFacilityWidgetConfigs()
 	)
 }
 
@@ -67,6 +83,7 @@ struct MetroParkingWidgetBundle: WidgetBundle {
 		date: Date(),
 		facilityData: nil,
 		isPlaceholder: false,
-		configuration: SelectFacilityIntent()
+		isStale: false,
+		configuration: FocusedFacilityWidgetConfigs()
 	)
 }

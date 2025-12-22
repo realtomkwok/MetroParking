@@ -11,9 +11,9 @@ import SwiftData
 import OSLog
 
 /// Represents a parking facility as an AppEntity for widget configuration
-struct FacilityEntity: AppEntity {
-	static var typeDisplayRepresentation: TypeDisplayRepresentation = "Parking Facility"
-	static var defaultQuery = FacilityEntityQuery()
+struct FacilityEntity: AppEntity, Identifiable {
+	static var typeDisplayRepresentation: TypeDisplayRepresentation = "Carpark"
+	static var defaultQuery = FacilityQuery()
 
 	let id: String
 	let name: String
@@ -36,18 +36,38 @@ struct FacilityEntity: AppEntity {
 }
 
 /// Query to fetch available parking facilities
-struct FacilityEntityQuery: EntityQuery {
-
+struct FacilityQuery: EntityStringQuery {
 	func entities(for identifiers: [String]) async throws -> [FacilityEntity] {
-			// Fetch specific facilities by ID
-		let container = await SharedDataManager.makeSharedContainer()
+		let container = await SharedDataManager.sharedContainer
 		let context = ModelContext(container)
 
 		let descriptor = FetchDescriptor<ParkingFacility>(
 			predicate: #Predicate { facility in
 				identifiers.contains(facility.facilityId)
 			},
-			sortBy: [SortDescriptor(\.name)]
+			sortBy: [SortDescriptor(\.name, order: .forward)]
+		)
+
+		do {
+			let facilities = try context.fetch(descriptor)
+			return facilities.map { FacilityEntity(from: $0) }
+		} catch {
+			Logger.widget.error("❌ Failed to fetch facilities for identifiers: \(error)")
+			return []
+		}
+	}
+
+
+	func entities(matching string: String) async throws -> [FacilityEntity] {
+			// Fetch specific facilities by ID
+		let container = await SharedDataManager.sharedContainer
+		let context = ModelContext(container)
+
+		let descriptor = FetchDescriptor<ParkingFacility>(
+			predicate: #Predicate { facility in
+				facility.name.localizedStandardContains(string)
+			},
+			sortBy: [SortDescriptor(\.name, order: .forward)]
 		)
 
 		do {
@@ -55,8 +75,8 @@ struct FacilityEntityQuery: EntityQuery {
 			return facilities.map { FacilityEntity(from: $0) }
 		} catch {
 			Logger
-				.widget.error(
-					"❌ Failed to fetch facilities for identifiers: \(error)"
+				.widget.info(
+					"❌ No facilities found matching '\(string)'. Error : \(error)"
 				)
 			return []
 		}
@@ -64,7 +84,7 @@ struct FacilityEntityQuery: EntityQuery {
 
 	func suggestedEntities() async throws -> [FacilityEntity] {
 			// Return all available facilities for selection
-		let container = await SharedDataManager.makeSharedContainer()
+		let container = await SharedDataManager.sharedContainer
 		let context = ModelContext(container)
 
 		let descriptor = FetchDescriptor<ParkingFacility>(
@@ -85,8 +105,8 @@ struct FacilityEntityQuery: EntityQuery {
 	}
 
 	func defaultResult() async -> FacilityEntity? {
-			// Return the first favorite facility, or nil if none exists
-		let container = await SharedDataManager.makeSharedContainer()
+			// Return the first favourite facility, or nil if none exists
+		let container = await SharedDataManager.sharedContainer
 		let context = ModelContext(container)
 
 		let descriptor = FetchDescriptor<ParkingFacility>(

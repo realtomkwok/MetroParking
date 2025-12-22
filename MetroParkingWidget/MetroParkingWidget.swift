@@ -14,14 +14,16 @@ struct FacilityEntry: TimelineEntry {
 	let date: Date
 	let facilityData: SharedDataManager.WidgetFacilityData?
 	let isPlaceholder: Bool
-	let configuration: SelectFacilityIntent
+	let isStale: Bool
+	let configuration: FocusedFacilityWidgetConfigs
 
 	static var placeholder: FacilityEntry {
 		FacilityEntry(
 			date: Date(),
 			facilityData: .sample(status: AvailabilityStatus.available),
 			isPlaceholder: true,
-			configuration: SelectFacilityIntent()
+			isStale: false,
+			configuration: FocusedFacilityWidgetConfigs()
 		)
 	}
 
@@ -30,7 +32,8 @@ struct FacilityEntry: TimelineEntry {
 			date: Date(),
 			facilityData: nil,
 			isPlaceholder: false,
-			configuration: SelectFacilityIntent()
+			isStale: false,
+			configuration: FocusedFacilityWidgetConfigs()
 		)
 	}
 }
@@ -38,14 +41,14 @@ struct FacilityEntry: TimelineEntry {
 struct FacilityProvider: AppIntentTimelineProvider {
 
 	typealias Entry = FacilityEntry
-	typealias Intent = SelectFacilityIntent
+	typealias Intent = FocusedFacilityWidgetConfigs
 
 	func placeholder(in context: Context) -> FacilityEntry {
 		.placeholder
 	}
 
 	func snapshot(
-		for configuration: SelectFacilityIntent,
+		for configuration: FocusedFacilityWidgetConfigs,
 		in context: Context
 	) async -> FacilityEntry {
 
@@ -56,67 +59,81 @@ struct FacilityProvider: AppIntentTimelineProvider {
 		// Try to load data for the selected facility
 		if let selectedFacility = configuration.facility {
 			let data = await loadFacilityData(facilityId: selectedFacility.id)
+			let isStale = data?.isStale ?? false
 			return FacilityEntry(
 				date: Date(),
 				facilityData: data,
 				isPlaceholder: false,
+				isStale: isStale,
 				configuration: configuration
 			)
 		}
 
 		// No facility selected - return empty state
-		return FacilityEntry(
-			date: Date(),
-			facilityData: nil,
-			isPlaceholder: false,
-			configuration: configuration
-		)
+		return .empty
 	}
 
 	func timeline(
-		for configuration: SelectFacilityIntent,
+		for configuration: FocusedFacilityWidgetConfigs,
 		in context: Context
 	) async -> Timeline<FacilityEntry> {
 
-		let data: SharedDataManager.WidgetFacilityData?
-
-		if let selectedFacility = configuration.facility {
-			// Load data for the configured facility
-			data = await loadFacilityData(facilityId: selectedFacility.id)
-		} else {
+		guard let selectedFacility = configuration.facility else {
 			// No facility configured - show empty state
-			data = nil
+			return Timeline(entries: [.empty], policy: .never)
 		}
+
+		// Register this facility as being displayed in a widget
+		SharedDataManager.shared.registerWidgetFacility(selectedFacility.id)
+
+		// Load fresh data for the configured facility
+		let freshData = await loadFacilityData(facilityId: selectedFacility.id)
+
+		// If we got fresh data, use it; otherwise try to use cached data from UserDefaults
+		let data: SharedDataManager.WidgetFacilityData?
+		if let freshData {
+			data = freshData
+		} else {
+			// Fall back to cached UserDefaults data (stale but better than nothing)
+			data = SharedDataManager.shared.loadWidgetData(
+				forFacilityId: selectedFacility.id
+			)
+		}
+
+		let isStale = data?.isStale ?? false
 
 		let entry = FacilityEntry(
 			date: Date(),
 			facilityData: data,
 			isPlaceholder: false,
+			isStale: isStale,
 			configuration: configuration
 		)
 
-		// Update timeline every 10 minutes (respecting the update frequency of TfNSW)
+		// Update timeline every 10 minutes (respecting the update frequency of TfNSW)?
+		// If data is stale, try again sooner (5 minutes)
+		let refreshMinutes = isStale ? 5 : 10
 		guard
 			let nextUpdate = Calendar.current.date(
 				byAdding: .minute,
-				value: 10,
+				value: refreshMinutes,
 				to: Date()
 			)
 		else {
 			return Timeline(entries: [entry], policy: .atEnd)
 		}
 
-		let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
-		return timeline
+		return Timeline(entries: [entry], policy: .after(nextUpdate))
 	}
 
 	// MARK: - Helper Methods
 
-	/// Load facility data from SwiftData
+	/// Load facility data from SwiftData using the shared container
 	private func loadFacilityData(facilityId: String) async -> SharedDataManager
 		.WidgetFacilityData?
 	{
-		let container = await SharedDataManager.makeSharedContainer()
+		// Use the shared container to ensure we're reading from the same data store as the app
+		let container = await SharedDataManager.sharedContainer
 		let context = ModelContext(container)
 
 		let descriptor = FetchDescriptor<ParkingFacility>(
@@ -126,20 +143,22 @@ struct FacilityProvider: AppIntentTimelineProvider {
 		do {
 			let facilities = try context.fetch(descriptor)
 			guard let facility = facilities.first else {
-				print("⚠️ No facility found with ID: \(facilityId)")
+				print("⚠️ Widget: No facility found with ID: \(facilityId)")
 				return nil
 			}
+
+			print(
+				"✅ Widget: Loaded facility '\(facility.displayName.title)' with \(facility.vacancy.available) available spaces"
+			)
 
 			// Convert to widget data format
 			return SharedDataManager.shared.makeWidgetData(from: facility)
 		} catch {
-			print("❌ Failed to load facility data: \(error)")
+			print("❌ Widget: Failed to load facility data: \(error)")
 			return nil
 		}
 	}
 }
-
-
 
 // MARK: - Configuration
 
@@ -149,16 +168,66 @@ struct FacilityWidget: Widget {
 	var body: some WidgetConfiguration {
 		AppIntentConfiguration(
 			kind: kind,
-			intent: SelectFacilityIntent.self,
+			intent: FocusedFacilityWidgetConfigs.self,
 			provider: FacilityProvider()
 		) { entry in
 			FocusedFacilityWidgetView(entry: entry)
 		}
-		.configurationDisplayName("Focused Parking")
+		.configurationDisplayName("Carpark Vacancy")
 		.description(
-			"View vacancy and traffic information for a selected parking facility"
+			"Quick view for the vacancy status and available spaces of a selected carpark."
 		)
 		.supportedFamilies([.systemSmall, .systemMedium])
 		.contentMarginsDisabled()
+	}
+}
+
+struct FocusedFacilityWidgetConfigs: WidgetConfigurationIntent {
+
+	static var title: LocalizedStringResource = "Carpark Vacancy"
+	static var description = IntentDescription(
+		"Select a carpark from the list to display on the widget."
+	)
+
+	@Parameter(title: "Carpark")
+	var facility: FacilityEntity?
+
+	init(facility: FacilityEntity? = nil) {
+		self.facility = facility
+	}
+
+	init() {
+		self.facility = nil
+	}
+}
+
+// MARK: - Widget data sample
+extension SharedDataManager.WidgetFacilityData {
+	/// Create sample data for previews
+	static func sample(status: AvailabilityStatus = .available) -> Self {
+		let (available, total): (Int, Int) = {
+			switch status {
+			case .available: return (45, 100)
+			case .almostFull: return (8, 100)
+			case .full: return (0, 100)
+			case .noData: return (0, 100)
+			}
+		}()
+
+		return SharedDataManager.WidgetFacilityData(
+			facilityId: "6",
+			name: "Park&Ride - Gordon Henry St (north)",
+			displayTitle: "Gordon",
+			displaySubtitle: "Henry St (north)",
+			address: "Henry Street",
+			availableSpaces: available,
+			totalSpaces: total,
+			occupancyRatio: Double(total - available) / Double(total),
+			availabilityStatus: status.text,
+			distance: 2500.0,
+			travelTime: 420.0,
+			lastUpdated: Date(),
+			cacheTimestamp: Date()
+		)
 	}
 }

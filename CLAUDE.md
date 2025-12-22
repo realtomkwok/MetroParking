@@ -6,10 +6,10 @@ This document provides context for AI assistants working on the MetroParking iOS
 
 MetroParking is a native iOS app for monitoring real-time parking availability at NSW Transport Park&Ride facilities. Built with SwiftUI and SwiftData, it integrates with the TfNSW Car Park API to provide live occupancy data for 37 facilities across NSW.
 
-**Current Version**: 0.2.0 (December 2025)
+**Current Version**: 0.3.0 (December 2025)
 **Platform**: iOS 18.4+
 **Language**: Swift (SwiftUI)
-**Architecture**: MVVM with SwiftData persistence
+**Architecture**: MVVM with SwiftData persistence and App Groups for widget support
 
 ## Core Technologies
 
@@ -35,12 +35,15 @@ MetroParking/
 │   │   ├── ContentView.swift       # Main app interface
 │   │   ├── FacilityDetailView.swift # Facility details with map
 │   │   ├── FacilityList.swift      # List component
+│   │   ├── APIUsageDebugView.swift # API usage and widget budget debugging
 │   │   └── ... (other view components)
 │   │
-│   ├── ObservablesManagers/        # State management
-│   │   ├── FacilityManager.swift   # Static data loading
-│   │   ├── FacilityRefreshManager.swift # Live updates & scheduling
-│   │   ├── MapStateManager.swift   # Map camera state
+│   ├── Managers/                   # State management and business logic
+│   │   ├── FacilityManager.swift   # Facility data loading with concurrency control
+│   │   ├── SharedDataManager.swift # App Groups data sharing (app ↔ widget)
+│   │   ├── BackgroundTaskManager.swift # BGTaskScheduler integration
+│   │   ├── AppStateManager.swift   # App lifecycle state management
+│   │   ├── MapStateManager.swift   # Map camera state (ARCHIVED)
 │   │   └── SheetStateManager.swift # Sheet presentation
 │   │
 │   ├── Services/                   # External integrations
@@ -52,14 +55,33 @@ MetroParking/
 │   │   ├── SortAndFilterHelper.swift # Sorting/filtering logic
 │   │   ├── DistanceHelper.swift    # Distance calculations
 │   │   ├── Logger.swift            # Logging utilities
+│   │   ├── RefreshConfiguration.swift # Unified refresh timing constants
+│   │   ├── WidgetBudgetTracker.swift # Widget reload budget management
 │   │   └── ... (other utilities)
 │   │
 │   ├── ContentView.swift           # Main view
 │   ├── BackgroundGradient.swift    # Animated mesh gradient
-│   └── MetroParkingApp.swift       # App entry point
+│   ├── MetroParkingApp.swift       # App entry point
+│   └── Info.plist                  # Background modes and capabilities
 │
-├── Shared/                         # Shared resources (if applicable)
-├── Widget-Availability-Small/      # Widget extension (WIP)
+├── MetroParkingWidget/             # Widget extension
+│   ├── MetroParkingWidget.swift    # Widget entry point with AppIntent configuration
+│   ├── FocusedFacilityWidgetView.swift # Widget UI for selected facility
+│   ├── FacilityEntity.swift        # AppEntity for widget configuration
+│   ├── MetroParkingWidgetBundle.swift # Widget bundle
+│   └── Info.plist                  # Widget extension configuration
+│
+├── Docs/                           # Documentation
+│   ├── Widgets/                    # Widget implementation guides
+│   │   ├── WIDGET_README.md
+│   │   ├── WIDGET_SETUP_CHECKLIST.md
+│   │   ├── WIDGET_BUDGET_UPDATE.md
+│   │   └── ... (other widget docs)
+│   ├── Concurrency/                # Concurrency and thread safety docs
+│   │   ├── CONCURRENCY_FIXES_SUMMARY.md
+│   │   └── CODE_REVIEW_CHECKLIST.md
+│   └── CONFIGURATION.md            # Config.xcconfig setup guide
+│
 ├── Config.xcconfig                 # Environment configuration
 └── MetroParking.xcodeproj/         # Xcode project
 ```
@@ -67,10 +89,12 @@ MetroParking/
 ## Key Architectural Patterns
 
 ### Data Flow
-1. **Static Data**: `FacilityManager` loads facility metadata from JSON → SwiftData
-2. **Live Updates**: `FacilityRefreshManager` fetches occupancy via `ParkingAPIService` → updates SwiftData models
-3. **Priority Queue**: Pinned facilities + nearest 5 → remaining facilities
-4. **Caching**: 15-minute occupancy cache per facility
+1. **Static Data**: `FacilityManager` loads facility metadata from JSON → SwiftData (shared via App Groups)
+2. **Live Updates**: `FacilityManager` fetches occupancy via `ParkingAPIService` → updates SwiftData models
+3. **Widget Updates**: `WidgetBudgetTracker` manages reload budget → `WidgetCenter.reloadAllTimelines()`
+4. **Background Refresh**: `BackgroundTaskManager` schedules BGAppRefreshTask and BGProcessingTask
+5. **Priority Tiers**: Critical (widgets + favorites) → Standard (recently visited) → Background (others)
+6. **Caching**: Tiered cache validity (1-10 min foreground, 10-60 min background)
 
 ### State Management
 - **@Observable Macro**: Used for all manager classes
@@ -79,10 +103,16 @@ MetroParking/
 - **@Environment**: Dependency injection for ModelContext and managers
 
 ### Refresh Strategy
-- **High Priority Facilities** (15s): Kiama, Mona Vale, Warriewood, Dee Why, Gordon
-- **Standard Priority** (60s): All other facilities
-- **Favourite Multiplier**: 50% faster refresh for pinned facilities
-- **Rate Limiting**: 500ms minimum interval between API requests
+- **Foreground Cycle**: 60s interval for full refresh cycle
+- **Cache Validity Tiers**:
+  - Critical (widgets + favorites): 1 min foreground / 10 min background
+  - Standard (recently visited): 5 min foreground / 30 min background
+  - Background tier: 10 min foreground / 1 hour background
+- **Widget Budget**: 60 reloads/day, 15s minimum throttle
+- **Background Tasks**:
+  - Quick refresh: 15 min interval
+  - Full refresh: 2 hours interval
+- **Concurrency Control**: Single operation lock prevents overlapping refreshes
 
 ## Configuration
 
@@ -100,6 +130,86 @@ SUPABASE_PUBLISHABLE_KEY=<your_supabase_key>
 ```
 
 These are accessed via `Configuration.swift` enum.
+
+**App Groups**: The app uses `group.com.tomkwok.MetroParking` for sharing SwiftData between the main app and widget extension. This is configured in:
+- App target capabilities
+- Widget extension capabilities
+- `SharedDataManager.swift` (App Groups container)
+
+## Widget Implementation
+
+### Overview
+The app includes a WidgetKit extension that displays real-time parking data on the home screen and lock screen. Widgets are fully configurable using AppIntents, allowing users to select which facility to monitor.
+
+### Key Components
+
+**Widget Files**:
+- `MetroParkingWidget.swift`: Widget entry point with AppIntent configuration
+- `FocusedFacilityWidgetView.swift`: SwiftUI view for widget display
+- `FacilityEntity.swift`: AppEntity conformance for facility selection
+- `MetroParkingWidgetBundle.swift`: Widget bundle registration
+
+**Data Sharing**:
+- Uses App Groups (`group.com.tomkwok.MetroParking`) for SwiftData sharing
+- `SharedDataManager` provides shared ModelContainer for both targets
+- Zero-copy data access - widgets read directly from app's database
+
+**Budget Management**:
+- `WidgetBudgetTracker`: Enforces 60 reloads/day limit
+- 15-second minimum throttle between reloads
+- Tracks reload history in UserDefaults
+- Prevents budget exhaustion with smart throttling
+
+**Widget Configuration**:
+- Users select facility via AppIntent configuration UI
+- Selected facility ID stored in widget configuration
+- Widget displays: facility name, total/available/occupied spaces, last update time
+- Visual indicators for vacancy levels (colors change based on availability)
+
+### Widget Refresh Flow
+1. App updates facility data in SwiftData (via `FacilityManager`)
+2. `WidgetBudgetTracker.reloadIfAllowed()` checks budget/throttle
+3. If allowed, calls `WidgetCenter.shared.reloadAllTimelines()`
+4. Widget timeline provider fetches data from shared SwiftData
+5. Widget UI updates with new data
+
+### Background Refresh Integration
+- `BackgroundTaskManager` schedules quick refreshes (15 min) for widget facilities
+- Widget facilities treated as "critical" tier (highest priority)
+- Background tasks call `performLoad()` → widget reload on completion
+- Lifecycle-aware: schedules on `appWillResignActive`, cancels on foreground return
+
+## Concurrency & Thread Safety
+
+### Critical Fixes (December 2025)
+The app underwent major concurrency improvements to fix overlapping refresh operations and duplicate task scheduling.
+
+**Issue #1: Concurrent Refresh Operations**
+- **Problem**: Multiple `performLoad()` calls could run simultaneously, causing data conflicts
+- **Solution**: Added `currentOperationId: UUID?` to track active operations
+- **Implementation**: Check operation ID before starting, use `defer` to safely clear on completion
+
+**Issue #2: Redundant Auto-Refresh Scheduling**
+- **Problem**: Every `performLoad()` completion called `scheduleNextRefresh()`, creating overlapping timers
+- **Solution**: Added `shouldScheduleNext: Bool` parameter and debouncing with `lastScheduleTime`
+- **Implementation**: Background tasks pass `shouldScheduleNext: false`, 5s minimum between schedules
+
+**Issue #3: Duplicate Background Task Scheduling**
+- **Problem**: Background task handlers re-scheduled themselves, causing exponential task growth
+- **Solution**: Removed self-scheduling from `handleAppRefresh()`, moved to lifecycle events
+- **Implementation**: `AppStateManager.appWillResignActive()` handles all scheduling
+
+### Thread Safety Patterns
+- **@MainActor**: All UI-bound managers are main-actor isolated
+- **Background Contexts**: `SharedDataManager` uses background ModelContext for async work
+- **Operation Locks**: Single UUID-based lock prevents concurrent refresh operations
+- **Task Cancellation**: Proper cleanup with `defer` blocks and operation ID validation
+
+### Testing & Debugging
+- `APIUsageDebugView`: Real-time monitoring of API calls and widget reloads
+- Console logging with OSLog categories (`.facilityRefresh`, `.widget`, `.backgroundTask`)
+- See `Docs/Concurrency/CONCURRENCY_FIXES_SUMMARY.md` for detailed analysis
+- Use `Docs/Concurrency/CODE_REVIEW_CHECKLIST.md` for reviewing async code
 
 ## Important Models
 
@@ -195,10 +305,12 @@ SwiftData model for individual parking zones within a facility.
 4. Update relevant manager to consume new data
 
 ### Modifying Refresh Logic
-1. Check `FacilityRefreshManager.swift`
-2. Understand priority queue in `scheduleFacilityRefreshes()`
-3. Test with different facility priorities
-4. Verify rate limiting compliance
+1. Check `FacilityManager.swift` for foreground refresh
+2. Check `BackgroundTaskManager.swift` for background task scheduling
+3. Review `RefreshConfiguration.swift` for all timing constants
+4. Understand priority tiers in `performLoad()`
+5. Test with `APIUsageDebugView` to verify budget compliance
+6. Verify concurrency control (single operation lock)
 
 ### Adding a New Utility
 1. Create file in `Utils/` directory
@@ -206,19 +318,44 @@ SwiftData model for individual parking zones within a facility.
 3. Document public API with comments
 4. Add unit tests if logic is complex
 
+### Working with Widgets
+1. **Widget Configuration**:
+   - Widgets use AppIntent for user configuration
+   - `FacilityEntity` conforms to `AppEntity` for facility selection
+   - Configuration stored per-widget instance
+
+2. **Data Access**:
+   - Widgets access shared SwiftData via `SharedDataManager.sharedContainer`
+   - Use background ModelContext for async queries
+   - Never perform long-running operations in timeline provider
+
+3. **Budget Management**:
+   - Always use `WidgetBudgetTracker.reloadIfAllowed()` before reloading
+   - Check remaining budget with `WidgetBudgetTracker.shared.remainingBudget`
+   - Monitor reloads in `APIUsageDebugView`
+
+4. **Testing**:
+   - Use Xcode's widget preview in Widget extension target
+   - Test different configurations and data states
+   - Verify budget tracking doesn't exhaust daily limit
+   - Test with app in background/foreground/terminated states
+
 ## Known Issues & TODOs
 
 ### Critical
 - [x] Refresh logic too aggressive (needs optimization)
-- [ ] Remove obsolete properties from `ParkingFacility` model
-- [ ] Distance caching incomplete (marked WIP in README)
-- [ ] Review and fix `LocationManager` implementation
+- [x] Remove obsolete properties from `ParkingFacility` model
+- [x] Distance caching incomplete (marked WIP in README)
+- [x] Review and fix `LocationManager` implementation
+- [x] Widget data stops refreshing - fixed with proper App Groups setup
+- [x] Concurrency issues causing overlapping refreshes - fixed with operation locks
+- [ ] Better UX for displaying stale data
 
 ### High Priority
-- [ ] Rewrite MapKit using `MKMapItem` and `MKAddress`
+- [x] Rewrite MapKit using `MKMapItem` and `MKAddress`
 - [ ] Implement server-side caching for scaling
 - [ ] Live Activities for vacancy tracking
-- [ ] Home/Lock screen widgets
+- [x] Home/Lock screen widgets
 
 ### Feature Roadmap
 
@@ -247,17 +384,20 @@ open MetroParking.xcodeproj
 - Current working branch: `1.0/reboot`
 
 ### Recent Commits
-- UI redesign with glass effects and parallax scrolling
-- Refactored sorting/filtering into protocol-based helper
-- Added `FacilityDetailView` with sticky map header
-- Separated list rendering from `ContentView`
+- Added widget support with AppIntent configuration and App Groups
+- Fixed critical concurrency issues (overlapping refreshes, duplicate task scheduling)
+- Implemented unified refresh configuration with tiered cache validity
+- Added background task management with BGTaskScheduler
+- Created widget budget tracker for daily reload management
+- Added comprehensive documentation for widgets and concurrency fixes
 
 ## Dependencies
 
 The app has minimal external dependencies:
 
-- **Apple Frameworks**: SwiftUI, SwiftData, MapKit, CoreLocation
-- **Third-party**: Supabase (an external database for historic data and trend insights)
+- **Apple Frameworks**: SwiftUI, SwiftData, MapKit, CoreLocation, WidgetKit, BackgroundTasks
+- **Third-party**: Supabase (optional, for historic data and trend insights)
+- **App Extensions**: WidgetKit extension for home/lock screen widgets
 
 ## Security & Privacy
 
@@ -306,4 +446,4 @@ When working on this project:
 
 ---
 
-Last updated: December 7, 2025
+Last updated: December 22, 2025

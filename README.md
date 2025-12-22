@@ -18,6 +18,9 @@ the [TfNSW Car Park API](https://data.nsw.gov.au/data/dataset/2-car-park-api).
 - **ETA Calculations**: Driving time estimates using MapKit
 - **Street View**: Look Around integration for facility reconnaissance
 - **Location Services**: Distance calculations and nearby facility discovery
+- **Home/Lock Screen Widgets**: Quick glance at your selected facility with configurable AppIntent
+- **Background Refresh**: Automatic data updates using BGTaskScheduler
+- **App Groups Integration**: Seamless data sharing between app and widgets
 
 ## Requirements
 
@@ -93,17 +96,30 @@ Read more about configuration: [Configuration](Docs/CONFIGURATION.md)
     - `LocationManager`: Core Location wrapper
 
 - **State Management**:
-    - `FacilityDataManager`: Static facility data loading
-    - `FacilityRefreshManager`: Live occupancy updates with priority queuing
+    - `FacilityManager`: Facility data loading with concurrency control
+    - `SharedDataManager`: App Groups data sharing (app ↔ widget)
+    - `BackgroundTaskManager`: BGTaskScheduler integration for background refresh
+    - `AppStateManager`: App lifecycle state management
+    - `WidgetBudgetTracker`: Widget reload budget management (60/day limit)
     - `MapStateManager`: Map camera and selection state
     - `SheetStateManager`: Sheet presentation logic
 
+- **Utilities**:
+    - `RefreshConfiguration`: Unified refresh timing constants and cache validity tiers
+    - `Logger`: Centralized logging system
+
 ### Data Flow
 
-1. **Initial Load**: Static facility metadata → SwiftData
-2. **Priority Refresh**: Pinned facilities → Nearest 5 → Remaining facilities
-3. **Ongoing Updates**: Smart refresh scheduling based on facility priority and app state
-4. **Caching**: 15-minute occupancy cache with validation
+1. **Initial Load**: Static facility metadata → SwiftData (shared via App Groups)
+2. **Priority Tiers**:
+   - Critical (widgets + favorites): 1 min cache (foreground) / 10 min (background)
+   - Standard (recently visited): 5 min cache (foreground) / 30 min (background)
+   - Background tier: 10 min cache (foreground) / 1 hour (background)
+3. **Foreground Updates**: 60s refresh cycle with tiered cache validation
+4. **Background Tasks**:
+   - Quick refresh (15 min intervals): Critical + Standard tiers
+   - Full refresh (2 hour intervals): All facilities
+5. **Widget Updates**: Budget-controlled reloads (60/day, 15s throttle)
 
 ### API Integration
 
@@ -111,44 +127,64 @@ The app consumes the [TfNSW Car Park API](https://opendata.transport.nsw.gov.au/
 
 - **Facilities Endpoint**: `/v1/carpark` - List all facilities
 - **Occupancy Endpoint**: `/v1/carpark?facility={id}` - Real-time data
-- **Rate Limiting**: 500ms minimum interval between requests
+- **Rate Limiting**: Managed by `RefreshConfiguration` with tiered intervals
 - **Error Handling**: Exponential backoff for failed requests
+- **Concurrency Control**: Single operation lock prevents overlapping refreshes
 
 ## Project Structure
 
 ```
 MetroParking/
-├── Models/                 # SwiftData models and API responses
-├── Views/                  # SwiftUI views and components
-├── Services/               # API and external service integrations  
-├── ObservablesManagers/    # State management and business logic
-├── Utils/                  # Helpers and extensions
-└── Configuration.swift     # App configuration management
+├── MetroParking/
+│   ├── Models/             # SwiftData models and API responses
+│   ├── Views/              # SwiftUI views and components
+│   ├── Services/           # API and external service integrations
+│   ├── Managers/           # State management and business logic
+│   ├── Utils/              # Helpers, extensions, and configuration
+│   └── MetroParkingApp.swift
+├── MetroParkingWidget/     # Widget extension with AppIntent support
+├── Docs/                   # Documentation (widgets, concurrency, setup)
+└── Config.xcconfig         # Environment configuration (gitignored)
 ```
 
 ## Key Files
 
 - `ContentView.swift`: Main app interface with map and sheet
 - `ParkingFacility.swift`: Core facility model with occupancy logic
-- `FacilityRefreshManager.swift`: Handles all API updates and scheduling
+- `FacilityManager.swift`: Handles facility data loading with concurrency control
+- `BackgroundTaskManager.swift`: Manages background refresh tasks (BGTaskScheduler)
+- `SharedDataManager.swift`: App Groups container for app ↔ widget data sharing
+- `WidgetBudgetTracker.swift`: Widget reload budget management
+- `RefreshConfiguration.swift`: Unified timing constants and cache validity tiers
 - `ParkingAPIService.swift`: TfNSW API client implementation
-- `LocationManager.swift`: Location services and distance calculations
+- `MetroParkingWidget.swift`: Widget entry point with AppIntent configuration
 
 ## Development Notes
 
 ### Refresh Strategy
 
-The app uses a priority-based refresh system:
+The app uses a tiered cache validity system with concurrency control:
 
-1. **High Priority** (15s updates): Kiama, Mona Vale, Warriewood, Dee Why, Gordon
-2. **Standard Priority** (60s updates): All other facilities
-3. **Favourite Multiplier**: 50% faster refresh for pinned facilities
-4. **Background Mode**: Reduced refresh frequency when app in the background
+1. **Foreground Refresh**: 60s cycle interval with tiered cache validation
+   - Critical tier (widgets + favorites): 1 min cache validity
+   - Standard tier (recently visited): 5 min cache validity
+   - Background tier (others): 10 min cache validity
+
+2. **Background Tasks**:
+   - Quick refresh (15 min intervals): Updates critical + standard tiers
+   - Full refresh (2 hour intervals): Updates all facilities
+
+3. **Widget Budget**: 60 reloads per day, 15s minimum throttle between reloads
+
+4. **Concurrency Control**: Operation lock prevents overlapping refreshes
 
 ### Performance Optimizations
 
-- **Distance Caching**: Cached calculations valid within 100m movement [WIP]
-- **Occupancy Caching**: 15-minute validity to reduce API calls
+- **Tiered Cache Validity**: 1-60 min depending on facility priority and app state
+- **Widget Budget Management**: Prevents budget exhaustion with smart throttling
+- **Background Task Scheduling**: Intelligent scheduling based on time of day
+- **Concurrency Control**: Prevents overlapping refreshes with operation locks
+- **App Groups**: Zero-copy data sharing between app and widgets
 - **Smart Scheduling**: Exponential backoff for failed requests
 - **Memory Management**: SwiftData with automatic persistence
 
@@ -195,6 +231,33 @@ version.
 
 ## Changelog
 
+### v0.3.0 (December 2025)
+
+**Widget Support & Background Refresh**
+- Added home/lock screen widgets with AppIntent configuration
+- Implemented App Groups for seamless app ↔ widget data sharing
+- Added `BackgroundTaskManager` for BGTaskScheduler integration
+- Created `WidgetBudgetTracker` for managing daily reload budget (60/day)
+- Implemented `RefreshConfiguration` for unified timing constants
+
+**Concurrency & Performance Fixes**
+- Fixed critical concurrency issue causing overlapping refresh operations
+- Added operation lock to prevent duplicate refreshes
+- Fixed background task scheduling to prevent exponential task growth
+- Implemented tiered cache validity (1 min - 1 hour) based on facility priority
+- Optimized foreground refresh cycle from aggressive polling to 60s intervals
+
+**Architecture Improvements**
+- Refactored `FacilityManager` with proper concurrency control
+- Improved `SharedDataManager` with background context management
+- Enhanced `AppStateManager` with lifecycle-aware scheduling
+- Added comprehensive debugging with `APIUsageDebugView`
+
+**Documentation**
+- Added `Docs/Widgets/` with setup guides and budget analysis
+- Added `Docs/Concurrency/` with fixes summary and review checklist
+- Updated project structure documentation
+
 ### v0.2.0 (December 2025)
 
 **New Features**
@@ -236,10 +299,11 @@ version.
 - [x] Add proper `CLPlacemark` reverse geocoding for facility addresses
 
 ### API & Scaling Optimisation
-- [x] Fix refresh logic to reduce API call frequency (currently too aggressive)
+- [x] Fix refresh logic to reduce API call frequency (fixed with tiered caching)
+- [x] Add request coalescing and smarter refresh scheduling (operation locks)
+- [x] Implement concurrency control to prevent overlapping refreshes
 - [ ] Implement server-side caching strategy for scaling to thousands of users
 - [ ] Review Supabase edge functions for batch processing efficiency
-- [x] Add request coalescing and smarter refresh scheduling based on user activity
 
 ### Real-Time Transit Integration
 - [ ] Integrate [TfNSW GTFS Realtime Trip Updates API](https://opendata.transport.nsw.gov.au/data/dataset/public-transport-realtime-trip-update-v2)
@@ -249,7 +313,7 @@ version.
 
 ### Traffic & Navigation
 - [x] Add live traffic information from user location to selected facility
-- [ ] Display traffic status indicators (light, moderate, heavy)
+~~- [ ] Display traffic status indicators (light, moderate, heavy)~~
 - [x] Show traffic-aware ETA estimates
 - [ ] Implement route alternatives based on current conditions
 
@@ -261,8 +325,11 @@ version.
 
 ### Live Activities & Widgets
 - [ ] Implement Live Activities for tracking selected facility availability
-- [ ] Add home screen widgets (small, medium, large)
-- [ ] Create lock screen widgets for quick vacancy checks
+- [x] Add home screen widgets with AppIntent configuration
+- [x] Implement widget budget tracking (60 reloads/day limit)
+- [x] Add App Groups for app ↔ widget data sharing
+- [ ] Create additional widget sizes (medium, large)
+- [ ] Add lock screen widgets for quick vacancy checks
 - [ ] Support Dynamic Island for active navigation sessions
 
 ### Notifications
@@ -272,10 +339,10 @@ version.
 - [ ] Support notification scheduling for regular commute times
 
 ### Location Services
-- [ ] Review and improve `LocationManager` implementation
+- [x] Review and improve `LocationManager` implementation
 - [ ] Add background location updates for proximity alerts
 - [ ] Implement geofencing for automatic facility detection
-- [ ] Add "Always Allow" location permission flow for background features
+- [x] Add "Always Allow" location permission flow for background features
 
 ---
 

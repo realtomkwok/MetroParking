@@ -1,6 +1,15 @@
 {
-  "originHash" : "497b223336ae156cc4edd8c12c3d176b975452a34540e6bdf0a3cf91a248bc9c",
+  "originHash" : "c0d1bab9c7664967dab54e05d82f39c586a04f509bf7f78e5b96671853b9697d",
   "pins" : [
+    {
+      "identity" : "ios-backports",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/superwall/iOS-Backports",
+      "state" : {
+        "revision" : "1549293848bd2467dce4be298e0ad6f90af748dc",
+        "version" : "1.0.5"
+      }
+    },
     {
       "identity" : "supabase-swift",
       "kind" : "remoteSourceControl",

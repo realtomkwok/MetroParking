@@ -13,8 +13,9 @@ import SwiftUI
 struct ContentView: View {
 	@Namespace var navigationNamespace
 
-	// Access FacilityManager from environment
+		// Access managers from environment
 	@Environment(FacilityManager.self) private var facilityManager
+	@Environment(OnboardingManager.self) private var onboardingMgr
 
 	@State private var searchText: String = ""
 	@State private var selectedSorting: SortingOption = .name
@@ -24,21 +25,21 @@ struct ContentView: View {
 	@State private var isSearchFieldFocused: Bool = false
 	@State private var selectedFacility: ParkingFacility?
 
-	// Single query for all facilities - let SwiftData handle animations smoothly
+		// Single query for all facilities - let SwiftData handle animations smoothly
 	@Query(animation: .snappy)
 	private var allFacilities: [ParkingFacility]
 
-	/// Grouped facilities with pinned items at the top
+		/// Grouped facilities with pinned items at the top
 	private var groupedFacilities:
-		[(title: String?, facilities: [ParkingFacility])]
+	[(title: String?, facilities: [ParkingFacility])]
 	{
-		// Filter and sort all facilities once
+			// Filter and sort all facilities once
 		let filteredFacilities = allFacilities
 			.filtered(by: filterIsOn ? selectedFilter : .all)
 			.searchFiltered(by: searchText)
 			.sorted(by: selectedSorting, order: selectedSortingOrder)
-		
-		// Separate into pinned and unpinned after filtering/sorting
+
+			// Separate into pinned and unpinned after filtering/sorting
 		let pinnedFacilities = filteredFacilities.filter { $0.isFavourite }
 		let unpinnedFacilities = filteredFacilities.filter { !$0.isFavourite }
 
@@ -54,7 +55,7 @@ struct ContentView: View {
 			sections.append(
 				(
 					title: pinnedFacilities.isEmpty
-						? nil : "More Parking",
+					? nil : "More Parking",
 					facilities: unpinnedFacilities
 				)
 			)
@@ -63,18 +64,20 @@ struct ContentView: View {
 		return sections
 	}
 
+		// TODO: Dynamically refresh the last updated time
 	private var navigationSubtitleText: String {
 		if facilityManager.isRefreshing {
 			return facilityManager.loadProgress.description
 		} else if let lastRefresh = facilityManager.lastRefreshTime {
-			return
-				"Updated \(lastRefresh.formatted(.relative(presentation: .named)))"
+			return "Updated \(lastRefresh.formatted(.relative(presentation: .named)))"
 		} else {
 			return "Pull down to refresh"
 		}
 	}
 
 	var body: some View {
+		@Bindable var onboarding = onboardingMgr
+
 		NavigationStack {
 			ZStack {
 				BackgroundGradient()
@@ -110,15 +113,25 @@ struct ContentView: View {
 					.scrollEdgeEffectStyle(.soft, for: .vertical)
 					.scrollContentBackground(.hidden)
 				} else {
-					// Fallback on earlier versions
-					// TODO: main content for iOS versions under iOS 26
+						// Fallback on earlier versions
+						// TODO: main content for iOS versions under iOS 26
 				}
 			}
 		}
 		.backport.concentricClipShape()
 		.ignoresSafeArea()
 		.containerShape(.rect(cornerRadius: 24))
+		.sheet(isPresented: $onboarding.isShowingOnboarding) {
+			if #available(iOS 26.0, *) {
+				OnboardingView()
+					.environment(OnboardingManager.shared)
+			}
+		}
 	}
+
+}
+
+extension ContentView {
 
 	@ToolbarContentBuilder
 	func TopBarActions() -> some ToolbarContent {
@@ -187,7 +200,7 @@ struct ContentView: View {
 						.transition(.blurReplace)
 					}
 				}
-				.animation(.snappy(duration: 0.35), value: filterIsOn)
+				.animation(.snappy, value: filterIsOn)
 			}
 			.fixedSize()
 		}
@@ -281,6 +294,7 @@ struct ContentView: View {
 		.modelContainer(.preview(includeSampleData: true, favoriteCount: 3))
 		.environment(FacilityManager.shared)
 		.environment(LookAroundManager.shared)
+		.environment(OnboardingManager.shared)
 }
 
 #Preview("Empty State") {
@@ -288,4 +302,5 @@ struct ContentView: View {
 		.modelContainer(.emptyPreview())
 		.environment(FacilityManager.shared)
 		.environment(LookAroundManager.shared)
+		.environment(OnboardingManager.shared)
 }

@@ -38,29 +38,23 @@ struct FacilityList: View {
 			.map { FacilitySection(title: $0.title, facilities: $0.facilities) }
 	}
 
-	private func enableLiveActivity(for facility: ParkingFacility) {
-		// TODO: Implement live activity
-		print("Enable live activity for \(facility.displayName)")
-	}
-
 	var body: some View {
 		List {
 			ForEach(sections) { section in
 				Section {
 					ForEach(section.facilities, id: \.persistentModelID) {
 						facility in
-						facilityRow(for: facility)
+						ListRow(for: facility)
 					}
 				} header: {
-					sectionHeader(title: section.title)
+					SectionHeader(title: section.title)
 				}
-				.containerShape(.rect(cornerRadius: 24, style: .circular))
 			}
 		}
 		.listStyle(.plain)
 		// Animate when section structure changes OR when facilities move between sections
 		.animation(
-			.snappy(duration: 0.4),
+			.snappy(),
 			value: sections.map { $0.facilities.map(\.persistentModelID) }
 		)
 		.navigationDestination(item: $selectedFacility) { facility in
@@ -70,85 +64,31 @@ struct FacilityList: View {
 				)
 		}
 	}
+}
 
-	// MARK: - View Components
-
-	@ViewBuilder
-	func FacilityRowView(facility: ParkingFacility) -> some View {
-			HStack(alignment: .center) {
-				VStack(alignment: .leading) {
-					HStack(alignment: .center, spacing: 4) {
-						Text(facility.displayName.title)
-							.font(.title3)
-							.fontWeight(.bold)
-							.contentTransition(.identity)
-
-						if facility.isFavourite {
-							Image(systemName: "star.fill")
-								.font(.caption2)
-								.foregroundStyle(.tertiary)
-								.transition(.scale.combined(with: .opacity))
-						}
-					}
-					.animation(.snappy(duration: 0.3), value: facility.isFavourite)
-					
-					Text(facility.displayName.subtitle)
-						.font(.headline)
-						.contentTransition(.identity)
-
-					Spacer()
-
-					Text(facility.availabilityStatus.text)
-						.font(.subheadline)
-						.fontWeight(.semibold)
-						.foregroundStyle(.secondary)
-				}
-
-				Spacer()
-				VStack(alignment: .center) {
-					ParkingProgressGauge(
-						occupancy: facility.vacancy.occupancy,
-						available: facility.vacancy.available,
-						displayVacancy: facility.vacancy.displayText,
-						total: facility.totalSpaces,
-						availabilityStatus: facility.availabilityStatus
-					)
-					.scaleEffect(1.2)
-				}
-				.padding(12)
-				.background(Circle().fill(.thinMaterial).opacity(0.4))
-				
-			}
-			.contentShape(.rect(cornerRadius: 24, style: .circular))
-			.opacity(facility.availabilityStatus == .noData ? 0.6 : 1)
-			.padding()
-
-	}
+// MARK: - View Components
+extension FacilityList {
 
 	@ViewBuilder
-	private func facilityRow(for facility: ParkingFacility) -> some View {
+	private func ListRow(for facility: ParkingFacility) -> some View {
 		if #available(iOS 26.0, *) {
 			Button {
 				selectedFacility = facility
 			} label: {
 				FacilityRowView(facility: facility)
 			}
-			.glassEffect(
-				.clear
-					.interactive(),
-				in: .rect(corners: .concentric, isUniform: true)
-			)
 			.listRowInsets(
-				EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16)
+				EdgeInsets(top: 8, leading: 8, bottom: 4, trailing: 8)
 			)
 			.listRowBackground(Color.clear)
 			.listRowSeparator(.hidden)
 			.matchedTransitionSource(id: facility.facilityId, in: nameSpace)
-			.buttonStyle(.plain)
+			.buttonStyle(.glass)
+			.buttonBorderShape(.capsule)
 			.swipeActions(edge: .leading) {
-				favouriteSwipeAction(for: facility)
+				leadingSwipeAction(for: facility)
 			}
-			.swipeActions(edge: .trailing) {
+			.swipeActions(edge: .trailing, allowsFullSwipe: false) {
 				trailingSwipeActions(for: facility)
 			}
 		} else {
@@ -157,7 +97,59 @@ struct FacilityList: View {
 	}
 
 	@ViewBuilder
-	private func favouriteSwipeAction(for facility: ParkingFacility)
+	func FacilityRowView(facility: ParkingFacility) -> some View {
+		HStack(alignment: .center, spacing: 12) {
+			VStack(alignment: .center) {
+				ParkingProgressGauge(
+					occupancy: facility.vacancy.occupancy,
+					available: facility.vacancy.available,
+					displayVacancy: facility.vacancy.displayText,
+					total: facility.totalSpaces,
+					availabilityStatus: facility.availabilityStatus
+				)
+			}
+			.padding(8)
+			.background(
+				.ultraThinMaterial, in: .circle
+			)
+
+			VStack(alignment: .leading) {
+				HStack(alignment: .center, spacing: 4) {
+					Text(facility.displayName.title)
+						.font(.headline)
+						.fontWeight(.bold)
+						.contentTransition(.identity)
+
+					if facility.isFavourite {
+						Image(systemName: "star.fill")
+							.font(.caption2)
+							.foregroundStyle(.tertiary)
+							.transition(.scale.combined(with: .opacity))
+					}
+
+					Spacer()
+				}
+
+				Text(facility.displayName.subtitle)
+					.font(.subheadline)
+					.contentTransition(.identity)
+
+				Spacer()
+
+				Text(facility.availabilityStatus.text)
+					.font(.subheadline)
+					.fontWeight(.semibold)
+					.foregroundStyle(.secondary)
+			}
+			.padding(.vertical, 4)
+
+			Spacer()
+		}
+		.opacity(facility.availabilityStatus == .noData ? 0.6 : 1)
+	}
+
+	@ViewBuilder
+	private func leadingSwipeAction(for facility: ParkingFacility)
 		-> some View
 	{
 		Button {
@@ -171,6 +163,7 @@ struct FacilityList: View {
 				facility.isFavourite ? "Unpin" : "Pin",
 				systemImage: facility.isFavourite ? "star.fill" : "star"
 			)
+			.labelStyle(.iconOnly)
 		}
 		.tint(.yellow)
 	}
@@ -197,7 +190,7 @@ struct FacilityList: View {
 	}
 
 	@ViewBuilder
-	private func sectionHeader(title: String?) -> some View {
+	private func SectionHeader(title: String?) -> some View {
 		if let title = title, !title.isEmpty {
 			Text(title)
 				.font(.headline)
@@ -207,31 +200,11 @@ struct FacilityList: View {
 	}
 }
 
-#Preview {
-	@Previewable @Namespace var namespace
+// MARK: - Helper functions
 
-	let allFacilities = ParkingFacility.samples()
-
-	// Create grouped facilities: Pinned and All Others
-	let pinnedFacilities = allFacilities.filter { $0.isFavourite }
-	let unpinnedFacilities = allFacilities.filter { !$0.isFavourite }
-
-	let groupedFacilities: [(title: String?, facilities: [ParkingFacility])] = [
-		(title: "Pinned", facilities: pinnedFacilities),
-		(title: "More Parking", facilities: unpinnedFacilities),
-	]
-
-	return NavigationStack {
-		if #available(iOS 26.0, *) {
-			FacilityList(
-				nameSpace: namespace,
-				groupedFacilities: groupedFacilities
-			)
-			.navigationTitle("Parking Facilities")
-			.navigationBarTitleDisplayMode(.inline)
-		} else {
-			// Fallback on earlier versions
-		}
+extension FacilityList {
+	private func enableLiveActivity(for facility: ParkingFacility) {
+		// TODO: Implement live activity
+		print("Enable live activity for \(facility.displayName)")
 	}
-	.modelContainer(.preview())
 }

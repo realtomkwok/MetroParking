@@ -14,6 +14,8 @@ extension Logger {
 	
 	static let app = Logger(subsystem: subsystem, category: "App Lifecycle")
 
+	static let userPreferences = Logger(subsystem: subsystem, category: "User Preferences")
+
     static let facilityData = Logger(subsystem: subsystem, category: "Facility Data")
 
     static let facilityRefresh = Logger(subsystem: subsystem, category: "Facility Refresh")

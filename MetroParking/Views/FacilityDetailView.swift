@@ -285,7 +285,7 @@ struct DetailContent: View {
 	}
 
 	@ViewBuilder
-	func vacancyView() -> some View {
+	func VacancyView() -> some View {
 		HStack(alignment: .center) {
 			VStack(alignment: .leading) {
 				HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -341,17 +341,16 @@ struct DetailContent: View {
 	}
 
 	@ViewBuilder
-	func trafficView() -> some View {
+	func TrafficView() -> some View {
 		@Bindable var locationMgr = locationMgr
 		@Bindable var etaMgr = etaMgr
 
 		// Get ETA from facility's cached route data
 		let travelTime: String = {
-
 			if let travelTime = facility.route?.travelTime {
 				return etaMgr.formatETA(travelTime)
 			}
-			return "--"
+			return ""
 		}()
 
 		let distance: String = {
@@ -361,59 +360,73 @@ struct DetailContent: View {
 			return ""
 		}()
 
-		HStack {
-			VStack(alignment: .leading, spacing: 8) {
-				if locationMgr.isLocationAvailable {
-					// Show ETA when location is available
-					HStack(
-						alignment: .firstTextBaseline,
-						spacing: 0
-					) {
-						if etaMgr.isCalculatingETA {
-							ProgressView()
-								.frame(
-									maxWidth: .infinity,
-									maxHeight: .infinity
-								)
-								.transition(.blurReplace)
-						} else {
-							VStack(alignment: .leading, spacing: 4) {
-								Text(travelTime)
-									.foregroundStyle(
-										facility.route != nil
-											? .primary : .secondary
-									)
-									.font(
-										facility.route != nil
-											? .title : .headline
-									)
-									.fontWeight(.semibold)
-									.contentTransition(
-										.numericText(
-											value: etaMgr.currentETA ?? 0
-										)
-									)
+		// Left side: ETA information with ZStack for smooth transitions
+		ZStack(alignment: .center) {
+			// Loading state
+			if etaMgr.isCalculatingETA {
+				ViewThatFits(in: .horizontal) {
+					VStack(alignment: .center, spacing: 8) {
+						ProgressView()
+							.controlSize(.regular)
+						Text("Calculating route...")
+							.font(.caption)
+							.foregroundStyle(.secondary)
+					}
+					.frame(maxWidth: .infinity, alignment: .center)
+					.transition(.blurReplace)
+					.zIndex(0)
+				}
+			}
 
-								if !distance.isEmpty {
-									HStack(
-										alignment: .firstTextBaseline,
-										spacing: 4
-									) {
-										Text(distance)
-											.foregroundStyle(.primary)
-											.font(.headline)
-										Text("away")
-											.foregroundStyle(.secondary)
-											.font(.caption2)
-									}
-								}
+			// Loaded state
+			HStack(alignment: .center, spacing: 16) {
+
+				// Location available - show ETA
+				if locationMgr.isLocationAvailable && !etaMgr.isCalculatingETA {
+					VStack(alignment: .leading, spacing: 4) {
+						if travelTime.isEmpty {
+							Text("No data")
+								.font(.headline)
+								.foregroundStyle(.secondary)
+						} else {
+							Text(travelTime)
+								.foregroundStyle(
+									facility.route != nil
+										? .primary : .secondary
+								)
+								.font(
+									facility.route != nil
+										? .title : .headline
+								)
+								.fontWeight(.semibold)
+								.contentTransition(
+									.numericText(
+										value: etaMgr.currentETA ?? 0
+									)
+								)
+						}
+
+						if !distance.isEmpty {
+							HStack(
+								alignment: .firstTextBaseline,
+								spacing: 4
+							) {
+								Text(distance)
+									.foregroundStyle(.primary)
+									.font(.headline)
+								Text("away")
+									.foregroundStyle(.secondary)
+									.font(.caption2)
 							}
-							.transition(.blurReplace)
 						}
 					}
+					.frame(maxWidth: .infinity, alignment: .leading)
+					.transition(.blurReplace)
+					.zIndex(1)
+				}
 
-				} else {
-					// Location not available
+				// Location not available
+				if !locationMgr.isLocationAvailable {
 					VStack(alignment: .leading, spacing: 6) {
 						HStack(alignment: .firstTextBaseline, spacing: 4) {
 							Text("--")
@@ -432,92 +445,126 @@ struct DetailContent: View {
 								.foregroundStyle(.secondary)
 						}
 					}
+					.frame(maxWidth: .infinity, alignment: .leading)
 					.transition(.blurReplace)
+					.zIndex(1)
 				}
-			}
-			.animation(.snappy, value: locationMgr.isLocationAvailable)
-			.animation(.snappy, value: etaMgr.isCalculatingETA)
-			.animation(.snappy, value: facility.route?.travelTime)
 
-			Spacer()
+				Spacer()
 
-			if etaMgr.isDirectionAvailable && !etaMgr.isCalculatingETA {
-				Menu {
-					Button("Apple Maps", systemImage: "map.fill") {
-						Task {
-							let mapItem = await facility.getMapItem()
-							openInMapsWithDirections(mapItem)
+				// Right side: Action buttons with ZStack for smooth transitions
+				ZStack {
+					// GO button - when ETA is available
+					if locationMgr.isLocationAvailable
+						&& etaMgr.isDirectionAvailable
+						&& !etaMgr.isCalculatingETA
+					{
+						Menu {
+							Button("Apple Maps", systemImage: "map.fill") {
+								Task {
+									let mapItem = await facility.getMapItem()
+									openInMapsWithDirections(mapItem)
+								}
+							}
+							Button("Google Maps") {
+								// TODO: Add Google Maps support
+							}
+						} label: {
+							Label(
+								"GO",
+								systemImage:
+									"arrow.trianglehead.turn.up.right.diamond.fill"
+							)
+							.fontWeight(.semibold)
+							.labelStyle(.titleAndIcon)
 						}
+						.menuStyle(.button)
+						.controlSize(.regular)
+						.backport.glassProminentButtonStyle()
+						.containerShape(.circle)
+						.contentTransition(
+							.symbolEffect(.replace.magic(fallback: .downUp))
+						)
+						.transition(.blurReplace)
+						.zIndex(1)
 					}
-					Button("Google Maps") {
 
+					// Enable button - when location permission not granted
+					if !locationMgr.isLocationAvailable
+						&& !locationMgr.isLocationDenied
+					{
+						Button {
+							locationMgr.requestLocationPermission()
+						} label: {
+							Label("Enable", systemImage: "location.circle")
+								.font(.subheadline)
+								.fontWeight(.semibold)
+						}
+						.buttonStyle(.borderedProminent)
+						.buttonBorderShape(.capsule)
+						.controlSize(.small)
+						.transition(.blurReplace)
+						.zIndex(1)
 					}
-				} label: {
-					Label(
-						"GO",
-						systemImage:
-							"arrow.trianglehead.turn.up.right.diamond.fill"
-					)
-					.fontWeight(.semibold)
-					.labelStyle(.titleAndIcon)
 				}
-				.menuStyle(.button)
-				.controlSize(.regular)
-				.backport.glassProminentButtonStyle()
-				.containerShape(.circle)
-				.contentTransition(
-					.symbolEffect(.replace.magic(fallback: .downUp))
+				.animation(
+					.snappy,
+					value: locationMgr.isLocationAvailable
 				)
-				.transition(.blurReplace)
+				.animation(
+					.snappy,
+					value: etaMgr.isCalculatingETA
+				)
+				.animation(
+					.snappy,
+					value: etaMgr.isDirectionAvailable
+				)
 			}
+			.animation(
+				.snappy,
+				value: locationMgr.isLocationAvailable
+			)
+			.animation(
+				.snappy,
+				value: etaMgr.isCalculatingETA
+			)
+			.animation(
+				.snappy,
+				value: facility.route?.travelTime
+			)
 
-			//	Show enable button only if permission not granted
-			if !locationMgr.isLocationAvailable && !locationMgr.isLocationDenied
-			{
-				Button {
-					locationMgr.requestLocationPermission()
-				} label: {
-					Text("Enable")
-						.font(.subheadline)
-						.fontWeight(.semibold)
-				}
-				.buttonStyle(.borderedProminent)
-				.buttonBorderShape(.capsule)
-				.controlSize(.small)
-				.transition(.blurReplace)
-			}
 		}
 	}
 
 	@ViewBuilder
-	func nearbyFacilitiesView() -> some View {
-		LazyHStack(alignment: .center) {
+	func LookAroundView() -> some View {
+		ZStack {
+			// Loading state
+			if lookAroundMgr.lookAroundScene == nil {
+				DetailCard(
+					label: ("Look Around", "binoculars.fill", .accentColor)
+				) {
+					VStack(spacing: 12) {
+						ProgressView()
+							.controlSize(.large)
+						Text("Loading preview...")
+							.font(.caption)
+							.foregroundStyle(.secondary)
+					}
+					.frame(maxWidth: .infinity)
+					//					.frame(height: 160)
+				}
+				.transition(.blurReplace)
+				.zIndex(0)
+			}
 
-		}
-	}
-
-	var body: some View {
-		DetailCard(
-			label: (
-				"Vacancy",
-				"parkingsign.circle.fill",
-				.blue
-			),
-			content: vacancyView
-		)
-
-		DetailCard(
-			label: ("Traffics", "location.north.circle.fill", .accentColor),
-			content: trafficView
-		)
-
-		HStack {
+			// Loaded state
 			if let scene = lookAroundMgr.lookAroundScene {
 				if #available(iOS 26.0, *) {
 					LookAroundPreview(initialScene: scene)
 						.frame(height: 200)
 						.clipShape(.containerRelative)
-						.transition(.opacity)
+						.transition(.blurReplace)
 						.backport.glassEffect(
 							.clear,
 							in: .rect(
@@ -528,22 +575,15 @@ struct DetailContent: View {
 								UIColor.secondarySystemGroupedBackground
 							)
 						)
+						.zIndex(1)
 				} else {
 					// Fallback on earlier versions
 					LookAroundPreview(initialScene: scene)
 						.frame(height: 200)
 						.clipShape(.containerRelative)
 						.transition(.blurReplace)
+						.zIndex(1)
 				}
-			} else {
-				DetailCard(
-					label: ("Look Around", "binoculars.fill", .accentColor)
-				) {
-					ProgressView()
-						.frame(maxWidth: .infinity)
-						.padding()
-				}
-				.transition(.blurReplace)
 			}
 		}
 		.clipShape(.containerRelative)
@@ -551,6 +591,34 @@ struct DetailContent: View {
 			.snappy,
 			value: lookAroundMgr.lookAroundScene
 		)
+	}
+
+	@ViewBuilder
+	func NearbyFacilitiesView() -> some View {
+
+//
+//		List {
+//			ForEach()
+//		}
+	}
+
+	var body: some View {
+		DetailCard(
+			label: (
+				"Vacancy",
+				"parkingsign.circle.fill",
+				.blue
+			),
+			content: VacancyView
+		)
+
+		DetailCard(
+			label: ("Traffics", "location.north.circle.fill", .accentColor),
+			content: TrafficView
+		)
+
+		LookAroundView()
+
 	}
 }
 

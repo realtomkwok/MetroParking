@@ -262,10 +262,12 @@ final class ParkingFacility {
 	var availabilityStatus: AvailabilityStatus {
 		let vacancyInfo = vacancy
 
-		guard vacancyInfo.shouldShowData else {
+		// Only return .noData if we've NEVER had data (not just stale)
+		guard _cacheTimestamp != .distantPast else {
 			return .noData
 		}
 
+		// For stale data, still show the status but UI should indicate staleness
 		let available = vacancyInfo.available
 
 		if available == 0 {
@@ -288,7 +290,8 @@ final class ParkingFacility {
 
 		// Standard: recently visited (within 1 hour)
 		if let lastVisited = self.lastVisited,
-		   lastVisited.timeIntervalSinceNow > -3600 {
+			lastVisited.timeIntervalSinceNow > -3600
+		{
 
 			return .standard
 		}
@@ -394,7 +397,7 @@ enum AvailabilityStatus: CaseIterable {
 		}
 	}
 
-	/// Returns an appropriate text color that contrasts with the status color
+	/// Returns an appropriate text colour that contrasts with the status colour
 	var foreground: Color {
 		switch self {
 		case .noData: return .secondary.opacity(0.6)
@@ -412,12 +415,12 @@ enum AvailabilityStatus: CaseIterable {
 		}
 	}
 
-	/// Returns colors for the occupancy gradient (excludes noData)
+	/// Returns colours for the occupancy gradient (excludes noData)
 	static var gradientColors: [Color] {
 		return [available.fill, almostFull.fill, full.fill]
 	}
 
-	/// Returns all status colors including noData
+	/// Returns all status colours including noData
 	static var allColors: [Color] {
 		return allCases.map { $0.fill }
 	}

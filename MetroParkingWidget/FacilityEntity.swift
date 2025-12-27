@@ -91,7 +91,7 @@ struct FacilityQuery: EntityStringQuery {
 			sortBy: [
 //				SortDescriptor(\.isFavourite, order: .reverse),
 				// Favorites first
-				SortDescriptor(\.name, order: .reverse)
+				SortDescriptor(\.name, order: .forward)
 			]
 		)
 

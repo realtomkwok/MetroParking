@@ -162,8 +162,10 @@ final class MapsManager {
 		return mapItem
 	}
 
-	/// Creates a MapItem using legacy MKPlacemark API
+	/// Creates a MapItem using legacy MKPlacemark API for iOS < 26
 	/// - Returns: An MKMapItem (always succeeds with valid coordinates)
+	/// - Note: Uses deprecated MKPlacemark for backward compatibility with iOS < 26
+	/// @Avai
 	private func createLegacyMapItem(
 		coordinate: CLLocationCoordinate2D,
 		name: String,
@@ -176,12 +178,20 @@ final class MapsManager {
 				"❌ Invalid coordinate for \(name), using default location"
 			)
 			// Return a default map item with a zero coordinate as last resort
-			let defaultPlacemark = MKPlacemark(
-				coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0)
-			)
-			let mapItem = MKMapItem(placemark: defaultPlacemark)
-			mapItem.name = name
-			return mapItem
+			if #available(iOS 26.0, *) {
+				// Use modern API for iOS 26+
+				let location = CLLocation(latitude: 0, longitude: 0)
+				let mapItem = MKMapItem(location: location, address: nil)
+				mapItem.name = name
+				return mapItem
+			} else {
+				let defaultPlacemark = MKPlacemark(
+					coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0)
+				)
+				let mapItem = MKMapItem(placemark: defaultPlacemark)
+				mapItem.name = name
+				return mapItem
+			}
 		}
 
 		// Try to create a more detailed placemark with address components
@@ -232,8 +242,19 @@ final class MapsManager {
 		transportType: MKDirectionsTransportType = .automobile,
 		requestAlternates: Bool = true
 	) async throws -> MKDirections.Response {
-		let sourcePlacemark = MKPlacemark(coordinate: source)
-		let sourceItem = MKMapItem(placemark: sourcePlacemark)
+		let sourceItem: MKMapItem
+		if #available(iOS 26.0, *) {
+			// Use modern API without deprecated MKPlacemark
+			let location = CLLocation(
+				latitude: source.latitude,
+				longitude: source.longitude
+			)
+			sourceItem = MKMapItem(location: location, address: nil)
+		} else {
+			// Use legacy MKPlacemark for older iOS versions
+			let sourcePlacemark = MKPlacemark(coordinate: source)
+			sourceItem = MKMapItem(placemark: sourcePlacemark)
+		}
 
 		let request = MKDirections.Request()
 		request.source = sourceItem
@@ -261,8 +282,19 @@ final class MapsManager {
 		to destination: MKMapItem,
 		transportType: MKDirectionsTransportType = .automobile
 	) async throws -> MKDirections.ETAResponse {
-		let sourcePlacemark = MKPlacemark(coordinate: source)
-		let sourceItem = MKMapItem(placemark: sourcePlacemark)
+		let sourceItem: MKMapItem
+		if #available(iOS 26.0, *) {
+			// Use modern API without deprecated MKPlacemark
+			let location = CLLocation(
+				latitude: source.latitude,
+				longitude: source.longitude
+			)
+			sourceItem = MKMapItem(location: location, address: nil)
+		} else {
+			// Use legacy MKPlacemark for older iOS versions
+			let sourcePlacemark = MKPlacemark(coordinate: source)
+			sourceItem = MKMapItem(placemark: sourcePlacemark)
+		}
 
 		let request = MKDirections.Request()
 		request.source = sourceItem

@@ -4,6 +4,7 @@
 //
 //  Created by Tom Kwok on 16/12/2025.
 //
+// 	Managing data between main app and the widget
 
 import Foundation
 import OSLog
@@ -40,6 +41,24 @@ class SharedDataManager {
 			groupContainer: .identifier(appGroupIdentifier)
 		)
 
+		// Ensure the Application Support directory exists in the App Group container
+		// This prevents CoreData error logs on first launch
+		let storeURL = modelConfiguration.url
+		let storeDirectory = storeURL.deletingLastPathComponent()
+
+		if !FileManager.default.fileExists(atPath: storeDirectory.path) {
+			do {
+				try FileManager.default.createDirectory(
+					at: storeDirectory,
+					withIntermediateDirectories: true,
+					attributes: nil
+				)
+				Logger.facilityData.info("📁 Created store directory: \(storeDirectory.path)")
+			} catch {
+				Logger.facilityData.error("❌ Failed to create store directory: \(error.localizedDescription)")
+			}
+		}
+
 		do {
 			// Check if schema version has changed
 			let storedVersion = UserDefaults.standard.string(
@@ -57,7 +76,6 @@ class SharedDataManager {
 				)
 
 				// Clean up old store files
-				let storeURL = modelConfiguration.url
 				try? FileManager.default.removeItem(at: storeURL)
 				try? FileManager.default.removeItem(
 					at: storeURL.appendingPathExtension("shm")

@@ -150,7 +150,9 @@ extension BackgroundTaskManager {
 				Logger.facilityRefresh.error("⚠️ Task not permitted - REQUIRED ACTION:")
 				Logger.facilityRefresh.error("   1. Add BGTaskSchedulerPermittedIdentifiers to Info.plist")
 				Logger.facilityRefresh.error("   2. Add UIBackgroundModes to Info.plist")
-			@unknown default:
+				case .immediateRunIneligible:
+					Logger.facilityRefresh.error("Immediate run is i")
+				@unknown default:
 				Logger.facilityRefresh.error("⚠️ Unknown BGTaskScheduler error: \(bgError.code.rawValue)")
 			}
 		}

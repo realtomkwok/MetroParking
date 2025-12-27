@@ -36,6 +36,8 @@ struct MetroParkingApp: App {
 				.environment(LocationManager.shared)
 				.environment(LookAroundManager.shared)
 				.environment(ETAManager.shared)
+				.environment(OnboardingManager.shared)
+				.environment(UserPreferences.shared)
 				.task {
 					// Initialise on first appearance
 					await initializeFacilityManager()
@@ -48,8 +50,6 @@ struct MetroParkingApp: App {
 		// Each property has built-in validation that will fatalError if invalid
 		_ = Configuration.tfnswApiKey
 		_ = Configuration.carParkBaseUrl
-		_ = Configuration.supabaseUrl
-		_ = Configuration.supabasePublishableKey
 
 		#if DEBUG
 			Configuration.validateInDebug()

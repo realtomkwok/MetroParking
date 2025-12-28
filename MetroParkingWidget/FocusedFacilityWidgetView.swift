@@ -50,9 +50,9 @@ struct FocusedFacilityWidgetView: View {
 				.resizable()
 				.widgetAccentedRenderingMode(.accentedDesaturated)
 				.scaleEffect(1.2, anchor: .bottomTrailing)
+				.blendMode(.luminosity)
 		}
 		.opacity(0.1)
-		.blendMode(.luminosity)
 	}
 
 	@ViewBuilder

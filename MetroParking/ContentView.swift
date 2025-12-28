@@ -65,13 +65,13 @@ struct ContentView: View {
 	}
 
 		// TODO: Dynamically refresh the last updated time
-	private var navigationSubtitleText: String {
+	private var navigationSubtitleText: Text {
 		if facilityManager.isRefreshing {
-			return facilityManager.loadProgress.description
+			return Text(facilityManager.loadProgress.description)
 		} else if let lastRefresh = facilityManager.lastRefreshTime {
-			return "Updated \(lastRefresh.formatted(.relative(presentation: .named)))"
+			return Text("Updated \(lastRefresh, style: .relative) ago")
 		} else {
-			return "Pull down to refresh"
+			return Text("Pull down to refresh")
 		}
 	}
 

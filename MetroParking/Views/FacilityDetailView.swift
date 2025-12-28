@@ -5,6 +5,7 @@
 //  Created by Tom Kwok on 5/12/2025.
 //
 
+import CoreLocationUI
 import Foundation
 import MapKit
 import SwiftUI
@@ -28,21 +29,17 @@ struct FacilityDetailView: View {
 	// Fixed camera position to prevent zoom issues
 	@State private var cameraPosition: MapCameraPosition
 
-	// Permission handling
-	@State private var showPermissionSheet: Bool = false
-
 	init(namespace: Namespace.ID, facility: ParkingFacility) {
 		self.namespace = namespace
 		self.facility = facility
-		// Note: Environment objects (locationMgr, etaManager) are not available during init
-		// currentLocation and eta will be nil here, but can be accessed in the body
 		self.currentLocation = nil
 		self.eta = nil
 		_cameraPosition = State(
 			initialValue: .camera(
 				MapCamera(
 					centerCoordinate: facility.coordinate,
-					distance: 400,
+					distance: 500,
+					// TODO: dynamic heading with gyroscope's movement
 					heading: 0,
 					pitch: 60
 				)
@@ -108,6 +105,7 @@ struct FacilityDetailView: View {
 		ScrollView(.vertical) {
 			ScrollContent
 		}
+		//		.backport.scrollEdgeEffectStyle(.soft, for: .bottom)
 		.background(Color(UIColor.systemGroupedBackground))
 		.scrollTargetBehavior(.paging)
 		.scrollIndicators(.hidden)
@@ -146,11 +144,6 @@ struct FacilityDetailView: View {
 			}
 		}
 		.navigationAllowDismissalGestures(allowDismissalGesture)
-		.sheet(isPresented: $showPermissionSheet) {
-			PermissionView()
-				.presentationDetents([.medium])
-				.presentationDragIndicator(.visible)
-		}
 	}
 
 	private var ScrollContent: some View {
@@ -204,33 +197,25 @@ struct FacilityDetailView: View {
 	}
 
 	private func performInitialTasks() async {
-		await withTaskGroup(of: Void.self) { group in
-			// Load Look Around preview
-			group.addTask {
-				await lookAroundManager.loadPreview()
-			}
+		// Run tasks concurrently without waiting for all to complete
+		async let lookAroundTask: Void = lookAroundManager.loadPreview()
+		async let etaTask: Void = calculateETAIfLocationAvailable()
 
-			// Calculate ETA if location available
-			group.addTask {
-				await calculateETAIfLocationAvailable()
-			}
+		// These two are independent and can start immediately
+		_ = await (lookAroundTask, etaTask)
 
-			// Handle dismissal gesture with delay
-			group.addTask {
-				try? await Task.sleep(for: .seconds(1))
-				await MainActor.run {
-					allowDismissalGesture = .all
-				}
-			}
-		}
+		// Enable dismissal gesture after a short delay
+		// This runs after the main tasks to avoid blocking them
+		try? await Task.sleep(for: .seconds(1))
+		allowDismissalGesture = .all
 	}
 
 	/// Calculate ETA if location is available, otherwise show permission prompt if needed
 	private func calculateETAIfLocationAvailable() async {
 		guard let userLocation = locationMgr.currentLocation?.coordinate else {
-			// No location available - check if we should prompt
-			if locationMgr.shouldShowPermissionPrompt {
-				showPermissionSheet = true
+			// No location available - request permission if not determined
+			if locationMgr.authorisationStatus == .notDetermined {
+				locationMgr.requestLocationPermission()
 			}
 			// If location is denied, respect user's choice and don't show anything
 			return
@@ -251,20 +236,31 @@ struct DetailContent: View {
 	@Environment(LookAroundManager.self) private var lookAroundMgr
 	@Environment(ETAManager.self) private var etaMgr
 	@Environment(LocationManager.self) private var locationMgr
+	@Environment(\.dismiss) private var dismiss
 
-	@State private var lookAroundSceneIsReady: Bool = false
+	@State private var showLocationPermissionAlert: Bool = false
 
 	@ViewBuilder
-	func DetailCard<Content: View>(
+	func DetailCard<Content: View, TrailingTopContent: View>(
 		label: (heading: String, icon: String, color: Color),
-		@ViewBuilder content: () -> Content
+		@ViewBuilder content: () -> Content,
+		@ViewBuilder trailingTopContent: () -> TrailingTopContent = {
+			EmptyView()
+		}
 	) -> some View {
 		VStack(alignment: .leading, spacing: 16) {
-			Label(label.heading, systemImage: label.icon)
-				.foregroundStyle(Color(label.color))
-				.font(.subheadline)
-				.fontWeight(.semibold)
-				.backport.labelIconToTitle(4)
+
+			HStack(alignment: .center) {
+				Label(label.heading, systemImage: label.icon)
+					.foregroundStyle(Color(label.color))
+					.font(.subheadline)
+					.fontWeight(.semibold)
+					.backport.labelIconToTitle(4)
+
+				Spacer()
+
+				trailingTopContent()
+			}
 
 			content()
 				.frame(
@@ -342,8 +338,6 @@ struct DetailContent: View {
 
 	@ViewBuilder
 	func TrafficView() -> some View {
-		@Bindable var locationMgr = locationMgr
-		@Bindable var etaMgr = etaMgr
 
 		// Get ETA from facility's cached route data
 		let travelTime: String = {
@@ -360,17 +354,13 @@ struct DetailContent: View {
 			return ""
 		}()
 
-		// Left side: ETA information with ZStack for smooth transitions
 		ZStack(alignment: .center) {
 			// Loading state
 			if etaMgr.isCalculatingETA {
 				ViewThatFits(in: .horizontal) {
 					VStack(alignment: .center, spacing: 8) {
 						ProgressView()
-							.controlSize(.regular)
-						Text("Calculating route...")
-							.font(.caption)
-							.foregroundStyle(.secondary)
+							.controlSize(.large)
 					}
 					.frame(maxWidth: .infinity, alignment: .center)
 					.transition(.blurReplace)
@@ -383,82 +373,48 @@ struct DetailContent: View {
 
 				// Location available - show ETA
 				if locationMgr.isLocationAvailable && !etaMgr.isCalculatingETA {
-					VStack(alignment: .leading, spacing: 4) {
-						if travelTime.isEmpty {
-							Text("No data")
-								.font(.headline)
-								.foregroundStyle(.secondary)
-						} else {
-							Text(travelTime)
-								.foregroundStyle(
-									facility.route != nil
-										? .primary : .secondary
-								)
-								.font(
-									facility.route != nil
-										? .title : .headline
-								)
-								.fontWeight(.semibold)
-								.contentTransition(
-									.numericText(
-										value: etaMgr.currentETA ?? 0
-									)
-								)
-						}
-
-						if !distance.isEmpty {
-							HStack(
-								alignment: .firstTextBaseline,
-								spacing: 4
-							) {
-								Text(distance)
-									.foregroundStyle(.primary)
+					HStack {
+						VStack(alignment: .leading, spacing: 4) {
+							if travelTime.isEmpty {
+								Text("No data")
 									.font(.headline)
-								Text("away")
 									.foregroundStyle(.secondary)
-									.font(.caption2)
+							} else {
+								Text(travelTime)
+									.foregroundStyle(
+										facility.route != nil
+											? .primary : .secondary
+									)
+									.font(
+										facility.route != nil
+											? .title : .headline
+									)
+									.fontWeight(.semibold)
+									.contentTransition(
+										.numericText(
+											value: etaMgr.currentETA ?? 0
+										)
+									)
+							}
+
+							if !distance.isEmpty {
+								HStack(
+									alignment: .firstTextBaseline,
+									spacing: 4
+								) {
+									Text(distance)
+										.foregroundStyle(.primary)
+										.font(.headline)
+									Text("away")
+										.foregroundStyle(.secondary)
+										.font(.caption2)
+								}
 							}
 						}
-					}
-					.frame(maxWidth: .infinity, alignment: .leading)
-					.transition(.blurReplace)
-					.zIndex(1)
-				}
+						.frame(maxWidth: .infinity, alignment: .leading)
+						.transition(.blurReplace)
+						.zIndex(1)
 
-				// Location not available
-				if !locationMgr.isLocationAvailable {
-					VStack(alignment: .leading, spacing: 6) {
-						HStack(alignment: .firstTextBaseline, spacing: 4) {
-							Text("--")
-								.font(.title)
-								.fontWeight(.semibold)
-								.foregroundStyle(.tertiary)
-						}
-
-						if locationMgr.isLocationDenied {
-							Text("Location access denied")
-								.font(.subheadline)
-								.foregroundStyle(.secondary)
-						} else {
-							Text("Location required for ETA")
-								.font(.subheadline)
-								.foregroundStyle(.secondary)
-						}
-					}
-					.frame(maxWidth: .infinity, alignment: .leading)
-					.transition(.blurReplace)
-					.zIndex(1)
-				}
-
-				Spacer()
-
-				// Right side: Action buttons with ZStack for smooth transitions
-				ZStack {
-					// GO button - when ETA is available
-					if locationMgr.isLocationAvailable
-						&& etaMgr.isDirectionAvailable
-						&& !etaMgr.isCalculatingETA
-					{
 						Menu {
 							Button("Apple Maps", systemImage: "map.fill") {
 								Task {
@@ -488,38 +444,73 @@ struct DetailContent: View {
 						.transition(.blurReplace)
 						.zIndex(1)
 					}
+				} else if !locationMgr.isLocationAvailable {
+					HStack(alignment: .firstTextBaseline) {
+						VStack(alignment: .leading, spacing: 6) {
+							HStack(alignment: .firstTextBaseline, spacing: 4) {
 
-					// Enable button - when location permission not granted
-					if !locationMgr.isLocationAvailable
-						&& !locationMgr.isLocationDenied
-					{
+								Text("Location Service is Off")
+									.font(.headline)
+									.foregroundStyle(.secondary)
+							}
+							.frame(maxWidth: .infinity, alignment: .leading)
+							.transition(.blurReplace)
+							.zIndex(1)
+						}
+
+						Spacer()
+
 						Button {
-							locationMgr.requestLocationPermission()
+							// Check if location is denied, show alert
+							// Otherwise, request permission
+							if locationMgr.isLocationDenied {
+								showLocationPermissionAlert = true
+							} else {
+								locationMgr.requestLocationPermission()
+							}
 						} label: {
-							Label("Enable", systemImage: "location.circle")
+							Label("Enable", systemImage: "location")
 								.font(.subheadline)
 								.fontWeight(.semibold)
 						}
-						.buttonStyle(.borderedProminent)
+						.backport.glassButtonStyle(fallbackStyle: .bordered)
 						.buttonBorderShape(.capsule)
-						.controlSize(.small)
+						.controlSize(.regular)
 						.transition(.blurReplace)
 						.zIndex(1)
+						.alert(
+							"MetroParking works best with Location Services turned on.",
+							isPresented: $showLocationPermissionAlert,
+							actions: {
+								Button("Turn on in Settings") {
+									Task { @MainActor in
+										if let settingsURL = URL(
+											string: UIApplication
+												.openSettingsURLString
+										) {
+											await UIApplication.shared.open(
+												settingsURL
+											)
+										}
+									}
+								}
+								Button(
+									"Keep Location Services Off",
+									role: .cancel
+								) {
+
+								}
+							},
+							message: {
+								Text(
+									"You'll get distance, estimated travel times to a carpark from your current location, and improved search results when it is turned on for MetroParking."
+								)
+							}
+						)
 					}
 				}
-				.animation(
-					.snappy,
-					value: locationMgr.isLocationAvailable
-				)
-				.animation(
-					.snappy,
-					value: etaMgr.isCalculatingETA
-				)
-				.animation(
-					.snappy,
-					value: etaMgr.isDirectionAvailable
-				)
 			}
+
 			.animation(
 				.snappy,
 				value: locationMgr.isLocationAvailable
@@ -547,12 +538,8 @@ struct DetailContent: View {
 					VStack(spacing: 12) {
 						ProgressView()
 							.controlSize(.large)
-						Text("Loading preview...")
-							.font(.caption)
-							.foregroundStyle(.secondary)
 					}
 					.frame(maxWidth: .infinity)
-					//					.frame(height: 160)
 				}
 				.transition(.blurReplace)
 				.zIndex(0)
@@ -596,10 +583,10 @@ struct DetailContent: View {
 	@ViewBuilder
 	func NearbyFacilitiesView() -> some View {
 
-//
-//		List {
-//			ForEach()
-//		}
+		//
+		//		List {
+		//			ForEach()
+		//		}
 	}
 
 	var body: some View {
@@ -609,7 +596,18 @@ struct DetailContent: View {
 				"parkingsign.circle.fill",
 				.blue
 			),
-			content: VacancyView
+			content: VacancyView,
+			trailingTopContent: {
+				HStack(alignment: .firstTextBaseline, spacing: 4) {
+					Text(
+						facility.refreshStatus.lastUpdated,
+						style: .relative
+					)
+					Text("ago")
+				}
+				.monospacedDigit()
+				.font(.footnote)
+			}
 		)
 
 		DetailCard(
@@ -618,7 +616,6 @@ struct DetailContent: View {
 		)
 
 		LookAroundView()
-
 	}
 }
 

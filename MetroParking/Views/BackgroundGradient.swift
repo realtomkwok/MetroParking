@@ -15,12 +15,17 @@ struct BackgroundGradient: View {
 
 	var width: Int = 3
 	var height: Int = 3
+
+	var animation: Animation = .smooth(duration: 10.0).repeatForever(
+		autoreverses: true
+	)
+
 	var points: [SIMD2<Float>] {
 		return [
 			[0.0, 0.0],
 			[isAnimating ? 0.4 : 0.9, 0.0],
 			[1.0, 0.0],
-			[0.0, isAnimating ? 0.2 : 0.3],
+			[0.0, isAnimating ? 0.2 : 0.8],
 			[0.8, isAnimating ? 0.2 : 0.1],
 			[1.0, isAnimating ? 0.1 : 0.2],
 			[0.0, 1.2],
@@ -32,8 +37,8 @@ struct BackgroundGradient: View {
 	var colors: [Color] {
 
 		return [
-			scheme == .light ? .cyan : .cyan.mix(with: .black, by: 0.6),
-			scheme == .light ? .white.opacity(1.0) :	.white.opacity(0.3),
+			.cyan.opacity(0.4),
+			scheme == .light ? .white.opacity(1.0) : .white.opacity(0.3),
 			scheme == .light ? .white.opacity(0.8) : .white.opacity(0.3),
 			.cyan.opacity(0.1),
 			.cyan.opacity(0.1),
@@ -43,7 +48,6 @@ struct BackgroundGradient: View {
 			.clear,
 		]
 	}
-
 	var body: some View {
 		MeshGradient(
 			width: width,
@@ -54,9 +58,9 @@ struct BackgroundGradient: View {
 		)
 		.edgesIgnoringSafeArea(.all)
 		.onAppear {
-			withAnimation(
-				.smooth(duration: 10.0).repeatForever(autoreverses: true)
-			) { isAnimating.toggle() }
+			withAnimation(animation) {
+				isAnimating.toggle()
+			}
 		}
 	}
 }

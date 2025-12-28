@@ -17,88 +17,68 @@ struct PermissionView: View {
 
 	@State private var isIconAnimating = true
 
-
 	var body: some View {
-		NavigationStack {
-			VStack {
-				VStack(alignment: .leading, spacing: 24) {
-					Image(systemName: iconName)
-						.font(.system(size: 60))
-						.frame(width: 60, height: 60)
-						.foregroundStyle(iconColor.gradient)
-						.contentTransition(
-							.symbolEffect(
-								.replace.magic(fallback: .upUp.byLayer),
-								options: .nonRepeating
-							)
+		VStack {
+			VStack(alignment: .leading, spacing: 16) {
+				Image(systemName: iconName)
+					.font(.system(size: 64))
+					.frame(width: 64, height: 64)
+					.foregroundStyle(iconColor.gradient)
+					.contentTransition(
+						.symbolEffect(
+							.replace.magic(fallback: .upUp.byLayer),
+							options: .nonRepeating
 						)
+					)
 
-					VStack(alignment: .leading, spacing: 8) {
-						Text(titleText)
-							.font(.title2)
-							.fontWeight(.semibold)
-							.multilineTextAlignment(.leading)
-
-						Text(messageText)
-							.font(.body)
-							.foregroundStyle(.secondary)
-							.multilineTextAlignment(.leading)
-					}
-				}
-				.frame(maxWidth: .infinity, alignment: .leading)
-
-				Spacer()
-
-				Button(action: {
-					locationManager.requestLocationPermission()
-					Task {
-						while locationManager.authorisationStatus
-							== .notDetermined
-						{
-							try? await Task.sleep(nanoseconds: 500_000_000)
-						}
-
-						dismiss()
-					}
-				}) {
-					Text(buttonText)
+				VStack(alignment: .leading, spacing: 8) {
+					Text(titleText)
+						.font(.title2)
 						.fontWeight(.semibold)
-						.frame(maxWidth: .infinity)
-				}
-				.backport
-				.glassProminentButtonStyle()
-				.buttonBorderShape(.capsule)
-				.controlSize(.large)
-			}
-			.frame(maxWidth: .infinity)
+						.multilineTextAlignment(.leading)
 
-			.padding()
-			.toolbar {
-				ToolbarItem(placement: .topBarTrailing) {
-					Button {
-						dismiss()
-					} label: {
-						Label("Done", systemImage: "xmark")
-							.fontWeight(.semibold)
-							.frame(width: 20, height: 20)
-							.foregroundStyle(.secondary)
-					}
-					.frame(width: 36, height: 36)
-					.buttonBorderShape(.circle)
-					.buttonStyle(.bordered)
-					.foregroundStyle(.primary)
-					.controlSize(.regular)
+					Text(messageText)
+						.font(.body)
+						.foregroundStyle(.secondary)
+						.multilineTextAlignment(.leading)
 				}
 			}
+			.padding()
+			.frame(maxWidth: .infinity, alignment: .leading)
+
+			Spacer()
+
+			Button(action: {
+				locationManager.requestLocationPermission()
+				Task {
+					while locationManager.authorisationStatus
+						== .notDetermined
+					{
+						try? await Task.sleep(nanoseconds: 500_000_000)
+					}
+
+					dismiss()
+				}
+			}) {
+				Text(buttonText)
+					.fontWeight(.semibold)
+					.frame(maxWidth: .infinity)
+			}
+			.backport
+			.glassProminentButtonStyle()
+			.buttonBorderShape(.capsule)
+			.controlSize(.large)
+			.padding(.horizontal)
 		}
+
+		.padding()
 		.onAppear {
 			let animationDelay: UInt64 = 1_500_000_000
 
 			Task {
 				// Wait for 1.5 second
-				try? await Task.sleep(nanoseconds: animationDelay)  // 1 second in nanoseconds
+				try? await Task.sleep(nanoseconds: animationDelay)
 
-				// Trigger the animation by changing the state
 				withAnimation(.snappy) {
 					isIconAnimating = false
 				}
@@ -138,43 +118,24 @@ struct PermissionView: View {
 		case .notDetermined:
 			return "Location Access Required"
 		case .denied, .restricted:
-			return "Location Access Denied"
+			return "MetroParking works"
 		default:
 			return "Location Access Granted"
 		}
 	}
 
-	private var messageText: AttributedString {
+	private var messageText: String {
 		switch locationManager.authorisationStatus {
 		case .notDetermined:
-			do {
-				let string: AttributedString = try AttributedString(
-					markdown:
-						"To access location-based features, such as estimated travel time and distance, tap **Allow Location Access** below to grant the permission."
-				)
+			return
+				"To access location-based features, such as the ETA and distance from your current location, please grant location permission."
 
-				return string
-			} catch {
-				Logger.ui.error("Failed to parse AttributedString")
-				return AttributedString("")
-			}
 		case .denied, .restricted:
-				do {
-					let string: AttributedString = try AttributedString(
-						markdown:
-							"To access location-based features, such as estimated travel time and distance, tap **Open Settings** below to grant the permission."
-					)
-
-					return string
-				} catch {
-					Logger.ui.error("Failed to parse AttributedString")
-					return AttributedString("")
-				}
+			return
+				"Your location is used to used to get directions, estimate travel times and improve search results."
 
 		default:
-			return AttributedString(
-				"Location access helps improve your experience."
-			)
+			return ""
 		}
 	}
 

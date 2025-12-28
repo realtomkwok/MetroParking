@@ -152,7 +152,7 @@ extension FacilityList {
 	private func leadingSwipeAction(for facility: ParkingFacility)
 		-> some View
 	{
-		Button {
+		Button(role: facility.isFavourite ? .destructive : nil) {
 			withAnimation(.snappy) {
 				facility.isFavourite.toggle()
 				// Save the context to persist the change
@@ -161,11 +161,11 @@ extension FacilityList {
 		} label: {
 			Label(
 				facility.isFavourite ? "Unpin" : "Pin",
-				systemImage: facility.isFavourite ? "star.fill" : "star"
+				systemImage: facility.isFavourite ? "star.slash" : "star.fill"
 			)
 			.labelStyle(.iconOnly)
 		}
-		.tint(.yellow)
+		.tint(facility.isFavourite ? .red : .yellow)
 	}
 
 	@ViewBuilder

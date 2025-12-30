@@ -21,6 +21,12 @@ the [TfNSW Car Park API](https://data.nsw.gov.au/data/dataset/2-car-park-api).
 - **Home/Lock Screen Widgets**: Quick glance at your selected facility with configurable AppIntent
 - **Background Refresh**: Automatic data updates using BGTaskScheduler
 - **App Groups Integration**: Seamless data sharing between app and widgets
+- **Onboarding Experience**: Welcome screen on first launch with feature highlights
+- **Settings Menu**: Comprehensive settings including notifications, widgets, and app preferences
+
+### Coming Soon
+- **Live Activities** (v0.5.0): Real-time parking monitoring on Lock Screen and Dynamic Island
+- **Push Notifications** (v0.5.0): Vacancy alerts and threshold-based notifications
 
 ## Requirements
 
@@ -101,11 +107,13 @@ Read more about configuration: [Configuration](Docs/CONFIGURATION.md)
     - `BackgroundTaskManager`: BGTaskScheduler integration for background refresh
     - `AppStateManager`: App lifecycle state management
     - `WidgetBudgetTracker`: Widget reload budget management (60/day limit)
+    - `OnboardingManager`: Onboarding flow state and navigation
     - `MapStateManager`: Map camera and selection state
     - `SheetStateManager`: Sheet presentation logic
 
 - **Utilities**:
     - `RefreshConfiguration`: Unified refresh timing constants and cache validity tiers
+    - `UserPreferences`: Centralized user preferences using @AppStorage
     - `Logger`: Centralized logging system
 
 ### Data Flow
@@ -138,12 +146,22 @@ MetroParking/
 ├── MetroParking/
 │   ├── Models/             # SwiftData models and API responses
 │   ├── Views/              # SwiftUI views and components
+│   │   ├── OnboardingView.swift    # First-launch onboarding
+│   │   ├── SettingsView.swift      # Settings menu
+│   │   └── ... (other views)
 │   ├── Services/           # API and external service integrations
 │   ├── Managers/           # State management and business logic
+│   │   ├── OnboardingManager.swift # Onboarding state management
+│   │   └── ... (other managers)
 │   ├── Utils/              # Helpers, extensions, and configuration
+│   │   ├── UserPreferences.swift   # User settings persistence
+│   │   └── ... (other utilities)
 │   └── MetroParkingApp.swift
 ├── MetroParkingWidget/     # Widget extension with AppIntent support
+├── LiveActivityExtension/  # (Coming soon) Live Activity extension
 ├── Docs/                   # Documentation (widgets, concurrency, setup)
+│   ├── LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md  # Live Activity implementation guide
+│   └── NOTIFICATION_FEATURES_PLAN.md         # Push notification implementation guide
 └── Config.xcconfig         # Environment configuration (gitignored)
 ```
 
@@ -230,6 +248,28 @@ License as published by the Free Software Foundation, either version 3 of the Li
 version.
 
 ## Changelog
+
+### v0.4.0 (December 2025)
+
+**User Experience Enhancements**
+- Added onboarding screen for first-time users with feature highlights
+- Implemented `OnboardingManager` for managing onboarding flow state
+- Created settings menu with comprehensive app preferences
+- Added `UserPreferences` for centralized settings persistence using @AppStorage
+- Removed Supabase dependency for simplified architecture
+- Enhanced widget display with improved visual feedback
+
+**UI/UX Improvements**
+- New app icon with dark mode variant
+- Improved `FacilityDetailView` with better navigation and layout
+- Enhanced `FacilityListView` with refined animations and transitions
+- Updated `BackgroundGradient` with smoother color transitions
+- Better permission request flow in `PermissionView`
+
+**Documentation**
+- Added `ONBOARDING_SETTINGS_PLAN.md` for feature planning
+- Added `NEARBY_FACILITIES_IMPLEMENTATION.md` for future features
+- Updated project structure and architecture documentation
 
 ### v0.3.0 (December 2025)
 
@@ -324,19 +364,28 @@ version.
 - [ ] Add "best time to arrive" suggestions based on trend data
 
 ### Live Activities & Widgets
-- [ ] Implement Live Activities for tracking selected facility availability
+- **[ ] Implement Live Activities for tracking selected facility availability** ← **NEXT PRIORITY**
+  - [ ] Create Live Activity extension target with ActivityKit
+  - [ ] Define `ParkingActivityAttributes` for static/dynamic state
+  - [ ] Build Lock Screen UI with availability display
+  - [ ] Implement Dynamic Island views (compact, expanded, minimal)
+  - [ ] Integrate with `BackgroundTaskManager` for real-time updates
+  - [ ] Add in-app controls to start/stop Live Activities
+  - See `Docs/LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md` for detailed implementation guide
 - [x] Add home screen widgets with AppIntent configuration
 - [x] Implement widget budget tracking (60 reloads/day limit)
 - [x] Add App Groups for app ↔ widget data sharing
 - [ ] Create additional widget sizes (medium, large)
 - [ ] Add lock screen widgets for quick vacancy checks
-- [ ] Support Dynamic Island for active navigation sessions
+- [ ] Support ActivityKit push notifications for 12-hour Live Activities
 
-### Notifications
+### Notifications (After Live Activities)
 - [ ] Add push notification support for vacancy alerts
 - [ ] Implement threshold-based notifications ("Alert when under X spaces")
 - [ ] Add departure reminders based on traffic conditions
 - [ ] Support notification scheduling for regular commute times
+- [ ] Integrate with Live Activities for remote push updates
+- See `Docs/NOTIFICATION_FEATURES_PLAN.md` for detailed implementation guide
 
 ### Location Services
 - [x] Review and improve `LocationManager` implementation
@@ -345,6 +394,22 @@ version.
 - [x] Add "Always Allow" location permission flow for background features
 
 ---
+
+## Next Steps
+
+**Upcoming Features (v0.5.0 - January 2025)**:
+
+1. **Live Activities** (Next Priority)
+   - Real-time parking monitoring on Lock Screen and Dynamic Island
+   - See `Docs/LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md` for implementation guide
+   - No notification services required - independent feature leveraging existing background refresh
+   - Estimated: 3-4 implementation sessions
+
+2. **Push Notifications** (After Live Activities)
+   - Vacancy alerts with threshold-based notifications
+   - See `Docs/NOTIFICATION_FEATURES_PLAN.md` for implementation guide
+   - Can integrate with Live Activities for remote push updates
+   - Estimated: 4-5 implementation sessions
 
 ## Acknowledgments
 

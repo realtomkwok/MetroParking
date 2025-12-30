@@ -220,25 +220,22 @@ struct APIUsageDebugView: View {
     
     private func tierLabel(_ tier: RefreshTier) -> String {
         switch tier {
-        case .critical: return "⭐️ Critical (2 min cache)"
-        case .standard: return "📍 Standard (5 min cache)"
-        case .background: return "⏱️ Background (15 min cache)"
+        case .watched: return "⭐️ Watched (90s cache)"
+        case .unwatched: return "⏱️ Unwatched (5 min cache)"
         }
     }
-    
+
     private func tierBadge(_ tier: RefreshTier) -> String {
         switch tier {
-        case .critical: return "Critical"
-        case .standard: return "Standard"
-        case .background: return "Background"
+        case .watched: return "Watched"
+        case .unwatched: return "Unwatched"
         }
     }
-    
+
     private func tierColor(_ tier: RefreshTier) -> Color {
         switch tier {
-        case .critical: return .red
-        case .standard: return .orange
-        case .background: return .blue
+        case .watched: return .orange
+        case .unwatched: return .blue
         }
     }
 }

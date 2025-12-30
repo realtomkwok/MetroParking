@@ -179,48 +179,50 @@ extension FacilityManager {
 		// Fetch facilities using the working context
 		let allFacilities: [ParkingFacility] = await getFacilities(from: workingContext!)
 
-		// Single-pass filtering and categorisation
-		var critical: [ParkingFacility] = []
-		var standard: [ParkingFacility] = []
-		var background: [ParkingFacility] = []
+		// Single-pass filtering and categorisation (2-tier system)
+		var watched: [ParkingFacility] = []
+		var unwatched: [ParkingFacility] = []
 
 		for facility in allFacilities {
 			// Determine if facility needs refresh
 			let needsRefresh =
 				!facility.vacancy.isCacheValid
-				|| (forced && facility.refreshTier == .critical)
+				|| (forced && facility.refreshTier == .watched)
 
 			guard needsRefresh else { continue }
 
 			// Categorise by tier in one pass
 			switch facility.refreshTier {
-			case .critical:
-				critical.append(facility)
-			case .standard:
-				standard.append(facility)
-			case .background:
-				background.append(facility)
+			case .watched:
+				watched.append(facility)
+			case .unwatched:
+				// Prioritise recently visited facilities
+				if facility.isRecentlyVisited {
+					unwatched.insert(facility, at: 0)
+				} else {
+					unwatched.append(facility)
+				}
 			}
 		}
 
-		// Build priority-ordered list: critical first, then standard, then background
-		let toLoad = critical + standard + background
+		// Build priority-ordered list: watched first, then unwatched (recently visited first)
+		let toLoad = watched + unwatched
 
 		Logger.facilityRefresh
 			.debug(
-				"Loading \(toLoad.count) facilities (\(critical.count) critical, \(standard.count) standard, \(background.count) background)"
+				"Loading \(toLoad.count) facilities (\(watched.count) watched, \(unwatched.count) unwatched)"
 			)
 
 		loadProgress = .loading(0, toLoad.count)
 
-		// Load critical facilities first, individually and sequentially
+		// Load watched facilities first, individually and sequentially
 		var processedCount = 0
 
-		if !critical.isEmpty {
+		if !watched.isEmpty {
 			Logger.facilityRefresh.notice(
-				"⭐️ Loading \(critical.count) critical facilities first..."
+				"⭐️ Loading \(watched.count) watched facilities first..."
 			)
-			for facility in critical {
+			for facility in watched {
 				await loadFacility(facility)
 				processedCount += 1
 
@@ -229,8 +231,8 @@ extension FacilityManager {
 			}
 		}
 
-		// Load standard and background facilities concurrently in batches
-		let remainingFacilities = standard + background
+		// Load unwatched facilities concurrently in batches
+		let remainingFacilities = unwatched
 		if !remainingFacilities.isEmpty {
 			let batchSize = 3  // Load 3 facilities at once
 

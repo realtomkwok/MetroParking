@@ -204,7 +204,7 @@ extension BackgroundTaskManager {
 // MARK: - Refresh Operations
 extension BackgroundTaskManager {
 
-	/// Quick refresh for critical facilities only (favourites)
+	/// Quick refresh for watched facilities only (favourites + widgets)
 	/// Used by BGAppRefreshTask with ~30 second time limit
 	@MainActor
 	func performQuickRefresh() async {
@@ -213,32 +213,32 @@ extension BackgroundTaskManager {
 		let container = SharedDataManager.sharedContainer
 		let context = ModelContext(container)
 
-		// Fetch only favourited (critical) facilities
+		// Fetch only watched facilities (favourites + widgets)
 		let descriptor = FetchDescriptor<ParkingFacility>(
 			sortBy: [SortDescriptor(\.name)]
 		)
 
 		do {
 			let allFacilities: [ParkingFacility] = try context.fetch(descriptor)
-			let criticalFacilities = allFacilities.filter {
-				$0.refreshTier == .critical
+			let watchedFacilities = allFacilities.filter {
+				$0.refreshTier == .watched
 			}
 
-			guard !criticalFacilities.isEmpty else {
-				Logger.facilityRefresh.info("No critical facilities to refresh")
+			guard !watchedFacilities.isEmpty else {
+				Logger.facilityRefresh.info("No watched facilities to refresh")
 				return
 			}
 
 			var dataChanged = false
 			let maxFacilities = min(
-				criticalFacilities.count,
+				watchedFacilities.count,
 				RefreshConfiguration.API.quickRefreshLimit
 			)
-			
+
 			// Get all widget facility IDs for checking updates
 			let widgetFacilityIds = Set(SharedDataManager.shared.getWidgetFacilityIDs())
 
-			for facility in criticalFacilities.prefix(maxFacilities) {
+			for facility in watchedFacilities.prefix(maxFacilities) {
 				guard !Task.isCancelled else { break }
 				guard APIUsageMonitor.canMakeCall else { break }
 
@@ -247,6 +247,14 @@ extension BackgroundTaskManager {
 					> RefreshConfiguration.API.quickRefreshTimeout
 				{
 					break
+				}
+
+				// Skip if cache is still valid for background operations
+				if facility.vacancy.isCacheValid(for: .background) {
+					Logger.facilityRefresh.debug(
+						"⏭️ Skipping \(facility.displayName.title) - cache still valid for background"
+					)
+					continue
 				}
 
 				let spacesBefore = facility.vacancy.available
@@ -326,9 +334,8 @@ extension BackgroundTaskManager {
 					break
 				}
 
-				// Skip if cache is still valid for background
-				let cacheAge = Date().timeIntervalSince(facility.vacancy.cacheTimestamp)
-				if cacheAge < facility.refreshTier.backgroundCacheValiditySeconds {
+				// Skip if cache is still valid for background operations
+				if facility.vacancy.isCacheValid(for: .background) {
 					continue
 				}
 

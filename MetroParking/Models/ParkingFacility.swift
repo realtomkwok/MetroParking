@@ -161,9 +161,27 @@ final class ParkingFacility {
 
 		var isValid: Bool { available >= 0 }
 
+		/// Check if cache is valid for foreground operations (uses foreground cache validity)
 		var isCacheValid: Bool {
 			let cacheAge = Date().timeIntervalSince(cacheTimestamp)
 			return cacheAge < tier.cacheValiditySeconds
+		}
+
+		/// Check if cache is valid with context-aware validity duration
+		/// - Parameter appState: Current app state (active uses foreground validity, background uses background validity)
+		/// - Returns: true if cache is still valid for the given app state
+		func isCacheValid(for appState: AppState) -> Bool {
+			let cacheAge = Date().timeIntervalSince(cacheTimestamp)
+			let validity: TimeInterval
+
+			switch appState {
+			case .active:
+				validity = tier.cacheValiditySeconds
+			case .background:
+				validity = tier.backgroundCacheValiditySeconds
+			}
+
+			return cacheAge < validity
 		}
 
 		var shouldShowData: Bool {
@@ -279,24 +297,28 @@ final class ParkingFacility {
 		}
 	}
 
-	// MARK: - Refresh Priority
+	// MARK: - Refresh Priority (2-Tier System)
 
+	/// Determines the refresh tier for this facility
+	///
+	/// Two tiers:
+	/// - **watched**: Favourites OR displayed in any widget (actively monitored)
+	/// - **unwatched**: Everything else (refresh on-demand when visible)
 	var refreshTier: RefreshTier {
-		// Set critical -> Favourites OR displayed in any widget
-		if self.isFavourite { return .critical }
+		// Watched: Favourites OR displayed in any widget
+		if self.isFavourite { return .watched }
 		if SharedDataManager.shared.isCurrentlyInWidget(self.facilityId) {
-			return .critical
+			return .watched
 		}
 
-		// Standard: recently visited (within 1 hour)
-		if let lastVisited = self.lastVisited,
-			lastVisited.timeIntervalSinceNow > -3600
-		{
+		return .unwatched
+	}
 
-			return .standard
-		}
-
-		return .background
+	/// Whether this facility was recently visited (within 1 hour)
+	/// Used for prioritising visible facilities in refresh cycle
+	var isRecentlyVisited: Bool {
+		guard let lastVisited = self.lastVisited else { return false }
+		return lastVisited.timeIntervalSinceNow > -3600
 	}
 
 	// TODO: Localisation

@@ -6,8 +6,8 @@ This document provides context for AI assistants working on the MetroParking iOS
 
 MetroParking is a native iOS app for monitoring real-time parking availability at NSW Transport Park&Ride facilities. Built with SwiftUI and SwiftData, it integrates with the TfNSW Car Park API to provide live occupancy data for 37 facilities across NSW.
 
-**Current Version**: 0.3.0 (December 2025)
-**Platform**: iOS 18.4+
+**Current Version**: 0.4.0 (December 2025)
+**Platform**: iOS 18.4+ (iOS 26.0+ for onboarding)
 **Language**: Swift (SwiftUI)
 **Architecture**: MVVM with SwiftData persistence and App Groups for widget support
 
@@ -35,6 +35,8 @@ MetroParking/
 │   │   ├── ContentView.swift       # Main app interface
 │   │   ├── FacilityDetailView.swift # Facility details with map
 │   │   ├── FacilityList.swift      # List component
+│   │   ├── OnboardingView.swift    # First-launch onboarding screen
+│   │   ├── SettingsView.swift      # Settings menu
 │   │   ├── APIUsageDebugView.swift # API usage and widget budget debugging
 │   │   └── ... (other view components)
 │   │
@@ -43,6 +45,7 @@ MetroParking/
 │   │   ├── SharedDataManager.swift # App Groups data sharing (app ↔ widget)
 │   │   ├── BackgroundTaskManager.swift # BGTaskScheduler integration
 │   │   ├── AppStateManager.swift   # App lifecycle state management
+│   │   ├── OnboardingManager.swift # Onboarding flow state and navigation
 │   │   ├── MapStateManager.swift   # Map camera state (ARCHIVED)
 │   │   └── SheetStateManager.swift # Sheet presentation
 │   │
@@ -57,6 +60,7 @@ MetroParking/
 │   │   ├── Logger.swift            # Logging utilities
 │   │   ├── RefreshConfiguration.swift # Unified refresh timing constants
 │   │   ├── WidgetBudgetTracker.swift # Widget reload budget management
+│   │   ├── UserPreferences.swift   # Centralized user preferences using @AppStorage
 │   │   └── ... (other utilities)
 │   │
 │   ├── ContentView.swift           # Main view
@@ -71,6 +75,15 @@ MetroParking/
 │   ├── MetroParkingWidgetBundle.swift # Widget bundle
 │   └── Info.plist                  # Widget extension configuration
 │
+├── LiveActivityExtension/          # (Coming soon) Live Activity extension
+│   ├── LiveActivityExtension.swift # Activity widget entry point
+│   ├── ParkingLiveActivityView.swift # Lock Screen UI
+│   ├── ParkingDynamicIslandView.swift # Dynamic Island UI
+│   └── Info.plist                  # Extension configuration
+│
+├── Shared/                         # (Coming soon) Shared code between targets
+│   └── ParkingActivityAttributes.swift # ActivityKit attributes model
+│
 ├── Docs/                           # Documentation
 │   ├── Widgets/                    # Widget implementation guides
 │   │   ├── WIDGET_README.md
@@ -80,6 +93,8 @@ MetroParking/
 │   ├── Concurrency/                # Concurrency and thread safety docs
 │   │   ├── CONCURRENCY_FIXES_SUMMARY.md
 │   │   └── CODE_REVIEW_CHECKLIST.md
+│   ├── LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md  # Live Activity implementation guide
+│   ├── NOTIFICATION_FEATURES_PLAN.md         # Push notification implementation guide
 │   └── CONFIGURATION.md            # Config.xcconfig setup guide
 │
 ├── Config.xcconfig                 # Environment configuration
@@ -124,7 +139,7 @@ TFNSW_API_KEY=<your_api_key>
 CAR_PARK_BASE_URL=https://api.transport.nsw.gov.au/v1
 DEVELOPMENT_TEAM=<your_team_id>
 
-# Optional (for analytics)
+# Optional (for carpark's vacancy trend)
 SUPABASE_URL=<your_supabase_url>
 SUPABASE_PUBLISHABLE_KEY=<your_supabase_key>
 ```
@@ -210,6 +225,51 @@ The app underwent major concurrency improvements to fix overlapping refresh oper
 - Console logging with OSLog categories (`.facilityRefresh`, `.widget`, `.backgroundTask`)
 - See `Docs/Concurrency/CONCURRENCY_FIXES_SUMMARY.md` for detailed analysis
 - Use `Docs/Concurrency/CODE_REVIEW_CHECKLIST.md` for reviewing async code
+
+## User Experience Features
+
+### Onboarding Flow
+The app includes a first-launch onboarding experience to introduce new users to key features.
+
+**Components**:
+- `OnboardingView.swift`: Single-page welcome screen with feature highlights
+- `OnboardingManager.swift`: State management for onboarding flow
+- `UserPreferences.swift`: Persistent storage for user settings
+
+**How It Works**:
+1. On first launch, `OnboardingManager` checks `UserPreferences.hasCompletedOnboarding`
+2. If false, displays onboarding sheet with `.interactiveDismissDisabled()`
+3. User taps "Get Started" → marks onboarding complete → dismisses sheet
+4. Can be re-triggered from Settings → About for reference
+
+**Key Features Highlighted**:
+- Pin favorite facilities for quick access
+- Configure home screen widgets
+- Smart alerts for vacancy notifications (coming soon)
+
+**Implementation Notes**:
+- Uses iOS 26 features (glass effects, symbol effects)
+- Managed via `@Environment(OnboardingManager.self)` injection
+- Non-dismissible until user explicitly completes
+- Future enhancement: TipKit for contextual in-app tips
+
+### User Preferences
+Centralized settings management using `@AppStorage` for persistence.
+
+**Stored Preferences**:
+- `hasCompletedOnboarding`: Whether user has seen onboarding
+- `notificationsEnabled`: Push notification opt-in status
+- `vacancyThreshold`: Minimum spaces for alerts (default: 10)
+- `widgetsConfigured`: Whether user has configured widgets
+- `preferredSortOption`: Default sorting preference
+- `enableHaptics`: Haptic feedback toggle
+
+**Usage Pattern**:
+```swift
+UserPreferences.shared.hasCompletedOnboarding = true
+```
+
+All preferences automatically persist to UserDefaults and survive app restarts.
 
 ## Important Models
 
@@ -340,6 +400,36 @@ SwiftData model for individual parking zones within a facility.
    - Verify budget tracking doesn't exhaust daily limit
    - Test with app in background/foreground/terminated states
 
+### Working with Live Activities (Planned - v0.5.0)
+
+**Overview**: Live Activities provide real-time parking monitoring on Lock Screen and Dynamic Island (iPhone 14 Pro+).
+
+**Key Differences from Widgets**:
+- **No Budget Limit**: Live Activities can update frequently without the 60/day widget limit
+- **Lifecycle**: Started/stopped by user action, lasts up to 8 hours (12 hours with push)
+- **Update Frequency**: Can update every 1-2 minutes via background refresh
+- **UI Locations**: Lock Screen + Dynamic Island (vs. Home Screen for widgets)
+
+**Implementation Guide**:
+- See `Docs/LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md` for complete step-by-step implementation
+- Requires iOS 16.1+ (ActivityKit framework)
+- Uses same App Groups infrastructure as widgets
+- Integrates with existing `BackgroundTaskManager` for automatic updates
+- No notification services required (independent feature)
+
+**Architecture**:
+- `ParkingActivityAttributes`: Defines static (facility info) and dynamic (vacancy) state
+- `LiveActivityManager`: Manages activity lifecycle (start/stop/update)
+- `ParkingLiveActivityView`: Lock Screen UI with capacity indicators
+- `ParkingDynamicIslandView`: Compact/expanded/minimal Dynamic Island views
+- Background updates via existing `performQuickRefresh()` in `BackgroundTaskManager`
+
+**When to Use**:
+- User wants to monitor a specific facility while getting ready to leave
+- Better than widgets: Real-time updates without budget constraints
+- Better than notifications: Always-visible glanceable information
+- Complements widgets: Widgets for quick glance, Live Activities for active monitoring
+
 ## Known Issues & TODOs
 
 ### Critical
@@ -354,16 +444,27 @@ SwiftData model for individual parking zones within a facility.
 ### High Priority
 - [x] Rewrite MapKit using `MKMapItem` and `MKAddress`
 - [ ] Implement server-side caching for scaling
-- [ ] Live Activities for vacancy tracking
+- **[ ] Live Activities for vacancy tracking** ← **NEXT PRIORITY (v0.5.0)**
 - [x] Home/Lock screen widgets
+- [ ] Backup supports for iOS 18
 
-### Feature Roadmap
+### Feature Roadmap (v0.5.0 - v0.6.0)
 
-- Push notifications for vacancy alerts
+**v0.5.0 (January 2025) - Live Activities & Notifications**
+- [ ] Live Activities for real-time parking monitoring on Lock Screen/Dynamic Island
+  - See `Docs/LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md` for detailed implementation guide
+  - Estimated: 3-4 sessions
+  - Dependencies: Existing `BackgroundTaskManager` and App Groups infrastructure
+- [ ] Push notifications for vacancy alerts (after Live Activities)
+  - See `Docs/NOTIFICATION_FEATURES_PLAN.md` for detailed implementation guide
+  - Estimated: 4-5 sessions
+  - Can integrate with Live Activities for remote push updates
+
+**v0.6.0+ (Future)**
 - GTFS Realtime integration for transit arrivals
 - Live traffic data integration
 - Smart parking recommendations
-- Swift 6 concurrency
+- Swift 6 concurrency migration
 
 ## Development Workflow
 
@@ -372,6 +473,7 @@ SwiftData model for individual parking zones within a facility.
 open MetroParking.xcodeproj
 # Press ⌘+R to build and run
 ```
+Use Simulator `iPhone 17 Pro, iOS 26.2` to build and test for now.
 
 ### Testing
 - Unit tests: `MetroParkingTests/`
@@ -384,20 +486,26 @@ open MetroParking.xcodeproj
 - Current working branch: `1.0/reboot`
 
 ### Recent Commits
+- Added onboarding screen with feature highlights and OnboardingManager
+- Implemented UserPreferences for centralized settings using @AppStorage
+- Created comprehensive settings menu with navigation
+- Removed Supabase dependency for simplified architecture
+- Enhanced widget display and UI refinements
 - Added widget support with AppIntent configuration and App Groups
 - Fixed critical concurrency issues (overlapping refreshes, duplicate task scheduling)
 - Implemented unified refresh configuration with tiered cache validity
 - Added background task management with BGTaskScheduler
 - Created widget budget tracker for daily reload management
-- Added comprehensive documentation for widgets and concurrency fixes
 
 ## Dependencies
 
 The app has minimal external dependencies:
 
-- **Apple Frameworks**: SwiftUI, SwiftData, MapKit, CoreLocation, WidgetKit, BackgroundTasks
-- **Third-party**: Supabase (optional, for historic data and trend insights)
-- **App Extensions**: WidgetKit extension for home/lock screen widgets
+- **Apple Frameworks**: SwiftUI, SwiftData, MapKit, CoreLocation, WidgetKit, BackgroundTasks, UserNotifications, ActivityKit (planned)
+- **Third-party**: None (Supabase dependency removed in v0.4.0)
+- **App Extensions**:
+  - WidgetKit extension for home/lock screen widgets
+  - Live Activity extension (planned for v0.5.0)
 
 ## Security & Privacy
 
@@ -446,4 +554,16 @@ When working on this project:
 
 ---
 
-Last updated: December 22, 2025
+## Next Steps: Live Activities Implementation
+
+**Implementation Decision (December 28, 2025)**:
+- **Priority**: Live Activities first, push notifications second
+- **Rationale**: Live Activities are independent of UserNotifications framework and provide better UX for parking monitoring (always-visible vs. alert-based)
+- **Dependencies**: Existing background refresh infrastructure is ready - no notification services needed
+- **Implementation Guide**: See `Docs/LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md` for complete step-by-step guide
+- **Estimated Effort**: 3-4 implementation sessions
+- **Enhancement Path**: After Live Activities work locally, can add ActivityKit push notifications for remote updates (extends to 12 hours)
+
+---
+
+Last updated: December 28, 2025

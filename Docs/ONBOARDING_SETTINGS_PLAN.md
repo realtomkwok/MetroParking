@@ -341,15 +341,13 @@ Add `OnboardingManager` to environment:
 ---
 
 ### 1.4 Testing Checklist
-- [ ] Onboarding appears on first launch
+- [x] Onboarding appears on first launch
 - [ ] Pages navigate forward/backward correctly
-- [ ] "Skip" button completes onboarding
-- [ ] "Get Started" button completes onboarding
-- [ ] Onboarding doesn't appear on subsequent launches
+- [x] "Get Started" button completes onboarding
+- [x] Onboarding doesn't appear on subsequent launches
 - [ ] Can trigger onboarding from Settings → About
-- [ ] Sheet dismissal works correctly
-- [ ] TabView pagination works smoothly
-- [ ] Background gradient displays correctly
+- [x] Sheet dismissal works correctly
+- [x] Background gradient displays correctly
 
 ---
 

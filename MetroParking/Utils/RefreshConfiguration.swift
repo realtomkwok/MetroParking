@@ -7,6 +7,16 @@
 
 /// Unified refresh configuration consolidating all timing constants and strategies
 /// for foreground refresh, background tasks, and widget updates.
+///
+/// ## API Quota Context (TfNSW Bronze Plan)
+/// - Rate limit: 5 requests/second
+/// - Daily quota: 60,000 requests/day
+/// - Source data updates: every 10-15 seconds
+///
+/// ## Design Goals
+/// - Support 50 concurrent test users within quota (~1,200 calls/user/day max)
+/// - Align cache validity with source update frequency
+/// - Prioritise watched facilities (widgets + favourites)
 
 import Foundation
 
@@ -19,27 +29,29 @@ enum RefreshConfiguration {
 
 	/// How often to trigger the next refresh cycle when app is active
 	enum ForegroundInterval {
-		static let standard: TimeInterval = 60  // 60 seconds between refresh cycles
+		static let standard: TimeInterval = 90  // 90 seconds between refresh cycles
 	}
 
-	// MARK: - Cache Validity by Tier
+	// MARK: - Cache Validity by Tier (Simplified 2-Tier System)
 
 	/// Cache validity durations based on facility priority tier
 	/// Used to determine if a facility needs refreshing
+	///
+	/// Two tiers:
+	/// - **Watched**: Favourites + widget facilities (user actively monitors)
+	/// - **Unwatched**: Everything else (refresh on-demand or in background sync)
 	enum CacheValidity {
 		/// Foreground cache validity (when app is active)
 		enum Foreground {
-			static let critical: TimeInterval = 60     // 1 minute - widgets + favourites
-			static let standard: TimeInterval = 300    // 5 minutes - recently visited
-			static let background: TimeInterval = 600  // 10 minutes - others
+			static let watched: TimeInterval = 90      // 90 seconds - widgets + favourites
+			static let unwatched: TimeInterval = 300   // 5 minutes - others (visible on screen)
 		}
 
 		/// Background cache validity (for background tasks)
 		/// More lenient to conserve battery and API quota
 		enum Background {
-			static let critical: TimeInterval = 600    // 10 minutes - widgets + favourites
-			static let standard: TimeInterval = 1800   // 30 minutes - recently visited
-			static let background: TimeInterval = 3600 // 1 hour - skip in quick refresh
+			static let watched: TimeInterval = 900     // 15 minutes - widgets + favourites
+			static let unwatched: TimeInterval = 7200  // 2 hours - only in full sync
 		}
 	}
 
@@ -109,35 +121,34 @@ enum RefreshConfiguration {
 	}
 }
 
-// MARK: - RefreshTier Extension
+// MARK: - RefreshTier (Simplified 2-Tier System)
 
 /// Refresh tier represents facility priority for refresh scheduling
+///
+/// Simplified from 3-tier to 2-tier system:
+/// - **watched**: Favourites + widget facilities (actively monitored by user)
+/// - **unwatched**: Everything else (refresh on-demand when visible)
 enum RefreshTier: CaseIterable {
-	case critical   // Favourites - highest priority
-	case standard   // Recently visited
-	case background // Everything else
+	case watched    // Favourites + widgets - highest priority
+	case unwatched  // Everything else - refresh when visible or in background sync
 
 	/// Cache validity for foreground operations
 	var cacheValiditySeconds: TimeInterval {
 		switch self {
-		case .critical:
-			return RefreshConfiguration.CacheValidity.Foreground.critical
-		case .standard:
-			return RefreshConfiguration.CacheValidity.Foreground.standard
-		case .background:
-			return RefreshConfiguration.CacheValidity.Foreground.background
+		case .watched:
+			return RefreshConfiguration.CacheValidity.Foreground.watched
+		case .unwatched:
+			return RefreshConfiguration.CacheValidity.Foreground.unwatched
 		}
 	}
 
 	/// Cache validity for background operations (more lenient)
 	var backgroundCacheValiditySeconds: TimeInterval {
 		switch self {
-		case .critical:
-			return RefreshConfiguration.CacheValidity.Background.critical
-		case .standard:
-			return RefreshConfiguration.CacheValidity.Background.standard
-		case .background:
-			return RefreshConfiguration.CacheValidity.Background.background
+		case .watched:
+			return RefreshConfiguration.CacheValidity.Background.watched
+		case .unwatched:
+			return RefreshConfiguration.CacheValidity.Background.unwatched
 		}
 	}
 }

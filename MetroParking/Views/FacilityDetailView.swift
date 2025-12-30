@@ -197,6 +197,10 @@ struct FacilityDetailView: View {
 	}
 
 	private func performInitialTasks() async {
+		// Mark facility as visited for refresh tier tracking
+		facility.markAsVisited()
+		try? modelContext.save()
+
 		// Run tasks concurrently without waiting for all to complete
 		async let lookAroundTask: Void = lookAroundManager.loadPreview()
 		async let etaTask: Void = calculateETAIfLocationAvailable()

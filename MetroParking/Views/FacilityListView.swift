@@ -14,7 +14,7 @@ struct FacilityList: View {
 	var nameSpace: Namespace.ID
 	let groupedFacilities: [(title: String?, facilities: [ParkingFacility])]
 
-	@State private var selectedFacility: ParkingFacility?
+	@Binding var selectedFacility: ParkingFacility?
 
 	@Environment(\.modelContext) private var modelContext
 

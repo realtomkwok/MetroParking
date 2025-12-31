@@ -13,9 +13,10 @@ import SwiftUI
 struct ContentView: View {
 	@Namespace var navigationNamespace
 
-		// Access managers from environment
+	// Access managers from environment
 	@Environment(FacilityManager.self) private var facilityManager
 	@Environment(OnboardingManager.self) private var onboardingMgr
+	@Environment(DeepLinkManager.self) private var deepLinkMgr
 
 	@State private var searchText: String = ""
 	@State private var selectedSorting: SortingOption = .name
@@ -25,21 +26,22 @@ struct ContentView: View {
 	@State private var isSearchFieldFocused: Bool = false
 	@State private var selectedFacility: ParkingFacility?
 
-		// Single query for all facilities - let SwiftData handle animations smoothly
+	// Single query for all facilities - let SwiftData handle animations smoothly
 	@Query(animation: .snappy)
 	private var allFacilities: [ParkingFacility]
 
-		/// Grouped facilities with pinned items at the top
+	/// Grouped facilities with pinned items at the top
 	private var groupedFacilities:
-	[(title: String?, facilities: [ParkingFacility])]
+		[(title: String?, facilities: [ParkingFacility])]
 	{
-			// Filter and sort all facilities once
-		let filteredFacilities = allFacilities
+		// Filter and sort all facilities once
+		let filteredFacilities =
+			allFacilities
 			.filtered(by: filterIsOn ? selectedFilter : .all)
 			.searchFiltered(by: searchText)
 			.sorted(by: selectedSorting, order: selectedSortingOrder)
 
-			// Separate into pinned and unpinned after filtering/sorting
+		// Separate into pinned and unpinned after filtering/sorting
 		let pinnedFacilities = filteredFacilities.filter { $0.isFavourite }
 		let unpinnedFacilities = filteredFacilities.filter { !$0.isFavourite }
 
@@ -55,7 +57,7 @@ struct ContentView: View {
 			sections.append(
 				(
 					title: pinnedFacilities.isEmpty
-					? nil : "More Parking",
+						? nil : "More Parking",
 					facilities: unpinnedFacilities
 				)
 			)
@@ -64,7 +66,7 @@ struct ContentView: View {
 		return sections
 	}
 
-		// TODO: Dynamically refresh the last updated time
+	// TODO: Dynamically refresh the last updated time -> Doesn't work
 	private var navigationSubtitleText: Text {
 		if facilityManager.isRefreshing {
 			return Text(facilityManager.loadProgress.description)
@@ -84,7 +86,8 @@ struct ContentView: View {
 				if #available(iOS 26.0, *) {
 					FacilityList(
 						nameSpace: navigationNamespace,
-						groupedFacilities: groupedFacilities
+						groupedFacilities: groupedFacilities,
+						selectedFacility: $selectedFacility
 					)
 					.navigationTitle("MetroParking")
 					.navigationSubtitle(navigationSubtitleText)
@@ -113,8 +116,36 @@ struct ContentView: View {
 					.scrollEdgeEffectStyle(.soft, for: .vertical)
 					.scrollContentBackground(.hidden)
 				} else {
-						// Fallback on earlier versions
-						// TODO: main content for iOS versions under iOS 26
+					// Fallback on earlier versions
+					// TODO: main content for iOS versions under iOS 26
+					FacilityList(
+						nameSpace: navigationNamespace,
+						groupedFacilities: groupedFacilities,
+						selectedFacility: $selectedFacility
+					)
+					.navigationTitle("MetroParking")
+					.refreshable {
+						await facilityManager.performLoad(forced: true)
+					}
+					.toolbar {
+						TopBarActions()
+					}
+					.toolbarTitleDisplayMode(.inlineLarge)
+
+					//					.toolbar {
+					//						DefaultToolbarItem(kind: .search, placement: .bottomBar)
+					//						ToolbarSpacer(.flexible, placement: .bottomBar)
+					//						BottomBarActions()
+					//							.matchedTransitionSource(
+					//								id: "BottomBarActions",
+					//								in: navigationNamespace
+					//							)
+					//					}
+					.searchable(
+						text: $searchText,
+						isPresented: $isSearchFieldFocused,
+						placement: .toolbar
+					)
 				}
 			}
 		}
@@ -127,8 +158,43 @@ struct ContentView: View {
 					.environment(OnboardingManager.shared)
 			}
 		}
+		.onChange(of: deepLinkMgr.selectedFacilityId) { oldValue, newValue in
+			guard let facilityId = newValue else { return }
+			handleDeepLinkUrl(facilityId: facilityId)
+		}
 	}
+}
 
+// MARK: - Helper functions
+extension ContentView {
+
+	private func handleDeepLinkUrl(facilityId: String) {
+		// Fetch the facility from SwiftData
+		let descriptor = FetchDescriptor<ParkingFacility>(
+			predicate: #Predicate { $0.facilityId == facilityId }
+		)
+
+		let facilities = allFacilities.filter { $0.facilityId == facilityId }
+		guard let facility = facilities.first else {
+			Logger
+				.deeplink.error(
+					"⚠️ Deep link: No facility found with ID: \(facilityId)"
+				)
+			deepLinkMgr.clearSelection()
+			return
+		}
+
+		Logger.deeplink.info(
+			"✅ Deep link: Navigating to facility '\(facility.displayName.title)'"
+		)
+
+		// Set the selected facility to trigger navigation
+		selectedFacility = facility
+
+		// Clear the deep link handler after navigation is initiated
+		deepLinkMgr.clearSelection()
+
+	}
 }
 
 extension ContentView {
@@ -164,11 +230,23 @@ extension ContentView {
 						Label("Notifications", systemImage: "bell.badge")
 					}
 				}
-				Section("Developer") {
-					NavigationLink(destination: APIUsageDebugView()) {
-						Label("API Debug", systemImage: "hammer")
+				#if DEBUG
+					Section("Developer") {
+						NavigationLink(destination: APIUsageDebugView()) {
+							Label("API Debug", systemImage: "hammer")
+						}
+
+						NavigationLink(
+							destination: BackgroundRefreshDebugView()
+						) {
+							Label(
+								"Background Refresh",
+								systemImage: "arrow.clockwise.circle"
+							)
+						}
 					}
-				}
+				#endif
+
 			} label: {
 				Label("Settings", systemImage: "ellipsis")
 			}
@@ -285,7 +363,6 @@ extension ContentView {
 			}
 		}
 	}
-
 }
 
 #Preview("With Pinned Facilities") {

@@ -17,6 +17,11 @@ struct FacilityEntry: TimelineEntry {
 	let isStale: Bool
 	let configuration: FocusedFacilityWidgetConfigs
 
+	var deepLinkURL: URL? {
+		guard let facilityData = self.facilityData else { return nil }
+		return URL(string: "metroparking://facility/\(facilityData.facilityId)")
+	}
+
 	static var placeholder: FacilityEntry {
 		FacilityEntry(
 			date: Date(),
@@ -172,6 +177,7 @@ struct FacilityWidget: Widget {
 			provider: FacilityProvider()
 		) { entry in
 			FocusedFacilityWidgetView(entry: entry)
+				.widgetURL(entry.deepLinkURL)
 		}
 		.configurationDisplayName("Carpark Vacancy")
 		.description(

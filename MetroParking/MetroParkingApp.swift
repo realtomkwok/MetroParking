@@ -21,7 +21,7 @@ struct MetroParkingApp: App {
 	init() {
 		setupConfiguration()
 		
-		// Initialize AppStateManager to set up lifecycle observers
+		// Initialise AppStateManager to set up lifecycle observers
 		_ = AppStateManager.shared
 		
 		BackgroundTaskManager.shared.registerBackgroundTasks()
@@ -38,6 +38,10 @@ struct MetroParkingApp: App {
 				.environment(ETAManager.shared)
 				.environment(OnboardingManager.shared)
 				.environment(UserPreferences.shared)
+				.environment(DeepLinkManager.shared)
+				.onOpenURL { url in
+					_ = DeepLinkManager.shared.handleURL(url)
+				}
 				.task {
 					// Initialise on first appearance
 					await initializeFacilityManager()

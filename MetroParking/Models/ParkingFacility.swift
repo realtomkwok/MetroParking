@@ -11,39 +11,40 @@ import Foundation
 import MapKit
 import OSLog
 import SwiftData
+import SwiftUI
 
 @Model
 final class ParkingFacility {
-	var facilityId: String
+	@Attribute(.unique) var facilityId: String
 	var name: String
-	var tsn: String
-	var tfnswFacilityId: String
 
-	var suburb: String
-	var address: String
-	var latitude: Double
-	var longitude: Double
+	// Location data - stored properties for SwiftData
+	var _latitude: Double
+	var _longitude: Double
+	var _suburb: String
+	var _address: String
 
 	var totalSpaces: Int
-	var lastUpdated: Date
+
+	// User preferences
+	var isFavourite: Bool
+	var notificationThreshold: Int?  // TODO: For feature "notify when under X spaces"
 	var lastVisited: Date?
 
-	var isFavourite: Bool
-	var notificationThreshold: Int?  // For feature "notify when under X spaces"
+	// Occupancy cache - stored properties
+	private var _cachedOccupied: Int = 0
+	private var _cacheTimestamp: Date = Date.distantPast
 
-	var lastRefreshed: Date = Date.distantPast
-	var retrievalFailures: Int = 0
-	var lastFailureDate: Date?
+	// Refresh tracking - stored properties
+	private var _lastRefreshed: Date = Date.distantPast
+	private var _lastUpdated: Date = Date.distantPast
+	private var _retrievalFailures: Int = 0
+	private var _lastFailureDate: Date?
 
-	// Route caching
-	var lastCalculatedDistance: CLLocationDistance?
-	var lastCalculatedTravelTime: TimeInterval?
-	var routingDataAge: Date?
-
-	// Occupancy cache
-	private var _cachedOccupancy: Int = 0
-	private var _cachedAvailableSpots: Int = 0
-	private var _occupancyCacheTime: Date = Date.distantPast
+	// Route caching - stored properties
+	private var _routeDistance: CLLocationDistance?
+	private var _routeTravelTime: TimeInterval?
+	private var _routeTimestamp: Date?
 
 	@Relationship(deleteRule: .cascade, inverse: \ParkingZone.facility)
 	var zones: [ParkingZone] = []
@@ -54,16 +55,14 @@ final class ParkingFacility {
 	init(from apiResponse: ParkingAPIResponse) {
 		self.facilityId = apiResponse.facilityId
 		self.name = apiResponse.facilityName
-		self.tsn = apiResponse.tsn
-		self.tfnswFacilityId = apiResponse.tfnswFacilityId
-		self.suburb = apiResponse.location.suburb
-		self.address = apiResponse.location.address
-		self.latitude = Double(apiResponse.location.latitude) ?? 0
-		self.longitude = Double(apiResponse.location.longitude) ?? 0
+		self._suburb = apiResponse.location.suburb
+		self._address = apiResponse.location.address
+		self._latitude = Double(apiResponse.location.latitude) ?? 0
+		self._longitude = Double(apiResponse.location.longitude) ?? 0
 		self.totalSpaces = Int(apiResponse.spots) ?? 0
 
 		let dateFormatter = ISO8601DateFormatter()
-		self.lastUpdated =
+		self._lastUpdated =
 			dateFormatter.date(from: apiResponse.messageDate) ?? Date()
 		self.lastVisited = nil
 
@@ -80,126 +79,318 @@ final class ParkingFacility {
 		address: String,
 		latitude: Double,
 		longitude: Double,
-		totalSpaces: Int,
-		tsn: String,
-		tfnswFacilityId: String
+		totalSpaces: Int
 	) {
 		self.facilityId = facilityId
 		self.name = name
-		self.tsn = tsn
-		self.tfnswFacilityId = tfnswFacilityId
-		self.suburb = suburb
-		self.address = address
-		self.latitude = latitude
-		self.longitude = longitude
+		self._suburb = suburb
+		self._address = address
+		self._latitude = latitude
+		self._longitude = longitude
 		self.totalSpaces = totalSpaces
-		self.lastUpdated = Date.distantPast
+		self._lastUpdated = Date.distantPast
 		self.lastVisited = nil
 		self.isFavourite = false
 		self.notificationThreshold = nil
 	}
 
-	// MARK: - Computed properties
-	var displayName: String {
-		return name.removePrefix("Park&Ride - ").localizedCapitalized
+	// MARK: - Nested Types
+
+	/// Location information for a parking facility
+	struct Location {
+		let coordinate: CLLocationCoordinate2D
+		let suburb: String
+		let address: String
+
+		var latitude: Double { coordinate.latitude }
+		var longitude: Double { coordinate.longitude }
 	}
 
-	var coordinate: CLLocationCoordinate2D {
-		return CLLocationCoordinate2D(
-			latitude: latitude,
-			longitude: longitude
+	/// Route information to a parking facility
+	struct RouteInfo {
+		let distance: CLLocationDistance
+		let travelTime: TimeInterval
+		let calculatedAt: Date
+
+		var isValid: Bool {
+			calculatedAt.timeIntervalSinceNow > -3600  // Valid for 1 hour
+		}
+
+		var formattedDistance: String {
+			let formatter = MKDistanceFormatter()
+			formatter.unitStyle = .abbreviated
+			return formatter.string(fromDistance: distance)
+		}
+
+		var formattedTravelTime: String {
+			let duration: Duration = .seconds(travelTime)
+			return duration.formatted(.units(width: .wide))
+		}
+	}
+
+	/// Data staleness level for UI presentation
+	enum DataStaleness {
+		case fresh  // Within cache validity period
+		case stale  // Beyond cache validity, needs refresh
+
+		/// Visual opacity for displaying stale data
+		var opacity: Double {
+			switch self {
+			case .fresh: return 1.0
+			case .stale: return 0.6
+			}
+		}
+
+		/// Whether to show a refresh indicator
+		var showsRefreshIndicator: Bool {
+			switch self {
+			case .fresh: return false
+			case .stale: return true
+			}
+		}
+	}
+
+	/// Refresh and update tracking information
+	struct RefreshStatus {
+		let lastRefreshed: Date
+		let lastUpdated: Date
+		let failures: Int
+		let lastFailureDate: Date?
+		let cacheTimestamp: Date
+		let tier: RefreshTier
+
+		var timeSinceRefresh: TimeInterval {
+			Date().timeIntervalSince(lastRefreshed)
+		}
+
+		var hasRecentFailures: Bool {
+			failures > 0
+				&& lastFailureDate?.timeIntervalSinceNow ?? -.infinity > -300  // Within 5 min
+		}
+
+		/// Determines staleness level based on cache age and tier
+		var staleness: DataStaleness {
+			let cacheAge = Date().timeIntervalSince(cacheTimestamp)
+
+			// Never had data
+			if cacheTimestamp == .distantPast {
+				return .stale
+			}
+
+			// Check if within cache validity period for this tier
+			if cacheAge < tier.cacheValiditySeconds {
+				return .fresh
+			}
+
+			return .stale
+		}
+	}
+
+	/// Structured vacancy information with caching
+	struct VacancyInfo {
+		let available: Int
+		let occupied: Int
+		let total: Int
+		let cacheTimestamp: Date
+		let tier: RefreshTier
+
+		var vacancy: Int { available }
+		var occupancy: Double {
+			guard total > 0 else { return 0.0 }
+			return max(0, min(1.0, Double(occupied) / Double(total)))
+		}
+
+		var isValid: Bool { available >= 0 }
+
+		/// Check if cache is valid for foreground operations (uses foreground cache validity)
+		var isCacheValid: Bool {
+			let cacheAge = Date().timeIntervalSince(cacheTimestamp)
+			return cacheAge < tier.cacheValiditySeconds
+		}
+
+		/// Check if cache is valid with context-aware validity duration
+		/// - Parameter appState: Current app state (active uses foreground validity, background uses background validity)
+		/// - Returns: true if cache is still valid for the given app state
+		func isCacheValid(for appState: AppState) -> Bool {
+			let cacheAge = Date().timeIntervalSince(cacheTimestamp)
+			let validity: TimeInterval
+
+			switch appState {
+			case .active:
+				validity = tier.cacheValiditySeconds
+			case .background:
+				validity = tier.backgroundCacheValiditySeconds
+			}
+
+			return cacheAge < validity
+		}
+	}
+
+	// MARK: - Computed Properties
+
+	/// Consolidated location information
+	var location: Location {
+		Location(
+			coordinate: CLLocationCoordinate2D(
+				latitude: _latitude,
+				longitude: _longitude
+			),
+			suburb: _suburb,
+			address: _address
 		)
+	}
+
+	/// Consolidated vacancy information (single source of truth)
+	var vacancy: VacancyInfo {
+		let available = max(0, totalSpaces - _cachedOccupied)
+		return VacancyInfo(
+			available: available,
+			occupied: _cachedOccupied,
+			total: totalSpaces,
+			cacheTimestamp: _cacheTimestamp,
+			tier: refreshTier
+		)
+	}
+
+	/// Route information if available
+	var route: RouteInfo? {
+		guard let distance = _routeDistance,
+			let travelTime = _routeTravelTime,
+			let timestamp = _routeTimestamp
+		else {
+			return nil
+		}
+		return RouteInfo(
+			distance: distance,
+			travelTime: travelTime,
+			calculatedAt: timestamp
+		)
+	}
+
+	/// Refresh status information
+	var refreshStatus: RefreshStatus {
+		RefreshStatus(
+			lastRefreshed: _lastRefreshed,
+			lastUpdated: _lastUpdated,
+			failures: _retrievalFailures,
+			lastFailureDate: _lastFailureDate,
+			cacheTimestamp: _cacheTimestamp,
+			tier: refreshTier
+		)
+	}
+
+	var displayName: (title: String, subtitle: String) {
+		let stripped = name.removePrefix("Park&Ride - ").localizedCapitalized
+
+		// Match pattern: "Title (Subtitle)"
+		// Captures: title before parentheses, and subtitle inside parentheses
+		let pattern = /^(.+?)\s*\((.+?)\)$/
+
+		if let match = stripped.firstMatch(of: pattern) {
+			let title = String(match.1).trimmingCharacters(in: .whitespaces)
+			let subtitle = String(match.2).trimmingCharacters(in: .whitespaces)
+			return (title: title, subtitle: subtitle)
+		} else {
+			// No parentheses found
+			return (title: stripped, subtitle: "")
+		}
+	}
+
+	// Convenience accessors for backward compatibility and cleaner access
+	var coordinate: CLLocationCoordinate2D { location.coordinate }
+	var suburb: String { _suburb }
+	var address: String { _address }
+	var latitude: Double { _latitude }
+	var longitude: Double { _longitude }
+
+	/// Distance for sorting purposes (returns the cached route distance, or Double.infinity if not available)
+	/// This allows sorting by distance with nil values appearing at the end
+	var sortableDistance: Double {
+		_routeDistance ?? Double.infinity
 	}
 
 	var availabilityStatus: AvailabilityStatus {
-		let available = currentAvailableSpots
-		let total = totalSpaces
+		let vacancyInfo = vacancy
 
-		if available >= 0 {
-			if available == 0 {
-				return .full
-			} else if available < total / 10 {
-				return .almostFull
-			} else {
-				return .available
-			}
-		} else {
+		// Only return .noData if we've NEVER had data (not just stale)
+		guard _cacheTimestamp != .distantPast else {
 			return .noData
 		}
-	}
 
-	// MARK: - Refresh priority tier
-	var refreshTier: RefreshTier {
-		if self.isFavourite { return .critical }
-		if self.lastVisited?.timeIntervalSinceNow ?? -3600 > 3600 {
-			return .standard
+		// For stale data, still show the status but UI should indicate staleness
+		let available = vacancyInfo.available
+
+		if available == 0 {
+			return .full
+		} else if available < totalSpaces / 10 {
+			return .almostFull
+		} else {
+			return .available
 		}
-		return .background
 	}
 
-	var isOccupancyCacheValid: Bool {
-		let cacheAge = Date().timeIntervalSince(_occupancyCacheTime)
-		return cacheAge < refreshTier.cacheValiditySeconds
+	// MARK: - Refresh Priority (2-Tier System)
+
+	/// Determines the refresh tier for this facility
+	///
+	/// Two tiers:
+	/// - **watched**: Favourites OR displayed in any widget (actively monitored)
+	/// - **unwatched**: Everything else (refresh on-demand when visible)
+	var refreshTier: RefreshTier {
+		// Watched: Favourites OR displayed in any widget
+		if self.isFavourite { return .watched }
+		if SharedDataManager.shared.isCurrentlyInWidget(self.facilityId) {
+			return .watched
+		}
+
+		return .unwatched
 	}
 
-	var shouldShowCachedData: Bool {
-		// Show cached data if:
-		// 1. Cache is valid, OR
-		// 2. Cache is recently expired (grace period) AND we have previous data
-		if isOccupancyCacheValid {
+	/// Whether this facility was recently visited (within 1 hour)
+	/// Used for prioritising visible facilities in refresh cycle
+	var isRecentlyVisited: Bool {
+		guard let lastVisited = self.lastVisited else { return false }
+		return lastVisited.timeIntervalSinceNow > -3600
+	}
+
+}
+
+// MARK: - Data Refresh
+extension ParkingFacility {
+
+	/// Returns an MKMapItem for this facility
+	/// - Returns: A configured MKMapItem with the facility's location and details
+	func getMapItem() async -> MKMapItem {
+		return await MapsManager.shared.createMapItem(for: self)
+	}
+
+	/// Determines if this facility should be refreshed based on app state and cache validity
+	/// Centralizes the refresh decision logic used across FacilityManager and BackgroundTaskManager
+	/// - Parameters:
+	///   - appState: Current app lifecycle state (active uses foreground cache validity, background uses background cache validity)
+	///   - forced: Whether to force refresh regardless of cache (applies only to watched facilities)
+	/// - Returns: true if facility should be refreshed
+	func shouldRefresh(appState: AppState, forced: Bool = false) -> Bool {
+		// Forced refresh only applies to watched tier facilities
+		if forced && refreshTier == .watched {
 			return true
 		}
 
-		// Grace period: show old data for up to 2x cache validity time
-		let gracePeriod = refreshTier.cacheValiditySeconds * 2
-		let cacheAge = Date().timeIntervalSince(_occupancyCacheTime)
-		return cacheAge < gracePeriod && _cachedAvailableSpots > 0
+		// Otherwise check cache validity for current app state
+		return !vacancy.isCacheValid(for: appState)
 	}
-
-	var timeSinceLastRefresh: TimeInterval {
-		return Date().timeIntervalSince(lastRefreshed)
-	}
-
-	var hasValidRoutingData: Bool {
-		guard let age = routingDataAge else { return false }
-		return age.timeIntervalSinceNow > -3600/// Valid for an hour
-	}
-
-	// TODO: Localisation
-	var formattedLastUpdated: String {
-		return lastUpdated == .distantPast
-			? "--"
-			: "updated \(lastUpdated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))"
-	}
-
-	// MARK: - MapKit
-
-	var mapItem: MKMapItem {
-		let coordinate = CLLocationCoordinate2D(
-			latitude: latitude,
-			longitude: longitude
-		)
-		let placeMark = MKPlacemark(coordinate: coordinate)
-
-		// TODO: .init(placemark: placemark) is deprecated, there's a new method for creating a MapItem
-		let item = MKMapItem(placemark: placeMark)
-		item.name = displayName
-		return item
-	}
-}
-
-/// Data refresh
-extension ParkingFacility {
 
 	func updateFromAPI(_ apiResponse: ParkingAPIResponse) {
-		// Update occupancy cache
-		self.currentOccupiedSpots = Int(apiResponse.occupancy.total ?? "0") ?? 0
+		// Update occupancy (single source of truth)
+		let newOccupied = Int(apiResponse.occupancy.total ?? "0") ?? 0
+		_cachedOccupied = newOccupied
+		_cacheTimestamp = Date()
 
 		// Update persistent data
-		self.lastUpdated = Date()
-		self.lastRefreshed = Date()
-		self.retrievalFailures = 0
-		self.lastFailureDate = nil
+		_lastUpdated = Date()
+		_lastRefreshed = Date()
+		_retrievalFailures = 0
+		_lastFailureDate = nil
 
 		// Update total spaces if it changed
 		let newTotalSpaces = Int(apiResponse.spots) ?? self.totalSpaces
@@ -209,18 +400,18 @@ extension ParkingFacility {
 	}
 
 	func markRefreshFailed() {
-		retrievalFailures += 1
-		lastFailureDate = Date()
+		_retrievalFailures += 1
+		_lastFailureDate = Date()
 
 		// Don't immediately invalidate cache on first few failures
 		// This prevents showing "noData" when API is temporarily down
-		if retrievalFailures >= 3 {
+		if _retrievalFailures >= 3 {
 			// Force cache invalidation after repeated failures
-			_occupancyCacheTime = Date.distantPast
+			_cacheTimestamp = Date.distantPast
 		}
 
 		Logger.facilityRefresh.error(
-			"❌ \(self.name): Failure #\(self.retrievalFailures)"
+			"❌ \(self.name): Failure #\(self._retrievalFailures)"
 		)
 	}
 
@@ -229,80 +420,71 @@ extension ParkingFacility {
 	}
 }
 
-/// Occupancy and availability
-extension ParkingFacility {
-
-	var currentOccupiedSpots: Int {
-		get {
-			if isOccupancyCacheValid {
-				return _cachedOccupancy
-			}
-			return 0
-		}
-		set {
-			_cachedOccupancy = newValue
-			_occupancyCacheTime = Date()
-			_cachedAvailableSpots = max(0, totalSpaces - newValue)
-		}
-	}
-
-	var currentAvailableSpots: Int {
-		if shouldShowCachedData {
-			return _cachedAvailableSpots
-		} else {
-			return -1
-		}
-	}
-
-	var displayAvailableSpots: String {
-		if currentAvailableSpots == -1 {
-			return "--"  // TODO: Localisation strings
-		} else {
-			return String(currentAvailableSpots)
-		}
-	}
-
-	var occupancy: Double {
-		guard totalSpaces > 0 else { return 0.0 }
-		guard isOccupancyCacheValid else { return -1.0 }
-
-		let occupancy = Double(currentOccupiedSpots) / Double(totalSpaces)
-
-		return max(0, occupancy)
-	}
-}
-
-/// Route Enhancement
+// MARK: - Route Management
 extension ParkingFacility {
 
 	func updateRoutingData(
 		distance: CLLocationDistance,
 		travelTime: TimeInterval
 	) {
-		self.lastCalculatedDistance = distance
-		self.lastCalculatedTravelTime = travelTime
-		self.routingDataAge = Date()
+		self._routeDistance = distance
+		self._routeTravelTime = travelTime
+		self._routeTimestamp = Date()
 	}
 
 	func clearStaleRoutingData() {
-		if !hasValidRoutingData {
-			self.lastCalculatedDistance = nil
-			self.lastCalculatedTravelTime = nil
-			self.routingDataAge = nil
+		if route?.isValid == false {
+			self._routeDistance = nil
+			self._routeTravelTime = nil
+			self._routeTimestamp = nil
 		}
 	}
 }
 
-enum RefreshTier: CaseIterable {
-	case critical
-	case standard
-	case background
+// RefreshTier is defined in RefreshConfiguration.swift
 
-	var cacheValiditySeconds: TimeInterval {
+// MARK: - Availability Status
+// Statuses of availability are based on TfNSW recommendation
+// Full: vacancy < 1
+// Almost full: vacancy < 10% of total
+
+enum AvailabilityStatus: CaseIterable {
+	case available, almostFull, full, noData
+
+	var fill: Color {
 		switch self {
-		case .critical: return 15  // 15 sec
-		case .standard: return 60  // 1 min
-		case .background: return 600  // 10 min
+		case .available: return .green
+		case .almostFull: return .yellow
+		case .full: return .red
+		case .noData: return Color(.tertiarySystemBackground)
 		}
+	}
+
+	/// Returns an appropriate text colour that contrasts with the status colour
+	var foreground: Color {
+		switch self {
+		case .noData: return .secondary.opacity(0.6)
+		default:
+			return fill.adaptedTextColor()
+		}
+	}
+
+	var text: String {
+		switch self {
+		case .available: return "Available"
+		case .almostFull: return "Almost Full"
+		case .full: return "Full"
+		case .noData: return "No Data"
+		}
+	}
+
+	/// Returns colours for the occupancy gradient (excludes noData)
+	static var gradientColors: [Color] {
+		return [available.fill, almostFull.fill, full.fill]
+	}
+
+	/// Returns all status colours including noData
+	static var allColors: [Color] {
+		return allCases.map { $0.fill }
 	}
 }

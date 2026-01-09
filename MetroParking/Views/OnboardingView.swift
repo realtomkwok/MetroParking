@@ -1,0 +1,152 @@
+//
+//  OnboardingView.swift
+//  MetroParking
+//
+//  Created by Tom Kwok on 26/12/2025.
+//
+
+import SwiftUI
+
+/// Single-page onboarding view displayed on first app launch
+/// Provides a welcome message and overview of key features
+@available(iOS 26.0, *)
+struct OnboardingView: View {
+	@Environment(OnboardingManager.self) private var onboardingManager
+	@Environment(\.dismiss) private var dismiss
+
+	var body: some View {
+		VStack(spacing: 0) {
+			// Content
+			ScrollView(.vertical) {
+				VStack(alignment: .leading, spacing: 16) {
+					Spacer(minLength: 32)
+
+					// App Icon & Title
+					VStack(alignment: .leading, spacing: 16) {
+
+						Image("Icon")
+							.resizable()
+							.frame(width: 128, height: 128)
+							.aspectRatio(contentMode: .fit)
+							.shadow(radius: 64)
+
+
+						Text("Welcome to MetroParking")
+							.font(.largeTitle)
+							.fontWeight(.bold)
+
+						Text(
+							"Find real-time parking availability at Park&Ride carparks."
+						)
+						.font(.body)
+						.foregroundStyle(.secondary)
+					}
+					.padding(8)
+
+					Spacer(minLength: 8)
+
+					// Feature Highlights
+					VStack(alignment: .leading, spacing: 16) {
+						FeatureRow(
+							order: 0,
+							icon: "star.square.on.square.fill",
+							title: "Pin Your Favourite",
+							description:
+								"Quick access to frequently used carparks on the top."
+						)
+
+						FeatureRow(
+							order: 1,
+							icon: "square.grid.2x2.fill",
+							title: "Live Widgets",
+							description:
+								"Quick look on the carpark's availability on your home screen."
+						)
+
+						FeatureRow(
+							order: 2,
+							icon: "bell.badge.fill",
+							title: "Smart Alerts",
+							description:
+								"Get notified when carparks you're watching become available."
+						)
+					}
+
+					Spacer(minLength: 32)
+				}
+				.padding(.horizontal, 24)
+			}
+			.safeAreaBar(edge: .bottom, alignment: .center) {
+					// Get Started Button
+				Button {
+					onboardingManager.completeOnboarding()
+					dismiss()
+				} label: {
+					Text("Get Started")
+						.font(.headline)
+						.foregroundStyle(.white)
+						.frame(maxWidth: .infinity)
+						.padding()
+						.background(Color.accentColor)
+				}
+				.buttonStyle(.glassProminent)
+				.padding()
+			}
+			.scrollEdgeEffectStyle(.soft, for: .vertical)
+		}
+		.background {
+			BackgroundGradient(
+				animation:
+					.spring(
+						response: 5.0,
+						dampingFraction: 10.0,
+						blendDuration: 10.0
+					)
+					.repeatForever(autoreverses: true)
+			)
+		}
+		.interactiveDismissDisabled()
+	}
+}
+
+/// Reusable feature row component for onboarding
+@available(iOS 26.0, *)
+struct FeatureRow: View {
+	let order: Int
+	let icon: String
+	let title: String
+	let description: String
+
+	var body: some View {
+		HStack(alignment: .center, spacing: 16) {
+			Image(systemName: icon)
+				.font(.title2)
+				.foregroundStyle(Color.accentColor)
+				.frame(width: 40)
+				.symbolEffect(
+					.bounce,
+					options: .repeat(
+						.periodic(delay: 2.0 + Double(order) * 0.3)
+					).speed(1)
+				)
+
+			VStack(alignment: .leading, spacing: 4) {
+				Text(title)
+					.font(.headline)
+				Text(description)
+					.font(.subheadline)
+					.foregroundStyle(.secondary)
+					.lineLimit(2)
+			}
+		}
+		.frame(maxWidth: .infinity, alignment: .leading)
+	}
+}
+
+// MARK: - Previews
+
+@available(iOS 26.0, *)
+#Preview("Onboarding") {
+	OnboardingView()
+		.environment(OnboardingManager.shared)
+}

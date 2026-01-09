@@ -8,66 +8,88 @@
 import SwiftUI
 
 struct ParkingProgressGauge: View {
-  let availableSpaces: Int
-  let displayAvailableSpots: String
-  let totalSpaces: Int
-  let availabilityStatus: AvailabilityStatus
+	let occupancy: Double
+	let available: Int
+	let displayVacancy: String
+	let total: Int
+	let availabilityStatus: AvailabilityStatus
 
-  private var occupancyProgress: Double {
-    guard totalSpaces > 0 else { return 0 }
+	private var isAvailable: Bool
 
-    let clampedAvailableSpaces = max(0, min(availableSpaces, totalSpaces))
+	init(
+		occupancy: Double,
+		available: Int,
+		total: Int,
+		availabilityStatus: AvailabilityStatus
+	) {
+		self.occupancy = occupancy
+		self.available = available
+		self.displayVacancy = String(self.available)
+		self.total = total
+		self.availabilityStatus = availabilityStatus
+		self.isAvailable = availabilityStatus != .noData
+	}
 
-    let currentOccupancy = totalSpaces - clampedAvailableSpaces
-
-    let progress = Double(currentOccupancy) / Double(totalSpaces)
-
-    // Clamp the final result to 0...1 range
-    return max(0.0, min(1.0, progress))
-  }
-
-  var body: some View {
-    Gauge(value: occupancyProgress, in: 0...1) {
-    } currentValueLabel: {
-      Text("\(displayAvailableSpots)")
-        .contentTransition(.numericText(value: Double(availableSpaces)))
-    } minimumValueLabel: {
-      EmptyView()
-    } maximumValueLabel: {
-      EmptyView()
-    }
-    .gaugeStyle(.accessoryCircular)
-    .tint(
-      Gradient(colors: [
-        AvailabilityStatus.available.color,
-        AvailabilityStatus.almostFull.color,
-        AvailabilityStatus.full.color,
-      ])
-    )
-  }
+	var body: some View {
+		Gauge(value: occupancy, in: 0...1) {
+		} currentValueLabel: {
+			Text("\(displayVacancy)")
+				.font(.title2)
+				.fontWeight(.semibold)
+				.foregroundStyle(isAvailable ? .primary : .tertiary)
+		} minimumValueLabel: {
+			Text("\(total)")
+				.font(.system(size: 8))
+				.fontWidth(.init(0.1))
+				.foregroundStyle(.secondary)
+		} maximumValueLabel: {
+			Text("")
+		}
+		.gaugeStyle(.accessoryCircular)
+		.tint(
+			Gradient(colors: [
+				AvailabilityStatus.available.fill,
+				AvailabilityStatus.almostFull.fill,
+				AvailabilityStatus.full.fill,
+			])
+		)
+		.contentTransition(.numericText(value: Double(available)))
+	}
 }
 
 #Preview {
-  let availableFacility = PreviewHelper.availableFacility()
-  let almostFullFacility = PreviewHelper.almostFullFacility()
-  let FullFacility = PreviewHelper.fullFacility()
-  let noDataFacility = PreviewHelper.noDataFacility()
+	let availableFacility = ParkingFacility.sample(status: .available)
+	let almostFullFacility = ParkingFacility.sample(status: .almostFull)
+	let fullFacility = ParkingFacility.sample(status: .full)
+	let noDataFacility = ParkingFacility.sample(status: .noData)
 
-  HStack(spacing: 24) {
-    ForEach(
-      [
-        availableFacility, almostFullFacility, FullFacility,
-        noDataFacility,
-      ],
-      id: \.facilityId
-    ) { facility in
-      ParkingProgressGauge(
-        availableSpaces: Int(facility.currentAvailableSpots),
-        displayAvailableSpots: facility.displayAvailableSpots,
-        totalSpaces: facility.totalSpaces,
-        availabilityStatus: facility.availabilityStatus,
-      )
-    }
-  }
+	HStack(spacing: 24) {
+		ParkingProgressGauge(
+			occupancy: availableFacility.vacancy.occupancy,
+			available: availableFacility.vacancy.available,
+			total: availableFacility.vacancy.total,
+			availabilityStatus: availableFacility.availabilityStatus
+		)
 
+		ParkingProgressGauge(
+			occupancy: almostFullFacility.vacancy.occupancy,
+			available: almostFullFacility.vacancy.available,
+			total: almostFullFacility.vacancy.total,
+			availabilityStatus: almostFullFacility.availabilityStatus
+		)
+
+		ParkingProgressGauge(
+			occupancy: fullFacility.vacancy.occupancy,
+			available: fullFacility.vacancy.available,
+			total: fullFacility.vacancy.total,
+			availabilityStatus: fullFacility.availabilityStatus
+		)
+
+		ParkingProgressGauge(
+			occupancy: noDataFacility.vacancy.occupancy,
+			available: noDataFacility.vacancy.available,
+			total: noDataFacility.vacancy.total,
+			availabilityStatus: noDataFacility.availabilityStatus
+		)
+	}
 }

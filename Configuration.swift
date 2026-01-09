@@ -67,48 +67,6 @@ enum Configuration {
         }
     }()
 
-    // MARK: - Supabase Endpoint URL
-    static let supabaseUrl: String = {
-        guard
-            let urlString = Bundle.main.object(
-                forInfoDictionaryKey: "SUPABASE_URL"
-            ) as? String,
-            !urlString.isEmpty,
-            !urlString.hasPrefix("YOUR_")
-        else {
-
-            Logger.appConfiguration.info(
-                "ℹ️ Supabase not configured - analytics features disabled"
-            )
-            return ""
-        }
-
-        Logger.appConfiguration.info("✅ Supabase URL loaded")
-
-        if urlString.hasPrefix("http://") || urlString.hasPrefix("https://") {
-            return urlString
-        } else {
-            return "https://" + urlString
-        }
-    }()
-
-	// MARK: - Supabase publishable key
-    static let supabasePublishableKey: String = {
-        guard
-            let key = Bundle.main.object(
-                forInfoDictionaryKey: "SUPABASE_PUBLISHABLE_KEY"
-            ) as? String,
-            !key.isEmpty,
-            !key.hasPrefix("YOUR_")
-        else {
-
-            Logger.appConfiguration.info("ℹ️ Supabase key not configured")
-            return ""
-        }
-
-        Logger.appConfiguration.info("✅ Supabase key loaded")
-        return key
-    }()
 
     // MARK: - Debug Helper
 
@@ -117,11 +75,6 @@ enum Configuration {
         Logger.appConfiguration.info("📍 Base URL: \(carParkBaseUrl)")
         Logger.appConfiguration.info("🔐 API Key: \(tfnswApiKey.prefix(8))...")
 
-        if !supabaseUrl.isEmpty {
-            Logger.appConfiguration.info("🗄️ Trend Analytics Supabase: Enabled")
-        } else {
-            Logger.appConfiguration.info("🗄️ Trend Analytics Supabase: Disabled")
-        }
     }
 }
 

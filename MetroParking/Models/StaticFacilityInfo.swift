@@ -17,9 +17,7 @@ extension ParkingFacility {
 			address: "Henry Street",
 			latitude: -33.757065,
 			longitude: 151.154662,
-			totalSpaces: 213,
-			tsn: "207210",
-			tfnswFacilityId: "207210TPR001"
+			totalSpaces: 213
 		),
 		ParkingFacility(
 			facilityId: "7",
@@ -28,9 +26,7 @@ extension ParkingFacility {
 			address: "Bong Bong Street",
 			latitude: -34.673122,
 			longitude: 150.854546,
-			totalSpaces: 42,
-			tsn: "253330",
-			tfnswFacilityId: "253330TPR001"
+			totalSpaces: 42
 		),
 		ParkingFacility(
 			facilityId: "8",
@@ -39,9 +35,7 @@ extension ParkingFacility {
 			address: "Showground Road",
 			latitude: -33.42526471,
 			longitude: 151.340236,
-			totalSpaces: 1059,
-			tsn: "225040",
-			tfnswFacilityId: "225040TPR001"
+			totalSpaces: 1059
 		),
 		ParkingFacility(
 			facilityId: "9",
@@ -50,9 +44,7 @@ extension ParkingFacility {
 			address: "The River Road",
 			latitude: -33.95107517,
 			longitude: 151.0168491,
-			totalSpaces: 864,
-			tsn: "221210",
-			tfnswFacilityId: "221210TPR001"
+			totalSpaces: 864
 		),
 		ParkingFacility(
 			facilityId: "10",
@@ -61,9 +53,7 @@ extension ParkingFacility {
 			address: "Pittwater Road",
 			latitude: -33.696887,
 			longitude: 151.302143,
-			totalSpaces: 233,
-			tsn: "2101131",
-			tfnswFacilityId: "2101131TPR001"
+			totalSpaces: 233
 		),
 		ParkingFacility(
 			facilityId: "11",
@@ -72,9 +62,7 @@ extension ParkingFacility {
 			address: "Pittwater Road",
 			latitude: -33.714364,
 			longitude: 151.29699,
-			totalSpaces: 46,
-			tsn: "2101130",
-			tfnswFacilityId: "2101130TPR001"
+			totalSpaces: 46
 		),
 		ParkingFacility(
 			facilityId: "12",
@@ -83,9 +71,7 @@ extension ParkingFacility {
 			address: "Golf Avenue",
 			latitude: -33.677567,
 			longitude: 151.306512,
-			totalSpaces: 68,
-			tsn: "2103108",
-			tfnswFacilityId: "2103108TPR001"
+			totalSpaces: 68
 		),
 		ParkingFacility(
 			facilityId: "13",
@@ -94,9 +80,7 @@ extension ParkingFacility {
 			address: "40 Kingsway",
 			latitude: -33.750302,
 			longitude: 151.286717,
-			totalSpaces: 121,
-			tsn: "2099207",
-			tfnswFacilityId: "2099207TPR001"
+			totalSpaces: 121
 		),
 		ParkingFacility(
 			facilityId: "14",
@@ -105,9 +89,7 @@ extension ParkingFacility {
 			address: "Ryedale Road",
 			latitude: -33.805993,
 			longitude: 151.091248,
-			totalSpaces: 151,
-			tsn: "211420",
-			tfnswFacilityId: "211420TPR001"
+			totalSpaces: 151
 		),
 		ParkingFacility(
 			facilityId: "15",
@@ -116,9 +98,7 @@ extension ParkingFacility {
 			address: "East Parade",
 			latitude: -34.02955,
 			longitude: 151.058409,
-			totalSpaces: 373,
-			tsn: "223210",
-			tfnswFacilityId: "223210TPR001"
+			totalSpaces: 373
 		),
 		ParkingFacility(
 			facilityId: "16",
@@ -127,9 +107,7 @@ extension ParkingFacility {
 			address: "199A Rickard Road",
 			latitude: -33.953826,
 			longitude: 150.806971,
-			totalSpaces: 1660,
-			tsn: "217933",
-			tfnswFacilityId: "217933TPR001"
+			totalSpaces: 1660
 		),
 		ParkingFacility(
 			facilityId: "17",
@@ -138,9 +116,7 @@ extension ParkingFacility {
 			address: "MacDonald Road",
 			latitude: -33.969476,
 			longitude: 150.856259,
-			totalSpaces: 1431,
-			tsn: "217426",
-			tfnswFacilityId: "217426TPR001"
+			totalSpaces: 1431
 		),
 		ParkingFacility(
 			facilityId: "18",
@@ -149,9 +125,7 @@ extension ParkingFacility {
 			address: "Harris Street",
 			latitude: -33.761546,
 			longitude: 150.776314,
-			totalSpaces: 684,
-			tsn: "276010",
-			tfnswFacilityId: "276010TPR001"
+			totalSpaces: 684
 		),
 		ParkingFacility(
 			facilityId: "19",
@@ -160,9 +134,7 @@ extension ParkingFacility {
 			address: "Farrow Road",
 			latitude: -34.062279,
 			longitude: 150.815283,
-			totalSpaces: 68,
-			tsn: "256020",
-			tfnswFacilityId: "256020TPR001"
+			totalSpaces: 68
 		),
 		ParkingFacility(
 			facilityId: "20",
@@ -171,9 +143,7 @@ extension ParkingFacility {
 			address: "Hurley Street",
 			latitude: -34.065798,
 			longitude: 150.812432,
-			totalSpaces: 118,
-			tsn: "256020",
-			tfnswFacilityId: "256020TPR002"
+			totalSpaces: 118
 		),
 		ParkingFacility(
 			facilityId: "21",
@@ -182,9 +152,7 @@ extension ParkingFacility {
 			address: "Combewood Avenue",
 			latitude: -33.748043,
 			longitude: 150.69444,
-			totalSpaces: 229,
-			tsn: "275010",
-			tfnswFacilityId: "275010TPR001"
+			totalSpaces: 229
 		),
 		ParkingFacility(
 			facilityId: "22",
@@ -193,9 +161,7 @@ extension ParkingFacility {
 			address: "Combewood Avenue",
 			latitude: -33.748452,
 			longitude: 150.695171,
-			totalSpaces: 1129,
-			tsn: "275010",
-			tfnswFacilityId: "275010TPR002"
+			totalSpaces: 1129
 		),
 		ParkingFacility(
 			facilityId: "23",
@@ -204,9 +170,7 @@ extension ParkingFacility {
 			address: "Remembrance Avenue",
 			latitude: -33.913767,
 			longitude: 150.934409,
-			totalSpaces: 906,
-			tsn: "217010",
-			tfnswFacilityId: "217010TPR001"
+			totalSpaces: 906
 		),
 		ParkingFacility(
 			facilityId: "24",
@@ -215,9 +179,7 @@ extension ParkingFacility {
 			address: "Calder Street",
 			latitude: -33.703674,
 			longitude: 150.870861,
-			totalSpaces: 700,
-			tsn: "276220",
-			tfnswFacilityId: "276220TPR001"
+			totalSpaces: 700
 		),
 		ParkingFacility(
 			facilityId: "25",
@@ -226,9 +188,7 @@ extension ParkingFacility {
 			address: "Jersey Street",
 			latitude: -33.701352,
 			longitude: 151.098004,
-			totalSpaces: 145,
-			tsn: "207720",
-			tfnswFacilityId: "207720TPR001"
+			totalSpaces: 145
 		),
 		ParkingFacility(
 			facilityId: "26",
@@ -237,9 +197,7 @@ extension ParkingFacility {
 			address: "Conferta Avenue",
 			latitude: -33.69304704,
 			longitude: 150.9052577,
-			totalSpaces: 123,
-			tsn: "2155384",
-			tfnswFacilityId: "2155384TPR001"
+			totalSpaces: 123
 		),
 		ParkingFacility(
 			facilityId: "27",
@@ -248,9 +206,7 @@ extension ParkingFacility {
 			address: "Aristida Street",
 			latitude: -33.692987,
 			longitude: 150.9043098,
-			totalSpaces: 455,
-			tsn: "2155384",
-			tfnswFacilityId: "2155384TPR002"
+			totalSpaces: 455
 		),
 		ParkingFacility(
 			facilityId: "28",
@@ -259,9 +215,7 @@ extension ParkingFacility {
 			address: "Conferta Avenue",
 			latitude: -33.693832,
 			longitude: 150.903874,
-			totalSpaces: 397,
-			tsn: "2155384",
-			tfnswFacilityId: "2155384TPR003"
+			totalSpaces: 397
 		),
 		ParkingFacility(
 			facilityId: "29",
@@ -270,9 +224,7 @@ extension ParkingFacility {
 			address: "Derrobarry Street",
 			latitude: -33.711156,
 			longitude: 150.934364,
-			totalSpaces: 351,
-			tsn: "2155382",
-			tfnswFacilityId: "2155382TPR001"
+			totalSpaces: 351
 		),
 		ParkingFacility(
 			facilityId: "30",
@@ -281,9 +233,7 @@ extension ParkingFacility {
 			address: "Guragura Street",
 			latitude: -33.71498982,
 			longitude: 150.9363451,
-			totalSpaces: 964,
-			tsn: "2155382",
-			tfnswFacilityId: "2155382TPR002"
+			totalSpaces: 964
 		),
 		ParkingFacility(
 			facilityId: "31",
@@ -292,9 +242,7 @@ extension ParkingFacility {
 			address: "Byles Place",
 			latitude: -33.727438,
 			longitude: 150.941761,
-			totalSpaces: 774,
-			tsn: "2153478",
-			tfnswFacilityId: "2153478TPR001"
+			totalSpaces: 774
 		),
 		ParkingFacility(
 			facilityId: "32",
@@ -303,9 +251,7 @@ extension ParkingFacility {
 			address: "De Clambe Drive",
 			latitude: -33.727735,
 			longitude: 150.98505,
-			totalSpaces: 584,
-			tsn: "2154392",
-			tfnswFacilityId: "2154392TPR001"
+			totalSpaces: 584
 		),
 		ParkingFacility(
 			facilityId: "33",
@@ -314,9 +260,7 @@ extension ParkingFacility {
 			address: "Bradfield Parade",
 			latitude: -33.737374,
 			longitude: 151.033431,
-			totalSpaces: 384,
-			tsn: "2126158",
-			tfnswFacilityId: "2126158TPR001"
+			totalSpaces: 384
 		),
 		ParkingFacility(
 			facilityId: "34",
@@ -325,9 +269,7 @@ extension ParkingFacility {
 			address: "Tryon Road",
 			latitude: -33.77449,
 			longitude: 151.170549,
-			totalSpaces: 94,
-			tsn: "207010",
-			tfnswFacilityId: "207010TPR001"
+			totalSpaces: 94
 		),
 		ParkingFacility(
 			facilityId: "35",
@@ -336,9 +278,7 @@ extension ParkingFacility {
 			address: "2-2A Edgbaston Road",
 			latitude: -33.949744,
 			longitude: 151.0801,
-			totalSpaces: 200,
-			tsn: "220910",
-			tfnswFacilityId: "220910TPR001"
+			totalSpaces: 200
 		),
 		ParkingFacility(
 			facilityId: "36",
@@ -347,9 +287,7 @@ extension ParkingFacility {
 			address: "176 Old Bathurst Rd",
 			latitude: -33.745527,
 			longitude: 150.66987,
-			totalSpaces: 750,
-			tsn: "275020",
-			tfnswFacilityId: "275020TPR001"
+			totalSpaces: 750
 		),
 		ParkingFacility(
 			facilityId: "37",
@@ -358,9 +296,7 @@ extension ParkingFacility {
 			address: "12-16 Webb St",
 			latitude: -33.952727,
 			longitude: 151.050035,
-			totalSpaces: 135,
-			tsn: "221010",
-			tfnswFacilityId: "221010TPR001"
+			totalSpaces: 135
 		),
 		ParkingFacility(
 			facilityId: "486",
@@ -369,9 +305,7 @@ extension ParkingFacility {
 			address: "Brown Street",
 			latitude: -33.888104,
 			longitude: 151.126577,
-			totalSpaces: 228,
-			tsn: "213110",
-			tfnswFacilityId: "213110TPR001"
+			totalSpaces: 228
 		),
 		ParkingFacility(
 			facilityId: "487",
@@ -380,9 +314,7 @@ extension ParkingFacility {
 			address: "2 Railway Street",
 			latitude: -33.96369941,
 			longitude: 151.1319494,
-			totalSpaces: 259,
-			tsn: "221710",
-			tfnswFacilityId: "221710TPR001"
+			totalSpaces: 259
 		),
 		ParkingFacility(
 			facilityId: "488",
@@ -391,9 +323,7 @@ extension ParkingFacility {
 			address: "Terminus Road",
 			latitude: -33.77304548,
 			longitude: 150.9367514,
-			totalSpaces: 1613,
-			tsn: "214710",
-			tfnswFacilityId: "214710TPR001"
+			totalSpaces: 1613
 		),
 
 		ParkingFacility(
@@ -403,9 +333,7 @@ extension ParkingFacility {
 			address: "84 Kenneth Road",
 			latitude: -33.786536,
 			longitude: 151.267221,
-			totalSpaces: 142,
-			tsn: "2093117",
-			tfnswFacilityId: "2093117TPR001"
+			totalSpaces: 142
 		),
 
 		ParkingFacility(
@@ -415,10 +343,28 @@ extension ParkingFacility {
 			address: "612-624 Pittwater Road",
 			latitude: -33.767366,
 			longitude: 151.269667,
-			totalSpaces: 246,
-			tsn: "210020",
-			tfnswFacilityId: "210020TPR001"
+			totalSpaces: 246
 		),
+
+		ParkingFacility(
+			facilityId: "38",
+			name: "Park&Ride - North Rocks",
+			suburb: "North Rocks",
+			address: "Barclay Rd",
+			latitude: -33.765539,
+			longitude: 151.014131,
+			totalSpaces: 139
+		),
+
+		ParkingFacility(
+			facilityId: "39",
+			name: "Park&Ride - Edmonson Park (north)",
+			suburb: "Edmondson Park",
+			address: "Gula Court",
+			latitude: -33.9691,
+			longitude: 150.8616,
+			totalSpaces: 917
+		)
 	]
 
 	static func getAllStaticFacilities() -> [ParkingFacility] {

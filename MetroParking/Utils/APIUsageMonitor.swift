@@ -5,6 +5,7 @@
 //  Created by Tom Kwok on 1/9/2025.
 //
 
+import SwiftUI
 import Foundation
 import OSLog
 
@@ -49,10 +50,10 @@ extension APIUsageMonitor {
 		let dailyPercent = Int(Double(dailyUsage) / Double(dailyLimit) * 100)
 
 		return """
-			📊 API Usage Report
-			Daily: \(dailyUsage)/\(dailyLimit) (\(dailyPercent.formatted(.percent)))
-			Status: \(canMakeCall ? "✅ OK" : "⚠️ Limit Reached")
-		"""
+				📊 API Usage Report
+				Daily: \(dailyUsage)/\(dailyLimit) (\(dailyPercent.formatted(.percent)))
+				Status: \(canMakeCall ? "✅ OK" : "⚠️ Limit Reached")
+			"""
 	}
 
 	private static func resetIfNeeded() {

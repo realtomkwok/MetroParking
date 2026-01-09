@@ -11,6 +11,12 @@ extension Logger {
     private static var subsystem = Bundle.main.bundleIdentifier ?? "MetroParking"
 
     static let appConfiguration = Logger(subsystem: subsystem, category: "Configuration")
+	
+	static let app = Logger(subsystem: subsystem, category: "App Lifecycle")
+
+	static let deeplink = Logger(subsystem: subsystem, category: "DeepLink")
+
+	static let userPreferences = Logger(subsystem: subsystem, category: "User Preferences")
 
     static let facilityData = Logger(subsystem: subsystem, category: "Facility Data")
 
@@ -25,4 +31,11 @@ extension Logger {
 	static let api = Logger(subsystem: subsystem, category: "API")
 
 	static let location = Logger(subsystem: subsystem, category: "Location Services")
+
+	static let eta = Logger(subsystem: subsystem, category: "ETA Services")
+
+	static let widget = Logger(
+		subsystem: "\(subsystem) Widget",
+		category: "Widget"
+	)
 }

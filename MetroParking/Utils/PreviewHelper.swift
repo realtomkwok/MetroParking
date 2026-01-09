@@ -5,195 +5,354 @@
 //  Created by Tom Kwok on 26/6/2025.
 //
 
-// TODO: Remove this or improve it for a better SwiftUI Preview/Testing experience
+// MARK: - SwiftUI Preview Helper
+/// Provides utilities for creating realistic preview environments
+/// with proper SwiftData model containers and app state simulation
+/// Usage examples:
+/// ```swift
+/// // Simple standalone facility
+/// #Preview {
+///     FacilityRow(facility: .sample())
+/// }
+///
+/// // With specific status
+/// #Preview("Full Facility") {
+///     FacilityRow(facility: .sample(status: .full))
+/// }
+///
+/// // With SwiftData container
+/// #Preview {
+///     ContentView()
+///         .modelContainer(.preview())
+/// }
+///
+/// // Multiple facilities for list
+/// #Preview("Facility List") {
+///     List(ParkingFacility.samples()) { facility in
+///         FacilityRow(facility: facility)
+///     }
+/// }
+/// ```
 
 import Foundation
+import MapKit
 import SwiftData
 import SwiftUI
 
+@MainActor
 struct PreviewHelper {
 
-	/// Select facilities by their sizes
-	private static var smallFacility: ParkingFacility {
-		return ParkingFacility.getAllStaticFacilities()
-			.filter { $0.totalSpaces < 100 }
-			.first ?? ParkingFacility.getAllStaticFacilities().first!
+	// MARK: - Helper Methods
+
+	/// Mock API response to properly initialise a facility with occupancy data
+	/// - Note: Internal helper for creating realistic preview data
+	static func mockAPIResponse(
+		for facility: ParkingFacility,
+		occupancyRatio: Double
+	) -> ParkingAPIResponse {
+		let occupied = Int(Double(facility.totalSpaces) * occupancyRatio)
+
+		return ParkingAPIResponse(
+			tsn: "preview-tsn",
+			spots: String(facility.totalSpaces),
+			zones: [],
+			location: ParkingLocationAPI(
+				suburb: facility.suburb,
+				address: facility.address,
+				latitude: String(facility.latitude),
+				longitude: String(facility.longitude)
+			),
+			occupancy: ParkingOccupancyAPI(
+				loop: nil,
+				total: String(occupied),
+				monthlies: nil,
+				openGate: nil,
+				transients: nil
+			),
+			messageDate: ISO8601DateFormatter().string(from: Date()),
+			facilityId: facility.facilityId,
+			facilityName: facility.name,
+			tfnswFacilityId: facility.facilityId
+		)
 	}
 
-	private static var mediumFacility: ParkingFacility {
-		return ParkingFacility.getAllStaticFacilities()
-			.filter { $0.totalSpaces >= 100 && $0.totalSpaces <= 500 }
-			.first ?? ParkingFacility.getAllStaticFacilities().first!
+	/// Apply occupancy to a facility using the proper API update method
+	/// - Note: Ensures preview data uses the same update path as production code
+	static func applyOccupancy(
+		to facility: ParkingFacility,
+		ratio: Double
+	) {
+		guard ratio > 0 else { return }  // Leave as noData if ratio is 0
+
+		let mockResponse = mockAPIResponse(for: facility, occupancyRatio: ratio)
+		facility.updateFromAPI(mockResponse)
 	}
 
-	private static var largeFacility: ParkingFacility {
-		return ParkingFacility.getAllStaticFacilities()
-			.filter { $0.totalSpaces > 1000 }
-			.first ?? ParkingFacility.getAllStaticFacilities().first!
-	}
-}
-
-extension PreviewHelper {
-
-	/// Scenarios
-	/// 🟢 Available - medium facility
-	static func availableFacility() -> ParkingFacility {
-		let facility = mediumFacility
-
-		/// Simulate 20% occupancy
-		let occupancy = Int(Double(facility.totalSpaces) * 0.2)
-		facility.currentOccupiedSpots = occupancy
-
-		return facility
-	}
-
-	/// 🟡 Almost-full - small facility
-	static func almostFullFacility() -> ParkingFacility {
-		let facility = smallFacility
-
-		/// Simulate 95% occupancy
-		let occupancy = Int(Double(facility.totalSpaces) * 0.95)
-		facility.currentOccupiedSpots = occupancy
-
-		return facility
-	}
-
-	/// 🔴 Full - large facility
-	static func fullFacility() -> ParkingFacility {
-		let facility = largeFacility
-
-		facility.currentOccupiedSpots = facility.totalSpaces
-
-		return facility
-	}
-
-	/// ⚪️ No recent data (cache expired)
-	static func noDataFacility() -> ParkingFacility {
-		let facility = smallFacility
-
-		/// `CurrentOccupancy` is undefined, and cache remains invalid
-		return facility
+	/// Apply route information to a facility
+	/// - Note: Adds realistic routing data for preview scenarios
+	static func applyRouting(
+		to facility: ParkingFacility,
+		distance: CLLocationDistance = 5_000,
+		travelTime: TimeInterval = 600
+	) {
+		facility.updateRoutingData(distance: distance, travelTime: travelTime)
 	}
 }
 
-extension PreviewHelper {
+// MARK: - ParkingFacility Extensions
 
-	/// A list of pinned parking facilities
-	static func pinnedFacilities() -> [ParkingFacility] {
-		let facilities = ParkingFacility.getAllStaticFacilities()
+extension ParkingFacility {
 
-		/// Get one facility from each size category
-		let small = facilities.first { $0.totalSpaces < 100 }
-		let medium = facilities.first {
-			$0.totalSpaces >= 100 && $0.totalSpaces < 500
+	/// Creates a sample facility with configurable status
+	/// - Parameters:
+	///   - status: The availability status to simulate
+	///   - isFavorite: Whether the facility should be marked as favorite
+	///   - withRoute: Whether to include route information
+	/// - Returns: A configured ParkingFacility instance
+	@MainActor
+	static func sample(
+		status: AvailabilityStatus = .available,
+		isFavorite: Bool = false,
+		withRoute: Bool = false
+	) -> ParkingFacility {
+		let staticFacilities = getAllStaticFacilities()
+
+		// Select appropriate facility based on status
+		let sourceFacility: ParkingFacility
+		switch status {
+		case .full, .almostFull:
+			// Use smaller facility for full/almost full scenarios
+			sourceFacility =
+				staticFacilities.first { $0.totalSpaces < 200 }
+				?? staticFacilities.first!
+		case .available:
+			// Use medium facility for available
+			sourceFacility =
+				staticFacilities.first {
+					$0.totalSpaces >= 200 && $0.totalSpaces < 800
+				}
+				?? staticFacilities.first!
+		case .noData:
+			// Any facility works for noData
+			sourceFacility = staticFacilities.first!
 		}
-		let large = facilities.first { $0.totalSpaces >= 500 }
 
-		let selectedFacilities = [small, medium, large].compactMap { $0 }
+		// Create new instance
+		let facility = ParkingFacility(
+			facilityId: sourceFacility.facilityId,
+			name: sourceFacility.name,
+			suburb: sourceFacility.suburb,
+			address: sourceFacility.address,
+			latitude: sourceFacility.latitude,
+			longitude: sourceFacility.longitude,
+			totalSpaces: sourceFacility.totalSpaces
+		)
 
-		return selectedFacilities.enumerated().map { index, facility in
-			facility.isFavourite = true
-			setVariedOccupancy(facility: facility, index: index)
+		// Apply status
+		let occupancyRatio: Double
+		switch status {
+		case .available:
+			occupancyRatio = 0.25  // 25% occupied = plenty available
+		case .almostFull:
+			occupancyRatio = 0.95  // 95% occupied
+		case .full:
+			occupancyRatio = 1.0  // 100% occupied
+		case .noData:
+			occupancyRatio = 0.0  // Don't set any data
+		}
+
+		PreviewHelper.applyOccupancy(to: facility, ratio: occupancyRatio)
+
+		// Apply favourite status
+		facility.isFavourite = isFavorite
+
+		// Apply route if requested
+		if withRoute {
+			PreviewHelper.applyRouting(to: facility)
+		}
+
+		return facility
+	}
+
+	/// Creates multiple sample facilities with varied statuses
+	/// - Parameter count: Number of facilities to generate (default: 5)
+	/// - Returns: Array of configured ParkingFacility instances
+	@MainActor
+	static func samples(count: Int = 5) -> [ParkingFacility] {
+		let staticFacilities = getAllStaticFacilities()
+		let availableStatuses: [AvailabilityStatus] = [
+			.available, .almostFull, .full, .noData,
+		]
+
+		return (0..<min(count, staticFacilities.count)).map { index in
+			let source = staticFacilities[index]
+			let status = availableStatuses[index % availableStatuses.count]
+
+			let facility = ParkingFacility(
+				facilityId: source.facilityId,
+				name: source.name,
+				suburb: source.suburb,
+				address: source.address,
+				latitude: source.latitude,
+				longitude: source.longitude,
+				totalSpaces: source.totalSpaces
+			)
+
+			// Varied occupancy based on status
+			let occupancyRatio: Double
+			switch status {
+			case .available:
+				occupancyRatio = Double.random(in: 0.1...0.4)
+			case .almostFull:
+				occupancyRatio = Double.random(in: 0.85...0.95)
+			case .full:
+				occupancyRatio = 1.0
+			case .noData:
+				occupancyRatio = 0.0
+			}
+
+			PreviewHelper.applyOccupancy(to: facility, ratio: occupancyRatio)
+
+			// Mark some as favourites
+			facility.isFavourite = index % 3 == 0
+
+			// Add route info to some
+			if index % 2 == 0 {
+				let distance = CLLocationDistance.random(in: 1_000...20_000)
+				let travelTime = TimeInterval.random(in: 300...1_800)
+				PreviewHelper.applyRouting(
+					to: facility,
+					distance: distance,
+					travelTime: travelTime
+				)
+			}
+
 			return facility
 		}
 	}
-}
 
-// TODO: Add edge cases
-
-extension PreviewHelper {
-
-	/// Set a varied occupancy for a certain facility
-	private static func setVariedOccupancy(
-		facility: ParkingFacility,
-		index: Int
-	) {
-		let patterns: [Double] = [0.2, 0.95, 1.0, 0.6, 0.0]  // Available, Almost Full, Moderate, No Data
-
-		if index < patterns.count {
-			let occupancyRatio = patterns[index]
-			if occupancyRatio > 0 {
-				facility.currentOccupiedSpots = Int(
-					Double(facility.totalSpaces) * occupancyRatio
-				)
-			}
-			// If occupancyRatio is 0, don't set occupancy (no data state) ?
-		} else {
-			// For additional facilities beyond the pattern, use random
-			facility.currentOccupiedSpots = Int(
-				Double(facility.totalSpaces) * Double.random(in: 0.1...0.9)
-			)
-
-		}
+	/// Creates sample facilities specifically for favorites/pinned scenarios
+	/// - Returns: Array of favorited facilities with varied statuses
+	@MainActor
+	static func sampleFavorites() -> [ParkingFacility] {
+		let facilities = samples(count: 4)
+		facilities.forEach { $0.isFavourite = true }
+		return facilities
 	}
 }
 
-extension PreviewHelper {
+// MARK: - ModelContainer Extensions
 
-	/// Creates a preview container using the static data
-	@MainActor static func previewContainer(withSamplePins: Bool = true)
-		-> ModelContainer
-	{
-		withAnimation(.snappy) {
-			do {
+extension ModelContainer {
 
-				/// In-memory container
-				let config = ModelConfiguration(isStoredInMemoryOnly: true)
-				let container = try ModelContainer(
-					for: ParkingFacility.self,
-					configurations: config
-				)
+	/// Creates an in-memory preview container with optional sample data
+	/// - Parameters:
+	///   - includeSampleData: Whether to populate with sample facilities
+	///   - favoriteCount: Number of favorited facilities to include
+	/// - Returns: A configured ModelContainer for previews
+	@MainActor
+	static func preview(
+		includeSampleData: Bool = true,
+		favoriteCount: Int = 3
+	) -> ModelContainer {
+		do {
+			let schema = Schema([
+				ParkingFacility.self,
+				ParkingZone.self,
+			])
+
+			let config = ModelConfiguration(
+				schema: schema,
+				isStoredInMemoryOnly: true
+			)
+
+			let container = try ModelContainer(
+				for: schema,
+				configurations: [config]
+			)
+
+			if includeSampleData {
 				let context = container.mainContext
 
-				if withSamplePins {
-					addSamplePinnedFacilities(to: context)
+				// Add all static facilities
+				let staticFacilities = ParkingFacility.getAllStaticFacilities()
+
+				for (index, source) in staticFacilities.enumerated() {
+					let facility = ParkingFacility(
+						facilityId: source.facilityId,
+						name: source.name,
+						suburb: source.suburb,
+						address: source.address,
+						latitude: source.latitude,
+						longitude: source.longitude,
+						totalSpaces: source.totalSpaces
+					)
+
+					// Mark some as favourites
+					if index < favoriteCount {
+						facility.isFavourite = true
+
+						// Give favourites realistic occupancy
+						let occupancyPatterns = [0.25, 0.95, 1.0, 0.6]
+						let ratio = occupancyPatterns[
+							index % occupancyPatterns.count
+						]
+						PreviewHelper.applyOccupancy(to: facility, ratio: ratio)
+					}
+
+					context.insert(facility)
 				}
 
 				try context.save()
-				return container
-
-			} catch {
-				fatalError("Failed to create preview container: \(error.localizedDescription)")
 			}
+
+			return container
+
+		} catch {
+			fatalError("Failed to create preview container: \(error)")
 		}
 	}
 
-	/// Add some realistic pinned facilities with varied occupancy
-	private static func addSamplePinnedFacilities(to context: ModelContext) {
-		let descriptor = FetchDescriptor<ParkingFacility>()
+	/// Creates a preview container with no data (for empty state testing)
+	@MainActor
+	static func emptyPreview() -> ModelContainer {
+		return preview(includeSampleData: false)
+	}
+}
 
-		do {
-			let allFacilities = try context.fetch(descriptor)
+// MARK: - Environment Validation Extension
 
-			// Pin some realistic facilities with varied data
-			let facilitiesToPin = [
-				(name: "Kiama", occupancyRatio: 0.95),  // Almost full, small facility
-				(name: "Gosford", occupancyRatio: 0.3),  // Available, large facility
-				(name: "Leppington", occupancyRatio: 1.0),  // Full, very large facility
-				(name: "Gordon", occupancyRatio: 0.6),  // Moderate, medium facility
-			]
-
-			for (facilityName, occupancyRatio) in facilitiesToPin {
-				if let facility = allFacilities.first(where: {
-					$0.name.contains(facilityName)
-				}) {
-					facility.isFavourite = true
-
-					// Set realistic occupancy data
-					if occupancyRatio > 0 {
-						facility.currentOccupiedSpots = Int(
-							Double(facility.totalSpaces) * occupancyRatio
-						)
-					}
-				}
+extension View {
+	/// Validate that all required environment objects are present (DEBUG ONLY)
+	/// Use this in previews to catch missing environment objects early
+	func validateEnvironment() -> some View {
+		#if DEBUG
+			self.onAppear {
+				print(
+					"✅ Environment validation passed for \(String(describing: Self.self))"
+				)
 			}
+		#else
+			self
+		#endif
+	}
+}
 
-			print(
-				"📌 Preview: Pinned \(facilitiesToPin.count) sample facilities"
-			)
+// MARK: - Preview Environment Helper
 
-		} catch {
-			print("❌ Preview: Failed to add sample pins: \(error.localizedDescription)")
-		}
+/// Helper to create a complete preview environment with all managers
+struct PreviewEnvironment<Content: View>: View {
+	let content: () -> Content
+
+	init(@ViewBuilder content: @escaping () -> Content) {
+		self.content = content
+	}
+
+	var body: some View {
+		content()
+			.environment(FacilityManager.shared)
+			.environment(LookAroundManager.shared)
+			.environment(ETAManager.shared)
+			.environment(LocationManager.shared)
 	}
 }

@@ -15,6 +15,7 @@ struct FacilityList: View {
 	let groupedFacilities: [(title: String?, facilities: [ParkingFacility])]
 
 	@Binding var selectedFacility: ParkingFacility?
+	var isInteractionDisabled: Bool = false
 
 	@Environment(\.modelContext) private var modelContext
 
@@ -54,7 +55,7 @@ struct FacilityList: View {
 		.listStyle(.plain)
 		// Animate when section structure changes OR when facilities move between sections
 		.animation(
-			.snappy(),
+			.smooth(),
 			value: sections.map { $0.facilities.map(\.persistentModelID) }
 		)
 		.navigationDestination(item: $selectedFacility) { facility in
@@ -77,6 +78,7 @@ extension FacilityList {
 			} label: {
 				FacilityRowView(facility: facility)
 			}
+			.disabled(isInteractionDisabled)
 			.listRowInsets(
 				EdgeInsets(top: 8, leading: 8, bottom: 4, trailing: 8)
 			)
@@ -103,7 +105,6 @@ extension FacilityList {
 				ParkingProgressGauge(
 					occupancy: facility.vacancy.occupancy,
 					available: facility.vacancy.available,
-					displayVacancy: facility.vacancy.displayText,
 					total: facility.totalSpaces,
 					availabilityStatus: facility.availabilityStatus
 				)
@@ -126,26 +127,28 @@ extension FacilityList {
 							.foregroundStyle(.tertiary)
 							.transition(.scale.combined(with: .opacity))
 					}
-
 					Spacer()
 				}
-
 				Text(facility.displayName.subtitle)
 					.font(.subheadline)
 					.contentTransition(.identity)
 
 				Spacer()
 
-				Text(facility.availabilityStatus.text)
-					.font(.subheadline)
-					.fontWeight(.semibold)
-					.foregroundStyle(.secondary)
+				HStack(alignment: .firstTextBaseline, spacing: 4) {
+					Text(facility.availabilityStatus.text)
+						.font(.subheadline)
+						.fontWeight(.semibold)
+						.foregroundStyle(.secondary)
+				}
 			}
 			.padding(.vertical, 4)
 
 			Spacer()
 		}
-		.opacity(facility.availabilityStatus == .noData ? 0.6 : 1)
+		.opacity(facility.refreshStatus.staleness.opacity)
+		.animation(.smooth, value: facility.isFavourite)
+		.animation(.smooth, value: facility.refreshStatus.staleness)
 	}
 
 	@ViewBuilder
@@ -153,7 +156,7 @@ extension FacilityList {
 		-> some View
 	{
 		Button(role: facility.isFavourite ? .destructive : nil) {
-			withAnimation(.snappy) {
+			withAnimation(.smooth) {
 				facility.isFavourite.toggle()
 				// Save the context to persist the change
 				try? modelContext.save()

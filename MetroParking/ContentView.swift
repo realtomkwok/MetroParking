@@ -14,7 +14,7 @@ struct ContentView: View {
 	@Namespace var navigationNamespace
 
 	// Access managers from environment
-	@Environment(FacilityManager.self) private var facilityManager
+	@Environment(FacilityManager.self) private var facilityDataMgr
 	@Environment(OnboardingManager.self) private var onboardingMgr
 	@Environment(DeepLinkManager.self) private var deepLinkMgr
 
@@ -25,9 +25,10 @@ struct ContentView: View {
 	@State private var selectedFilter: FilterOption = .pinned
 	@State private var isSearchFieldFocused: Bool = false
 	@State private var selectedFacility: ParkingFacility?
+	@State private var isFilterMenuPresented: Bool = false
 
 	// Single query for all facilities - let SwiftData handle animations smoothly
-	@Query(animation: .snappy)
+	@Query(animation: .smooth)
 	private var allFacilities: [ParkingFacility]
 
 	/// Grouped facilities with pinned items at the top
@@ -68,9 +69,9 @@ struct ContentView: View {
 
 	// TODO: Dynamically refresh the last updated time -> Doesn't work
 	private var navigationSubtitleText: Text {
-		if facilityManager.isRefreshing {
-			return Text(facilityManager.loadProgress.description)
-		} else if let lastRefresh = facilityManager.lastRefreshTime {
+		if facilityDataMgr.isRefreshing {
+			return Text(facilityDataMgr.loadProgress.description)
+		} else if let lastRefresh = facilityDataMgr.lastRefreshTime {
 			return Text("Updated \(lastRefresh, style: .relative) ago")
 		} else {
 			return Text("Pull down to refresh")
@@ -87,12 +88,13 @@ struct ContentView: View {
 					FacilityList(
 						nameSpace: navigationNamespace,
 						groupedFacilities: groupedFacilities,
-						selectedFacility: $selectedFacility
+						selectedFacility: $selectedFacility,
+						isInteractionDisabled: isFilterMenuPresented
 					)
 					.navigationTitle("MetroParking")
 					.navigationSubtitle(navigationSubtitleText)
 					.refreshable {
-						await facilityManager.performLoad(forced: true)
+						await facilityDataMgr.performLoad(forced: true)
 					}
 					.toolbar {
 						TopBarActions()
@@ -121,11 +123,12 @@ struct ContentView: View {
 					FacilityList(
 						nameSpace: navigationNamespace,
 						groupedFacilities: groupedFacilities,
-						selectedFacility: $selectedFacility
+						selectedFacility: $selectedFacility,
+						isInteractionDisabled: isFilterMenuPresented
 					)
 					.navigationTitle("MetroParking")
 					.refreshable {
-						await facilityManager.performLoad(forced: true)
+						await facilityDataMgr.performLoad(forced: true)
 					}
 					.toolbar {
 						TopBarActions()
@@ -169,13 +172,12 @@ struct ContentView: View {
 extension ContentView {
 
 	private func handleDeepLinkUrl(facilityId: String) {
-		// Fetch the facility from SwiftData
-		let descriptor = FetchDescriptor<ParkingFacility>(
-			predicate: #Predicate { $0.facilityId == facilityId }
-		)
 
-		let facilities = allFacilities.filter { $0.facilityId == facilityId }
-		guard let facility = facilities.first else {
+		guard
+			let facility = allFacilities.first(where: {
+				$0.facilityId == facilityId
+			})
+		else {
 			Logger
 				.deeplink.error(
 					"⚠️ Deep link: No facility found with ID: \(facilityId)"
@@ -204,7 +206,7 @@ extension ContentView {
 		ToolbarItem(placement: .topBarTrailing) {
 			Button {
 				Task {
-					await facilityManager.performLoad(
+					await facilityDataMgr.performLoad(
 						forced: true
 					)
 				}
@@ -212,11 +214,11 @@ extension ContentView {
 				Image(systemName: "arrow.clockwise")
 					.symbolEffect(
 						.rotate,
-						isActive: facilityManager.isRefreshing
+						isActive: facilityDataMgr.isRefreshing
 					)
 			}
 			.accessibilityLabel("Refresh")
-			.disabled(facilityManager.isRefreshing)
+			.disabled(facilityDataMgr.isRefreshing)
 		}
 
 		ToolbarItem(placement: .topBarTrailing) {
@@ -257,30 +259,27 @@ extension ContentView {
 	@ToolbarContentBuilder
 	func BottomBarActions() -> some ToolbarContent {
 		ToolbarItem(placement: .bottomBar) {
-			GlassEffectContainer(spacing: 2) {
-				HStack(spacing: 4) {
-					Toggle(
-						isOn: $filterIsOn
-					) {
-						Label(
-							"Filter",
-							systemImage: "line.3.horizontal.decrease"
-						)
-						.labelStyle(.iconOnly)
-					}
-
-					if filterIsOn {
-						FilterPicker(
-							selectedFilter: $selectedFilter,
-							selectedSorting: $selectedSorting,
-							selectedSortingOrder: $selectedSortingOrder
-						)
-						.transition(.blurReplace)
-					}
+			HStack(spacing: 4) {
+				Toggle(
+					isOn: $filterIsOn
+				) {
+					Label(
+						"Filter",
+						systemImage: "line.3.horizontal.decrease"
+					)
+					.labelStyle(.iconOnly)
 				}
-				.animation(.snappy, value: filterIsOn)
+
+				if filterIsOn {
+					FilterPicker(
+						selectedFilter: $selectedFilter,
+						selectedSorting: $selectedSorting,
+						selectedSortingOrder: $selectedSortingOrder
+					)
+					.transition(.blurReplace)
+				}
 			}
-			.fixedSize()
+			.animation(.smooth, value: filterIsOn)
 		}
 	}
 
@@ -293,44 +292,41 @@ extension ContentView {
 		var body: some View {
 			Menu {
 				LabeledPickerSection(
-					title: "Filtered by",
+					title: "Show only",
+					icon: "line.3.horizontal.decrease",
 					selection: $selectedFilter,
 					options: FilterOption.allCases
 				)
 
 				LabeledPickerSection(
 					title: "Sort by",
+					icon: "arrow.up.arrow.down",
 					selection: $selectedSorting,
 					options: SortingOption.allCases
 				)
-				Picker(
-					selectedSortingOrder.display.title,
-					systemImage: "arrow.up.arrow.down",
-					selection: $selectedSortingOrder
-				) {
-					ForEach(SortingOrder.allCases, id: \.self) { option in
-						Label(
-							option.display.title,
-							systemImage: option.display.systemImage
-						)
-					}
-				}
-				.pickerStyle(.menu)
+
+				LabeledPickerSection(
+					title: "Order",
+					icon: "",
+					selection: $selectedSortingOrder,
+					options: SortingOrder.allCases
+				)
 			} label: {
-				VStack(alignment: .leading) {
-					Text("Filtered by")
-						.font(.footnote)
-						.fontWeight(.semibold)
-					HStack(alignment: .center, spacing: 2) {
+				VStack(alignment: .leading, spacing: 2) {
+					Text("Show only")
+						.font(.caption2)
+						.foregroundStyle(.secondary)
+					HStack(alignment: .firstTextBaseline) {
 						Text(selectedFilter.display.title)
-							.font(.footnote)
-						Image(systemName: "chevron.down")
-							.font(.system(size: 8))
+							.font(.caption)
+						Image(
+							systemName: "chevron.down"
+						)
+						.font(.caption2)
 					}
-					.fontWeight(.medium)
 					.foregroundStyle(Color.accentColor)
 				}
-				.padding(.trailing)
+				.fontWeight(.semibold)
 			}
 			.menuStyle(.button)
 		}
@@ -344,11 +340,12 @@ extension ContentView {
 		T.DisplayType: BasicDisplayable
 	{
 		let title: String
+		let icon: String
 		@Binding var selection: T
 		let options: [T]
 
 		var body: some View {
-			Section {
+			Menu {
 				Picker(title, selection: $selection) {
 					ForEach(Array(options), id: \.self) { option in
 						Label(
@@ -358,8 +355,10 @@ extension ContentView {
 						.tag(option)
 					}
 				}
-				.labelsVisibility(.visible)
 				.pickerStyle(.inline)
+			} label: {
+				Label(title, systemImage: icon)
+				Text(selection.display.title)
 			}
 		}
 	}
@@ -372,6 +371,7 @@ extension ContentView {
 		.environment(FacilityManager.shared)
 		.environment(LookAroundManager.shared)
 		.environment(OnboardingManager.shared)
+		.environment(DeepLinkManager.shared)
 }
 
 #Preview("Empty State") {
@@ -380,4 +380,5 @@ extension ContentView {
 		.environment(FacilityManager.shared)
 		.environment(LookAroundManager.shared)
 		.environment(OnboardingManager.shared)
+		.environment(DeepLinkManager.shared)
 }

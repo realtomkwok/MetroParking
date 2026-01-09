@@ -17,9 +17,9 @@ struct FacilityDetailView: View {
 	var currentLocation: CLLocationCoordinate2D?
 	var eta: TimeInterval?
 
-	@Environment(FacilityManager.self) var facilityManager
-	@Environment(LookAroundManager.self) var lookAroundManager
-	@Environment(ETAManager.self) var etaManager
+	@Environment(FacilityManager.self) var facilityDataMgr
+	@Environment(LookAroundManager.self) var lookAroundMgr
+	@Environment(ETAManager.self) var etaMgr
 	@Environment(LocationManager.self) var locationMgr
 	@Environment(\.modelContext) private var modelContext
 
@@ -47,59 +47,10 @@ struct FacilityDetailView: View {
 		)
 	}
 
-	@ToolbarContentBuilder
-	func TopBarActions() -> some ToolbarContent {
-		ToolbarItem(placement: .topBarTrailing) {
-			Button {
-				Task {
-					await facilityManager.loadFacility(facility)
-				}
-			} label: {
-				Image(systemName: "arrow.clockwise")
-					.symbolEffect(
-						.rotate.clockwise,
-						options: .repeat(.continuous),
-						value: facilityManager.isRefreshing
-					)
-			}
-			.accessibilityLabel("Refresh")
-			.disabled(facilityManager.isRefreshing)
-		}
-	}
+}
 
-	@ToolbarContentBuilder
-	func BottomBarActions() -> some ToolbarContent {
-		ToolbarItem(placement: .bottomBar) {
-			Button {
-				withAnimation(.smooth) {
-					facility.isFavourite.toggle()
-					try? modelContext.save()
-				}
-			} label: {
-				Label(
-					"Pin",
-					systemImage: facility.isFavourite
-						? "star.slash.fill" : "star"
-				)
-			}
-			.contentTransition(.symbolEffect(.replace.magic(fallback: .downUp)))
-		}
-
-		ToolbarItem(placement: .bottomBar) {
-			Button {
-
-			} label: {
-				Label(
-					"Live Activity",
-					systemImage: "app.badge"
-				)
-				.labelStyle(.titleAndIcon)
-			}
-			.contentTransition(
-				.symbolEffect(.replace.magic(fallback: .downUp))
-			)
-		}
-	}
+/// Body
+extension FacilityDetailView {
 
 	var body: some View {
 		ScrollView(.vertical) {
@@ -132,7 +83,7 @@ struct FacilityDetailView: View {
 		.id(facility.facilityId)
 		.task(id: facility.facilityId) {
 			// Update Look Around when facility changes
-			lookAroundManager.coordinate = facility.coordinate
+			lookAroundMgr.coordinate = facility.coordinate
 			await performInitialTasks()
 		}
 		.onChange(of: locationMgr.isLocationAvailable) { _, isAvailable in
@@ -143,7 +94,9 @@ struct FacilityDetailView: View {
 				}
 			}
 		}
-		.navigationAllowDismissalGestures(allowDismissalGesture)
+		.navigationAllowDismissalGestures(
+			AllowedNavigationDismissalGestures([.edgePanGesturesOnly])
+		)
 	}
 
 	private var ScrollContent: some View {
@@ -151,7 +104,7 @@ struct FacilityDetailView: View {
 			MapHeader
 			// Detail Content with background that overlays the map
 			VStack {
-				DetailContent(facility: facility)
+				DetailSections(facility: facility)
 					.backport.concentricClipShape()
 			}
 			.padding()
@@ -202,7 +155,7 @@ struct FacilityDetailView: View {
 		try? modelContext.save()
 
 		// Run tasks concurrently without waiting for all to complete
-		async let lookAroundTask: Void = lookAroundManager.loadPreview()
+		async let lookAroundTask: Void = lookAroundMgr.loadPreview()
 		async let etaTask: Void = calculateETAIfLocationAvailable()
 
 		// These two are independent and can start immediately
@@ -226,7 +179,7 @@ struct FacilityDetailView: View {
 		}
 
 		// Location is available, calculate ETA
-		await etaManager.calculateETA(
+		await etaMgr.calculateETA(
 			from: userLocation,
 			to: facility,
 			transportType: .automobile
@@ -234,7 +187,79 @@ struct FacilityDetailView: View {
 	}
 }
 
-struct DetailContent: View {
+/// Toolbar
+extension FacilityDetailView {
+	@ToolbarContentBuilder
+	func TopBarActions() -> some ToolbarContent {
+		ToolbarItem(placement: .topBarTrailing) {
+			Button {
+				Task {
+					await facilityDataMgr.loadFacility(facility)
+				}
+			} label: {
+				ZStack {
+					if facilityDataMgr.isRefreshing {
+						ProgressView()
+							.transition(.blurReplace)
+							.zIndex(1)
+					}
+
+					Image(systemName: "arrow.clockwise")
+						.transition(.blurReplace)
+						.zIndex(0)
+
+				}
+				.contentTransition(.symbolEffect(.replace.downUp))
+				.animation(.smooth, value: facilityDataMgr.isRefreshing)
+			}
+			.accessibilityLabel("Refresh")
+			.disabled(facilityDataMgr.isRefreshing)
+		}
+	}
+
+	@ToolbarContentBuilder
+	func BottomBarActions() -> some ToolbarContent {
+		ToolbarItem(placement: .bottomBar) {
+			Button {
+				withAnimation(.smooth) {
+					facility.isFavourite.toggle()
+					try? modelContext.save()
+				}
+			} label: {
+				Label(
+					"Pin",
+					systemImage: facility.isFavourite
+						? "star.slash.fill" : "star"
+				)
+			}
+			.contentTransition(.symbolEffect(.replace.magic(fallback: .downUp)))
+		}
+
+		// TODO: Live activities
+		//		ToolbarItem(placement: .bottomBar) {
+		//			Button {
+		//
+		//			} label: {
+		//				Label(
+		//					"Live Activity",
+		//					systemImage: "app.badge"
+		//				)
+		//				.labelStyle(.titleAndIcon)
+		//			}
+		//			.contentTransition(
+		//				.symbolEffect(.replace.magic(fallback: .downUp))
+		//			)
+		//		}
+	}
+}
+
+/// Detail Sections
+///  - Vacancy
+///  - Traffics
+///  - Look Around
+///  - Nearby facilities
+
+struct DetailSections: View {
 	var facility: ParkingFacility
 
 	@Environment(LookAroundManager.self) private var lookAroundMgr
@@ -280,7 +305,6 @@ struct DetailContent: View {
 			in: .rect(cornerRadius: 24, style: .circular)
 			// NOTE: ConcentricRectangle() filled the shape doesn't work
 		)
-		.clipShape(.rect(cornerRadius: 24, style: .circular))
 		.fontDesign(.rounded)
 	}
 
@@ -307,16 +331,19 @@ struct DetailContent: View {
 					}
 					.font(.title)
 					.fontWeight(.semibold)
+					.opacity(facility.refreshStatus.staleness.opacity)
+
 					Text("spaces")
 						.font(.callout)
 						.foregroundStyle(.secondary)
 						.contentTransition(.identity)
 				}
 
-				Text("\(facility.availabilityStatus.text)")
-					.font(.headline)
-					.foregroundStyle(.secondary)
-					.transition(.blurReplace)
+				HStack(alignment: .firstTextBaseline, spacing: 4) {
+					Text("\(facility.availabilityStatus.text)")
+						.font(.headline)
+						.transition(.blurReplace)
+				}
 			}
 
 			Spacer()
@@ -337,8 +364,12 @@ struct DetailContent: View {
 					colors: AvailabilityStatus.gradientColors
 				)
 			)
+			.opacity(facility.refreshStatus.staleness.opacity)
 		}
+		.animation(.smooth, value: facility.refreshStatus.staleness)
 	}
+
+	// MARK: - Traffics: ETA, distance to the car park
 
 	@ViewBuilder
 	func TrafficView() -> some View {
@@ -360,107 +391,18 @@ struct DetailContent: View {
 
 		ZStack(alignment: .center) {
 			// Loading state
-			if etaMgr.isCalculatingETA {
-				ViewThatFits(in: .horizontal) {
-					VStack(alignment: .center, spacing: 8) {
-						ProgressView()
-							.controlSize(.large)
-					}
-					.frame(maxWidth: .infinity, alignment: .center)
-					.transition(.blurReplace)
-					.zIndex(0)
-				}
-			}
-
-			// Loaded state
-			HStack(alignment: .center, spacing: 16) {
-
-				// Location available - show ETA
-				if locationMgr.isLocationAvailable && !etaMgr.isCalculatingETA {
-					HStack {
-						VStack(alignment: .leading, spacing: 4) {
-							if travelTime.isEmpty {
-								Text("No data")
-									.font(.headline)
-									.foregroundStyle(.secondary)
-							} else {
-								Text(travelTime)
-									.foregroundStyle(
-										facility.route != nil
-											? .primary : .secondary
-									)
-									.font(
-										facility.route != nil
-											? .title : .headline
-									)
-									.fontWeight(.semibold)
-									.contentTransition(
-										.numericText(
-											value: etaMgr.currentETA ?? 0
-										)
-									)
-							}
-
-							if !distance.isEmpty {
-								HStack(
-									alignment: .firstTextBaseline,
-									spacing: 4
-								) {
-									Text(distance)
-										.foregroundStyle(.primary)
-										.font(.headline)
-									Text("away")
-										.foregroundStyle(.secondary)
-										.font(.caption2)
-								}
-							}
-						}
-						.frame(maxWidth: .infinity, alignment: .leading)
+			if !locationMgr.isLocationAvailable {
+				if etaMgr.isCalculatingETA {
+					ProgressView()
+						.controlSize(.large)
+						.frame(maxWidth: .infinity, alignment: .center)
 						.transition(.blurReplace)
 						.zIndex(1)
-
-						Menu {
-							Button("Apple Maps", systemImage: "map.fill") {
-								Task {
-									let mapItem = await facility.getMapItem()
-									openInMapsWithDirections(mapItem)
-								}
-							}
-							Button("Google Maps") {
-								// TODO: Add Google Maps support
-							}
-						} label: {
-							Label(
-								"GO",
-								systemImage:
-									"arrow.trianglehead.turn.up.right.diamond.fill"
-							)
-							.fontWeight(.semibold)
-							.labelStyle(.titleAndIcon)
-						}
-						.menuStyle(.button)
-						.controlSize(.regular)
-						.backport.glassProminentButtonStyle()
-						.containerShape(.circle)
-						.contentTransition(
-							.symbolEffect(.replace.magic(fallback: .downUp))
-						)
-						.transition(.blurReplace)
-						.zIndex(1)
-					}
-				} else if !locationMgr.isLocationAvailable {
+				} else {
 					HStack(alignment: .firstTextBaseline) {
-						VStack(alignment: .leading, spacing: 6) {
-							HStack(alignment: .firstTextBaseline, spacing: 4) {
-
-								Text("Location Service is Off")
-									.font(.headline)
-									.foregroundStyle(.secondary)
-							}
-							.frame(maxWidth: .infinity, alignment: .leading)
-							.transition(.blurReplace)
-							.zIndex(1)
-						}
+						Text("Location Service is Off")
+							.font(.headline)
+							.foregroundStyle(.secondary)
 
 						Spacer()
 
@@ -480,8 +422,6 @@ struct DetailContent: View {
 						.backport.glassButtonStyle(fallbackStyle: .bordered)
 						.buttonBorderShape(.capsule)
 						.controlSize(.regular)
-						.transition(.blurReplace)
-						.zIndex(1)
 						.alert(
 							"MetroParking works best with Location Services turned on.",
 							isPresented: $showLocationPermissionAlert,
@@ -512,33 +452,112 @@ struct DetailContent: View {
 							}
 						)
 					}
+					.transition(.blurReplace)
+					.zIndex(0)
 				}
+			} else {
+				HStack(alignment: .center) {
+					VStack(alignment: .leading, spacing: 4) {
+						if travelTime.isEmpty {
+							Text("No data")
+								.font(.headline)
+								.foregroundStyle(.secondary)
+						} else {
+							Text(travelTime)
+								.foregroundStyle(
+									facility.route != nil
+										? .primary : .secondary
+								)
+								.font(
+									facility.route != nil
+										? .title : .headline
+								)
+								.fontWeight(.semibold)
+								.contentTransition(
+									.numericText(
+										value: etaMgr.currentETA ?? 0
+									)
+								)
+						}
+
+						if !distance.isEmpty {
+							HStack(
+								alignment: .firstTextBaseline,
+								spacing: 4
+							) {
+								Text(distance)
+									.font(.headline)
+								Text("away")
+									.foregroundStyle(.secondary)
+									.font(.caption)
+							}
+							.foregroundStyle(.primary)
+						}
+					}
+					.frame(maxWidth: .infinity, alignment: .leading)
+					.transition(.blurReplace)
+
+					Spacer()
+
+					// TODO: Providing options for map apps that has been installed
+					Menu {
+						Button("Apple Maps") {
+							Task {
+								let mapItem =
+									await facility.getMapItem()
+								openInMapsWithDirections(mapItem)
+							}
+						}
+						Button("Google Maps") {
+							// TODO: Add Google Maps support
+						}
+					} label: {
+						Label(
+							"GO",
+							systemImage:
+								"arrow.trianglehead.turn.up.right.diamond.fill"
+						)
+						.fontWeight(.semibold)
+						.labelStyle(.titleAndIcon)
+					}
+					.menuStyle(.button)
+					.controlSize(.regular)
+					.backport.glassProminentButtonStyle()
+					.containerShape(.circle)
+					.contentTransition(
+						.symbolEffect(.replace.magic(fallback: .downUp))
+					)
+					.transition(.blurReplace)
+				}
+				.zIndex(0)
+
 			}
-
-			.animation(
-				.snappy,
-				value: locationMgr.isLocationAvailable
-			)
-			.animation(
-				.snappy,
-				value: etaMgr.isCalculatingETA
-			)
-			.animation(
-				.snappy,
-				value: facility.route?.travelTime
-			)
-
 		}
+
+		.animation(
+			.smooth,
+			value: locationMgr.isLocationAvailable
+		)
+		.animation(
+			.smooth,
+			value: etaMgr.isCalculatingETA
+		)
+		.animation(
+			.smooth,
+			value: facility.route?.travelTime
+		)
 	}
 
 	@ViewBuilder
 	func LookAroundView() -> some View {
+		let label: (heading: String, icon: String, color: Color) = (
+			"Look Around", "binoculars.fill", .accentColor
+		)
+
 		ZStack {
 			// Loading state
-			if lookAroundMgr.lookAroundScene == nil {
-				DetailCard(
-					label: ("Look Around", "binoculars.fill", .accentColor)
-				) {
+			if lookAroundMgr.isLoading {
+				DetailCard(label: label) {
 					VStack(spacing: 12) {
 						ProgressView()
 							.controlSize(.large)
@@ -546,11 +565,16 @@ struct DetailContent: View {
 					.frame(maxWidth: .infinity)
 				}
 				.transition(.blurReplace)
-				.zIndex(0)
-			}
-
-			// Loaded state
-			if let scene = lookAroundMgr.lookAroundScene {
+				.zIndex(1)
+			} else if let errorMsg = lookAroundMgr.errorMessage {
+				DetailCard(label: label) {
+					Text(errorMsg)
+						.font(.headline)
+						.foregroundStyle(.secondary)
+						.transition(.blurReplace)
+						.zIndex(0)
+				}
+			} else if let scene = lookAroundMgr.lookAroundScene {
 				if #available(iOS 26.0, *) {
 					LookAroundPreview(initialScene: scene)
 						.frame(height: 200)
@@ -566,31 +590,40 @@ struct DetailContent: View {
 								UIColor.secondarySystemGroupedBackground
 							)
 						)
-						.zIndex(1)
+						.zIndex(0)
 				} else {
 					// Fallback on earlier versions
 					LookAroundPreview(initialScene: scene)
 						.frame(height: 200)
 						.clipShape(.containerRelative)
 						.transition(.blurReplace)
-						.zIndex(1)
+						.zIndex(0)
 				}
 			}
 		}
 		.clipShape(.containerRelative)
+		.animation(.smooth, value: lookAroundMgr.isLoading)
+		.animation(.smooth, value: lookAroundMgr.errorMessage)
 		.animation(
-			.snappy,
+			.smooth,
 			value: lookAroundMgr.lookAroundScene
 		)
 	}
 
 	@ViewBuilder
 	func NearbyFacilitiesView() -> some View {
+		// TODO: Implement nearby facilities functionality
+		// You'll need to fetch or pass in a collection of nearby facilities
+		// For now, this is a placeholder structure
 
-		//
-		//		List {
-		//			ForEach()
-		//		}
+		EmptyView()
+
+		// Example structure when you have nearby facilities:
+		// List(nearbyFacilities, id: \.facilityId) { nearbyFacility in
+		//     HStack {
+		//         // Facility row content
+		//     }
+		// }
 	}
 
 	var body: some View {
@@ -602,12 +635,18 @@ struct DetailContent: View {
 			),
 			content: VacancyView,
 			trailingTopContent: {
-				HStack(alignment: .firstTextBaseline, spacing: 4) {
-					Text(
-						facility.refreshStatus.lastUpdated,
-						style: .relative
+				TimelineView(.periodic(from: .now, by: 60)) { context in
+					let timeInterval = context.date.timeIntervalSince(
+						facility.refreshStatus.lastUpdated
 					)
-					Text("ago")
+
+					if timeInterval < 60 {
+						Text("updated just now")
+					} else {
+						Text(
+							"updated \(facility.refreshStatus.lastUpdated.formatted(.relative(presentation: .named, unitsStyle: .narrow)))"
+						)
+					}
 				}
 				.monospacedDigit()
 				.font(.footnote)
@@ -615,7 +654,7 @@ struct DetailContent: View {
 		)
 
 		DetailCard(
-			label: ("Traffics", "location.north.circle.fill", .accentColor),
+			label: ("Travels", "location.north.circle.fill", .accentColor),
 			content: TrafficView
 		)
 

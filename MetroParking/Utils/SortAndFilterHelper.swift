@@ -54,21 +54,21 @@ enum SortingOption: String, CaseIterable, Codable, Hashable,
 		case .name:
 			SortingOptionDisplay(
 				title: "Name",
-				systemImage: "text.justifyleft",
+				systemImage: "textformat",
 				ascendingSubtitle: "A to Z",
 				descendingSubtitle: "Z to A"
 			)
 		case .lastUpdated:
 			SortingOptionDisplay(
 				title: "Last Updated",
-				systemImage: "clock",
+				systemImage: "clock.arrow.trianglehead.2.counterclockwise.rotate.90",
 				ascendingSubtitle: "Oldest First",
 				descendingSubtitle: "Newest First"
 			)
 		case .distance:
 			SortingOptionDisplay(
 				title: "Distance",
-				systemImage: "map",
+				systemImage: "point.topleft.filled.down.to.point.bottomright.curvepath",
 				ascendingSubtitle: "Nearest First",
 				descendingSubtitle: "Farthest First"
 			)

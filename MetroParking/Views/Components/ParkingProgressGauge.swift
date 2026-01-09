@@ -14,12 +14,29 @@ struct ParkingProgressGauge: View {
 	let total: Int
 	let availabilityStatus: AvailabilityStatus
 
+	private var isAvailable: Bool
+
+	init(
+		occupancy: Double,
+		available: Int,
+		total: Int,
+		availabilityStatus: AvailabilityStatus
+	) {
+		self.occupancy = occupancy
+		self.available = available
+		self.displayVacancy = String(self.available)
+		self.total = total
+		self.availabilityStatus = availabilityStatus
+		self.isAvailable = availabilityStatus != .noData
+	}
+
 	var body: some View {
 		Gauge(value: occupancy, in: 0...1) {
 		} currentValueLabel: {
 			Text("\(displayVacancy)")
 				.font(.title2)
 				.fontWeight(.semibold)
+				.foregroundStyle(isAvailable ? .primary : .tertiary)
 		} minimumValueLabel: {
 			Text("\(total)")
 				.font(.system(size: 8))
@@ -43,25 +60,36 @@ struct ParkingProgressGauge: View {
 #Preview {
 	let availableFacility = ParkingFacility.sample(status: .available)
 	let almostFullFacility = ParkingFacility.sample(status: .almostFull)
-	let FullFacility = ParkingFacility.sample(status: .full)
-	let noDataFacility = ParkingFacility.sample(status : .noData)
+	let fullFacility = ParkingFacility.sample(status: .full)
+	let noDataFacility = ParkingFacility.sample(status: .noData)
 
 	HStack(spacing: 24) {
-		ForEach(
-			[
-				availableFacility, almostFullFacility, FullFacility,
-				noDataFacility,
-			],
-			id: \.facilityId
-		) { facility in
-			ParkingProgressGauge(
-				occupancy: facility.vacancy.occupancy,
-				available: facility.vacancy.available,
-				displayVacancy: facility.vacancy.displayText,
-				total: facility.vacancy.total,
-				availabilityStatus: facility.availabilityStatus
-			)
-		}
-	}
+		ParkingProgressGauge(
+			occupancy: availableFacility.vacancy.occupancy,
+			available: availableFacility.vacancy.available,
+			total: availableFacility.vacancy.total,
+			availabilityStatus: availableFacility.availabilityStatus
+		)
 
+		ParkingProgressGauge(
+			occupancy: almostFullFacility.vacancy.occupancy,
+			available: almostFullFacility.vacancy.available,
+			total: almostFullFacility.vacancy.total,
+			availabilityStatus: almostFullFacility.availabilityStatus
+		)
+
+		ParkingProgressGauge(
+			occupancy: fullFacility.vacancy.occupancy,
+			available: fullFacility.vacancy.available,
+			total: fullFacility.vacancy.total,
+			availabilityStatus: fullFacility.availabilityStatus
+		)
+
+		ParkingProgressGauge(
+			occupancy: noDataFacility.vacancy.occupancy,
+			available: noDataFacility.vacancy.available,
+			total: noDataFacility.vacancy.total,
+			availabilityStatus: noDataFacility.availabilityStatus
+		)
+	}
 }

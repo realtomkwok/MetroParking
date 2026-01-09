@@ -165,7 +165,12 @@ final class MapsManager {
 	/// Creates a MapItem using legacy MKPlacemark API for iOS < 26
 	/// - Returns: An MKMapItem (always succeeds with valid coordinates)
 	/// - Note: Uses deprecated MKPlacemark for backward compatibility with iOS < 26
-	/// @Avai
+	@available(
+		iOS,
+		deprecated: 26.0,
+		message:
+			"MKMapItem from MKPlacemark is deprecated and will be removed in the next iOS versions."
+	)
 	private func createLegacyMapItem(
 		coordinate: CLLocationCoordinate2D,
 		name: String,
@@ -186,7 +191,10 @@ final class MapsManager {
 				return mapItem
 			} else {
 				let defaultPlacemark = MKPlacemark(
-					coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0)
+					coordinate: CLLocationCoordinate2D(
+						latitude: 0,
+						longitude: 0
+					)
 				)
 				let mapItem = MKMapItem(placemark: defaultPlacemark)
 				mapItem.name = name
@@ -311,14 +319,14 @@ final class MapsManager {
 		return response
 	}
 
-//	@available(iOS 26.0, *)
-//	func calculateEta(
-//		from userLocation: CLLocationCoordinate2D,
-//		to destination: MKMapItem,
-//		transportType: MKDirectionsTransportType = .automobile
-//	) async throws -> MKDirections.ETAResponse {
-//		
-//	}
+	//	@available(iOS 26.0, *)
+	//	func calculateEta(
+	//		from userLocation: CLLocationCoordinate2D,
+	//		to destination: MKMapItem,
+	//		transportType: MKDirectionsTransportType = .automobile
+	//	) async throws -> MKDirections.ETAResponse {
+	//
+	//	}
 
 	// MARK: - Look Around
 
@@ -467,9 +475,16 @@ final class MapsManager {
 	/// Opens a MapItem in Apple Maps
 	/// - Parameter mapItem: The map item to open
 	func openInMaps(_ mapItem: MKMapItem) {
+		let coordinate: CLLocationCoordinate2D =
+			if #available(iOS 26.0, *) {
+				mapItem.location.coordinate
+			} else {
+				mapItem.placemark.coordinate
+			}
+
 		mapItem.openInMaps(launchOptions: [
 			MKLaunchOptionsMapCenterKey: NSValue(
-				mkCoordinate: mapItem.placemark.coordinate
+				mkCoordinate: coordinate
 			),
 			MKLaunchOptionsMapSpanKey: NSValue(
 				mkCoordinateSpan: MKCoordinateSpan(
@@ -497,9 +512,11 @@ final class MapsManager {
 			)
 
 			if #available(iOS 26.0, *) {
-				guard let request = MKReverseGeocodingRequest(
-					location: location
-				) else {
+				guard
+					let request = MKReverseGeocodingRequest(
+						location: location
+					)
+				else {
 					throw MapsManagerError.geocodingFailed
 				}
 
@@ -517,7 +534,9 @@ final class MapsManager {
 			} else {
 
 				let geocoder = CLGeocoder()
-				let placemarks = try await geocoder.reverseGeocodeLocation(location)
+				let placemarks = try await geocoder.reverseGeocodeLocation(
+					location
+				)
 
 				Logger.maps.debug(
 					"📍 Reverse geocoded coordinate: found \(placemarks.count) result(s)"

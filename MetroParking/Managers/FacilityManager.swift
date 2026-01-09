@@ -156,7 +156,7 @@ extension FacilityManager {
 				.warning("⏩ Refresh operation \(currentOp) already in progress, skipping new operation")
 			return
 		}
-		
+
 		self.currentOperationId = operationId
 		defer {
 			if self.currentOperationId == operationId {
@@ -184,12 +184,8 @@ extension FacilityManager {
 		var unwatched: [ParkingFacility] = []
 
 		for facility in allFacilities {
-			// Determine if facility needs refresh
-			let needsRefresh =
-				!facility.vacancy.isCacheValid
-				|| (forced && facility.refreshTier == .watched)
-
-			guard needsRefresh else { continue }
+			// Check if facility needs refresh (uses foreground cache validity)
+			guard facility.shouldRefresh(appState: .active, forced: forced) else { continue }
 
 			// Categorise by tier in one pass
 			switch facility.refreshTier {
@@ -205,59 +201,57 @@ extension FacilityManager {
 			}
 		}
 
-		// Build priority-ordered list: watched first, then unwatched (recently visited first)
-		let toLoad = watched + unwatched
+		// Build priority-ordered list: watched first, then unwatched
+		// Sort each group according to user's preferred sort option for visual consistency
+		let sortOption = UserPreferences.shared.preferredSortOption
+		let sortedWatched = sortOption.apply(to: watched)
+		let sortedUnwatched = sortOption.apply(to: unwatched)
+		let toLoad = sortedWatched + sortedUnwatched
 
 		Logger.facilityRefresh
 			.debug(
-				"Loading \(toLoad.count) facilities (\(watched.count) watched, \(unwatched.count) unwatched)"
+				"Loading \(toLoad.count) facilities (\(watched.count) watched, \(unwatched.count) unwatched) sorted by \(sortOption.display.title)"
 			)
 
 		loadProgress = .loading(0, toLoad.count)
 
-		// Load watched facilities first, individually and sequentially
+		// Process facilities sequentially with rate-limited API calls
+		// This ensures UI updates happen immediately after each successful fetch
 		var processedCount = 0
 
-		if !watched.isEmpty {
-			Logger.facilityRefresh.notice(
-				"⭐️ Loading \(watched.count) watched facilities first..."
-			)
-			for facility in watched {
-				await loadFacility(facility)
-				processedCount += 1
+		for facility in toLoad {
+			// Rate limit before each API call
+			await APIDispatcher.shared.requestSlot()
 
-				loadProgress = .loading(processedCount, toLoad.count)
-
+			guard facility.shouldRefresh(appState: .active, forced: forced) else {
+				continue
 			}
-		}
 
-		// Load unwatched facilities concurrently in batches
-		let remainingFacilities = unwatched
-		if !remainingFacilities.isEmpty {
-			let batchSize = 3  // Load 3 facilities at once
+			guard APIUsageMonitor.canMakeCall else {
+				break
+			}
 
-			for i in stride(
-				from: 0,
-				to: remainingFacilities.count,
-				by: batchSize
-			) {
-				let endIndex = min(i + batchSize, remainingFacilities.count)
-				let batch = Array(remainingFacilities[i..<endIndex])
+			do {
+				let response = try await ParkingAPIService.shared.fetchFacility(
+					id: facility.facilityId
+				)
 
-				// Load batch concurrently
-				await withTaskGroup(of: Void.self) { group in
-					for facility in batch {
-						group.addTask {
-							await self.loadFacility(facility)
-						}
-					}
+				// Update UI immediately with animation (cascade effect)
+				if processedCount > 0 {
+					try? await Task.sleep(nanoseconds: UInt64(RefreshConfiguration.API.uiStaggerDelay * 1_000_000_000))
 				}
 
-				processedCount += batch.count
-
-				await MainActor.run {
-					loadProgress = .loading(processedCount, toLoad.count)
+				withAnimation(.snappy) {
+					facility.updateFromAPI(response)
 				}
+				SharedDataManager.shared.cacheWidgetDataIfSelected(facility)
+
+				processedCount += 1
+				loadProgress = .loading(processedCount, toLoad.count)
+			} catch {
+				Logger.facilityRefresh.error(
+					"❌ Failed to fetch \(facility.displayName.title): \(error.localizedDescription)"
+				)
 			}
 		}
 
@@ -269,7 +263,7 @@ extension FacilityManager {
 		await saveContext(workingContext!)
 
 		Logger.facilityRefresh.notice(
-			"✅ \( processedCount ) facilities updated"
+			"✅ \(processedCount) facilities updated"
 		)
 
 		// Trigger widget reload if any data changed (budget-aware)
@@ -283,45 +277,29 @@ extension FacilityManager {
 		}
 	}
 
+	/// Fetch a single facility's data from the API.
+	/// Note: This method does NOT apply rate limiting - caller should use APIDispatcher.
+	/// - Returns: The API response if successful, nil otherwise.
 	@MainActor
-	func loadFacility(_ facility: ParkingFacility) async {
-		guard !facility.vacancy.isCacheValid else {
+	func loadFacility(_ facility: ParkingFacility) async -> ParkingAPIResponse? {
+		guard facility.shouldRefresh(appState: .active) else {
 			Logger.facilityRefresh
-				.info(
-					"Cache still valid for \(facility.displayName.title) - \(facility.displayName.subtitle)"
-				)
-			return
+				.info("⏭️ Cache still valid for \(facility.displayName.title)")
+			return nil
 		}
 
 		guard APIUsageMonitor.canMakeCall else {
 			Logger.facilityRefresh.warning("⚠️ API limit reached")
-			return
+			return nil
 		}
 
 		do {
-			let response = try await ParkingAPIService.shared.fetchFacility(
-				id: facility.facilityId
-			)
-
-			// Wrap the update in an animation to trigger content transitions
-			await MainActor.run {
-				withAnimation(.snappy) {
-					facility.updateFromAPI(response)
-				}
-			}
-
-			// Update widget data in shared storage (but don't reload yet - batched later)
-			// Widget updates are coordinated to prevent concurrent writes
-			await WidgetUpdateCoordinator.shared.updateIfNeeded(facility)
-
-			Logger.facilityRefresh
-				.info(
-					"✅ Updated \(facility.displayName.title) - \(facility.displayName.subtitle)"
-				)
+			return try await ParkingAPIService.shared.fetchFacility(id: facility.facilityId)
 		} catch {
 			Logger.facilityRefresh.error(
-				"❌ Failed to fetch \(facility.displayName.title) - \(facility.displayName.subtitle): \(error.localizedDescription)"
+				"❌ Failed to fetch \(facility.displayName.title): \(error.localizedDescription)"
 			)
+			return nil
 		}
 	}
 
@@ -423,6 +401,7 @@ extension FacilityManager {
 	/// Called by AppStateManager when app is backgrounding
 	@MainActor
 	func updateWidgetBeforeBackground() async {
+
 		// Get all widget facility IDs
 		let widgetFacilityIds = SharedDataManager.shared.getWidgetFacilityIDs()
 
@@ -499,39 +478,8 @@ enum LoadProgress {
 		}
 	}
 }
-// MARK: - Widget Update Coordinator
-
-/// Coordinates widget data updates to prevent concurrent writes and excessive updates
-actor WidgetUpdateCoordinator {
-	static let shared = WidgetUpdateCoordinator()
-	
-	private var lastUpdate: Date?
-	private var updateInProgress = false
-	
-	private init() {}
-	
-	/// Update widget data if enough time has passed since last update
-	/// Prevents concurrent updates and excessive writes
-	func updateIfNeeded(_ facility: ParkingFacility) async {
-		// Prevent concurrent updates
-		guard !updateInProgress else {
-			Logger.widget.debug("Widget update already in progress, skipping")
-			return
-		}
-		
-		// Rate limit updates (minimum 1 second between updates)
-		if let last = lastUpdate,
-		   Date().timeIntervalSince(last) < 1.0 {
-			Logger.widget.debug("Widget updated too recently, skipping")
-			return
-		}
-		
-		updateInProgress = true
-		defer { updateInProgress = false }
-		
-		// Perform the actual update
-		SharedDataManager.shared.cacheWidgetDataIfSelected(facility)
-		lastUpdate = Date()
-	}
-}
+// MARK: - Widget Update Coordination
+// Note: Widget updates are now handled directly via SharedDataManager.cacheWidgetDataIfSelected()
+// Widget reload throttling is managed by WidgetBudgetTracker (15s minimum, 60/day budget)
+// The previous WidgetUpdateCoordinator actor has been removed as SharedDataManager is already thread-safe
 

@@ -163,7 +163,7 @@ extension ParkingFacility {
 
 		PreviewHelper.applyOccupancy(to: facility, ratio: occupancyRatio)
 
-		// Apply favorite status
+		// Apply favourite status
 		facility.isFavourite = isFavorite
 
 		// Apply route if requested

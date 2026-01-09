@@ -170,6 +170,12 @@ extension SharedDataManager {
 			return Date().timeIntervalSince(cacheTimestamp) > staleThreshold
 		}
 
+		/// Check if data is too old to display reliably
+		/// When true, widget should prompt user to refresh instead of showing potentially misleading data
+		var isTooOld: Bool {
+			return Date().timeIntervalSince(cacheTimestamp) > RefreshConfiguration.Widget.maxStaleAge
+		}
+
 		/// Human-readable time since last update
 		var timeSinceUpdate: String {
 			lastUpdated

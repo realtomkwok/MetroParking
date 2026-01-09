@@ -100,14 +100,21 @@ enum RefreshConfiguration {
 		/// Minimum space change to trigger widget update
 		static let foregroundChangeThreshold: Int = 2
 		static let backgroundChangeThreshold: Int = 4
+
+		/// Maximum age to show cached data in widget before prompting refresh
+		/// After this duration, widget shows "--" and "Tap to refresh" instead of potentially misleading old data
+		static let maxStaleAge: TimeInterval = 120 * 60  // 2 hours
 	}
 
 	// MARK: - API Rate Limiting
 
 	/// API call constraints
 	enum API {
-		/// Minimum delay between sequential API calls
-		static let minCallInterval: TimeInterval = 0.5  // 500ms
+		/// Minimum delay between sequential API calls (200ms = 5 calls/sec TfNSW limit)
+		static let minCallInterval: TimeInterval = 0.2
+
+		/// Delay between UI updates for cascade animation effect
+		static let uiStaggerDelay: TimeInterval = 0.08  // 80ms
 
 		/// Batch size for concurrent facility fetches
 		static let batchSize: Int = 5

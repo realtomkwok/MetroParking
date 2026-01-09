@@ -128,12 +128,36 @@ final class ParkingFacility {
 		}
 	}
 
+	/// Data staleness level for UI presentation
+	enum DataStaleness {
+		case fresh  // Within cache validity period
+		case stale  // Beyond cache validity, needs refresh
+
+		/// Visual opacity for displaying stale data
+		var opacity: Double {
+			switch self {
+			case .fresh: return 1.0
+			case .stale: return 0.6
+			}
+		}
+
+		/// Whether to show a refresh indicator
+		var showsRefreshIndicator: Bool {
+			switch self {
+			case .fresh: return false
+			case .stale: return true
+			}
+		}
+	}
+
 	/// Refresh and update tracking information
 	struct RefreshStatus {
 		let lastRefreshed: Date
 		let lastUpdated: Date
 		let failures: Int
 		let lastFailureDate: Date?
+		let cacheTimestamp: Date
+		let tier: RefreshTier
 
 		var timeSinceRefresh: TimeInterval {
 			Date().timeIntervalSince(lastRefreshed)
@@ -142,6 +166,23 @@ final class ParkingFacility {
 		var hasRecentFailures: Bool {
 			failures > 0
 				&& lastFailureDate?.timeIntervalSinceNow ?? -.infinity > -300  // Within 5 min
+		}
+
+		/// Determines staleness level based on cache age and tier
+		var staleness: DataStaleness {
+			let cacheAge = Date().timeIntervalSince(cacheTimestamp)
+
+			// Never had data
+			if cacheTimestamp == .distantPast {
+				return .stale
+			}
+
+			// Check if within cache validity period for this tier
+			if cacheAge < tier.cacheValiditySeconds {
+				return .fresh
+			}
+
+			return .stale
 		}
 	}
 
@@ -182,17 +223,6 @@ final class ParkingFacility {
 			}
 
 			return cacheAge < validity
-		}
-
-		var shouldShowData: Bool {
-			let cacheAge = Date().timeIntervalSince(cacheTimestamp)
-			// Show if valid OR within 2x validity with some spaces
-			return isCacheValid
-				|| (cacheAge < tier.cacheValiditySeconds * 2 && available > 0)
-		}
-
-		var displayText: String {
-			shouldShowData ? String(available) : "--"
 		}
 	}
 
@@ -243,7 +273,9 @@ final class ParkingFacility {
 			lastRefreshed: _lastRefreshed,
 			lastUpdated: _lastUpdated,
 			failures: _retrievalFailures,
-			lastFailureDate: _lastFailureDate
+			lastFailureDate: _lastFailureDate,
+			cacheTimestamp: _cacheTimestamp,
+			tier: refreshTier
 		)
 	}
 
@@ -321,13 +353,6 @@ final class ParkingFacility {
 		return lastVisited.timeIntervalSinceNow > -3600
 	}
 
-	// TODO: Localisation
-	var formattedLastUpdated: String {
-		return _lastUpdated == .distantPast
-			? "--"
-			: "updated \(_lastUpdated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))"
-	}
-
 }
 
 // MARK: - Data Refresh
@@ -337,6 +362,22 @@ extension ParkingFacility {
 	/// - Returns: A configured MKMapItem with the facility's location and details
 	func getMapItem() async -> MKMapItem {
 		return await MapsManager.shared.createMapItem(for: self)
+	}
+
+	/// Determines if this facility should be refreshed based on app state and cache validity
+	/// Centralizes the refresh decision logic used across FacilityManager and BackgroundTaskManager
+	/// - Parameters:
+	///   - appState: Current app lifecycle state (active uses foreground cache validity, background uses background cache validity)
+	///   - forced: Whether to force refresh regardless of cache (applies only to watched facilities)
+	/// - Returns: true if facility should be refreshed
+	func shouldRefresh(appState: AppState, forced: Bool = false) -> Bool {
+		// Forced refresh only applies to watched tier facilities
+		if forced && refreshTier == .watched {
+			return true
+		}
+
+		// Otherwise check cache validity for current app state
+		return !vacancy.isCacheValid(for: appState)
 	}
 
 	func updateFromAPI(_ apiResponse: ParkingAPIResponse) {

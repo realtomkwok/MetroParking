@@ -8,11 +8,18 @@
 import Foundation
 import OSLog
 
+/// Main app API service for fetching parking facility data from TfNSW API
+///
+/// **Note:** Core API logic is duplicated in `WidgetAPIService` (widget extension).
+/// This is necessary because widget extensions can't import main app code.
+/// Keep both implementations synchronised when making changes to API calls.
+///
+/// **Future:** Consider moving shared API logic to a framework target (v0.6.0+)
+/// to eliminate duplication while maintaining proper separation of concerns.
 class ParkingAPIService {
 	static let shared = ParkingAPIService()
 
 	private let session = URLSession.shared
-	private let rateLimiter = RateLimiter(minInterval: 1)
 	private let decoder = JSONDecoder()
 
 	private init() {
@@ -21,7 +28,7 @@ class ParkingAPIService {
 	// MARK: - API Methods
 
 	func fetchFacility(id: String) async throws -> ParkingAPIResponse {
-		await rateLimiter.waitIfNeeded()
+		// Rate limiting is now handled by APIDispatcher at orchestration level
 
 		// Record API usage
 		APIUsageMonitor.recordCall()

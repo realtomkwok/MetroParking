@@ -89,7 +89,7 @@ extension BackgroundTaskManager {
 		
 		let request = BGAppRefreshTaskRequest(identifier: Self.appRefreshTaskID)
 
-		// Use centralized configuration for interval
+		// Use centralised configuration for interval
 		let interval = RefreshConfiguration.BackgroundTaskInterval.current()
 		request.earliestBeginDate = Date(timeIntervalSinceNow: interval)
 
@@ -165,6 +165,9 @@ extension BackgroundTaskManager {
 	func handleAppRefresh(task: BGAppRefreshTask) async {
 		Logger.facilityRefresh.notice("🔄 Starting app refresh task")
 
+		// Track execution time for debugging
+		UserDefaults.standard.set(Date(), forKey: "lastAppRefresh")
+
 		// Note: Next scheduling is handled by AppStateManager.appWillResignActive()
 		// when the app next enters background. No need to schedule here.
 
@@ -179,10 +182,15 @@ extension BackgroundTaskManager {
 
 		await workTask.value
 		task.setTaskCompleted(success: !workTask.isCancelled)
+
+		Logger.facilityRefresh.notice("✅ App refresh task completed (success: \(!workTask.isCancelled))")
 	}
 
 	func handleProcessingTask(task: BGProcessingTask) async {
 		Logger.facilityRefresh.notice("🔄 Starting processing task")
+
+		// Track execution time for debugging
+		UserDefaults.standard.set(Date(), forKey: "lastProcessingTask")
 
 		// Schedule next processing task for future
 		scheduleProcessingTask()
@@ -198,6 +206,8 @@ extension BackgroundTaskManager {
 
 		await workTask.value
 		task.setTaskCompleted(success: !workTask.isCancelled)
+
+		Logger.facilityRefresh.notice("✅ Processing task completed (success: \(!workTask.isCancelled))")
 	}
 }
 
@@ -240,6 +250,10 @@ extension BackgroundTaskManager {
 
 			for facility in watchedFacilities.prefix(maxFacilities) {
 				guard !Task.isCancelled else { break }
+
+				// Rate limit at dispatch level
+				await APIDispatcher.shared.requestSlot()
+
 				guard APIUsageMonitor.canMakeCall else { break }
 
 				// Check timeout
@@ -249,10 +263,10 @@ extension BackgroundTaskManager {
 					break
 				}
 
-				// Skip if cache is still valid for background operations
-				if facility.vacancy.isCacheValid(for: .background) {
+				// Skip if cache still valid for background operations
+				guard facility.shouldRefresh(appState: .background) else {
 					Logger.facilityRefresh.debug(
-						"⏭️ Skipping \(facility.displayName.title) - cache still valid for background"
+						"⏭️ \(facility.displayName.title) - cache valid"
 					)
 					continue
 				}
@@ -266,9 +280,10 @@ extension BackgroundTaskManager {
 
 					facility.updateFromAPI(response)
 
-					// Update widget cache if this is a widget facility (coordinated)
+					// Update widget cache if this facility is displayed in a widget
+					// Note: Widget reload happens once at end via WidgetBudgetTracker
 					if widgetFacilityIds.contains(facility.facilityId) {
-						await WidgetUpdateCoordinator.shared.updateIfNeeded(facility)
+						SharedDataManager.shared.cacheWidgetDataIfSelected(facility)
 					}
 
 					// Check if change is significant enough for widget update
@@ -325,6 +340,10 @@ extension BackgroundTaskManager {
 
 			for facility in facilities {
 				guard !Task.isCancelled else { break }
+
+				// Rate limit at dispatch level
+				await APIDispatcher.shared.requestSlot()
+
 				guard APIUsageMonitor.canMakeCall else { break }
 
 				// Check timeout
@@ -334,10 +353,8 @@ extension BackgroundTaskManager {
 					break
 				}
 
-				// Skip if cache is still valid for background operations
-				if facility.vacancy.isCacheValid(for: .background) {
-					continue
-				}
+				// Skip if cache still valid for background operations
+				guard facility.shouldRefresh(appState: .background) else { continue }
 
 				let spacesBefore = facility.vacancy.available
 
@@ -349,9 +366,10 @@ extension BackgroundTaskManager {
 					facility.updateFromAPI(response)
 					successCount += 1
 
-					// Update widget cache if this is a widget facility (coordinated)
+					// Update widget cache if this facility is displayed in a widget
+					// Note: Widget reload happens once at end via WidgetBudgetTracker
 					if widgetFacilityIds.contains(facility.facilityId) {
-						await WidgetUpdateCoordinator.shared.updateIfNeeded(facility)
+						SharedDataManager.shared.cacheWidgetDataIfSelected(facility)
 					}
 
 					// More lenient threshold for background
@@ -359,9 +377,6 @@ extension BackgroundTaskManager {
 					if change >= RefreshConfiguration.Widget.backgroundChangeThreshold {
 						dataChanged = true
 					}
-
-					// Rate limiting between calls
-					try? await Task.sleep(for: .seconds(1))
 				} catch {
 					facility.markRefreshFailed()
 					Logger.facilityRefresh.error("❌ Failed: \(facility.facilityId)")

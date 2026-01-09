@@ -61,13 +61,15 @@ struct FocusedFacilityWidgetView: View {
 		isStale: Bool
 	) -> some View {
 
+		// Check if data is too old to trust (uses RefreshConfiguration.Widget.maxStaleAge)
+		let isTooOld = facility.isTooOld
+
 		let statusColourFill: Color =
-			isStale
+			isTooOld
 			? .gray
-			: statusColour(facility.availabilityStatus).fill
+			: (isStale ? .gray : statusColour(facility.availabilityStatus).fill)
 
 		ZStack {
-			backgroundView()
 
 			VStack {
 				VStack(alignment: .leading, spacing: 0) {
@@ -96,9 +98,11 @@ struct FocusedFacilityWidgetView: View {
 				Spacer()
 
 				VStack(alignment: .leading, spacing: 0) {
-					if facility.availabilityStatus.lowercased() == "no data" {
+					if isTooOld {
+						// Data is extremely old (2+ hours) - prompt refresh
 						Text("--")
 							.font(.title3)
+							.foregroundStyle(.secondary)
 
 						HStack(alignment: .firstTextBaseline, spacing: 4) {
 							Text("Tap to refresh")
@@ -111,7 +115,14 @@ struct FocusedFacilityWidgetView: View {
 									)
 								)
 						}
+
+						// Show age below
+						Text("Updated \(facility.timeSinceUpdate)")
+							.font(.caption)
+							.foregroundStyle(.secondary)
+							.opacity(0.7)
 					} else {
+						// Show data even if stale (but not too old)
 						HStack(alignment: .firstTextBaseline, spacing: 2) {
 							Text("\(facility.availableSpaces)")
 								.font(.largeTitle)
@@ -149,14 +160,16 @@ struct FocusedFacilityWidgetView: View {
 										by: 0.4
 									)
 								)
-						}
-					}
 
-
-					if isStale {
-						HStack(alignment: .firstTextBaseline, spacing: 2) {
-							Text("\(facility.timeSinceUpdate)")
-								.font(.footnote)
+							// Show staleness indicator if data is old but not too old
+							if isStale {
+								Text("•")
+									.font(.caption)
+									.opacity(0.5)
+								Text(facility.timeSinceUpdate)
+									.font(.caption)
+									.opacity(0.7)
+							}
 						}
 					}
 				}

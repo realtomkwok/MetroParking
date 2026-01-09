@@ -91,33 +91,49 @@ struct FacilityProvider: AppIntentTimelineProvider {
 		// Register this facility as being displayed in a widget
 		SharedDataManager.shared.registerWidgetFacility(selectedFacility.id)
 
-		// Load fresh data for the configured facility
-		let freshData = await loadFacilityData(facilityId: selectedFacility.id)
-
-		// If we got fresh data, use it; otherwise try to use cached data from UserDefaults
-		let data: SharedDataManager.WidgetFacilityData?
-		if let freshData {
-			data = freshData
-		} else {
-			// Fall back to cached UserDefaults data (stale but better than nothing)
-			data = SharedDataManager.shared.loadWidgetData(
+		// STEP 1: Load cached data immediately (prevents placeholder flash)
+		// Try SwiftData first (most recent), then UserDefaults fallback
+		var displayData = await loadFacilityData(facilityId: selectedFacility.id)
+		if displayData == nil {
+			displayData = SharedDataManager.shared.loadWidgetData(
 				forFacilityId: selectedFacility.id
 			)
 		}
 
-		let isStale = data?.isStale ?? false
+		// STEP 2: Refresh if data is stale (> 5 min)
+		// This ensures widget shows fresh vacancy data when WidgetKit refreshes the timeline
+		let staleThreshold: TimeInterval = 5 * 60  // 5 minutes
+		let isDataStale = displayData?.cacheTimestamp.timeIntervalSinceNow ?? -.infinity < -staleThreshold
+
+		if isDataStale {
+			print("🔄 Widget: Data is stale, fetching fresh from API...")
+			if let freshData = await WidgetAPIService.shared.fetchAndUpdateCache(
+				facilityId: selectedFacility.id,
+				existingData: displayData
+			) {
+				displayData = freshData
+				print("✅ Widget: Got fresh data - \(freshData.availableSpaces)/\(freshData.totalSpaces) available")
+			} else {
+				print("⚠️ Widget: API fetch failed, using cached data")
+			}
+		}
+
+		// STEP 3: Create timeline entry
+		// Always show cached data (even if stale) - widget view decides whether to show "--" based on age
+		let showStaleIndicator = displayData?.isStale ?? false
 
 		let entry = FacilityEntry(
 			date: Date(),
-			facilityData: data,
+			facilityData: displayData,
 			isPlaceholder: false,
-			isStale: isStale,
+			isStale: showStaleIndicator,
 			configuration: configuration
 		)
 
-		// Update timeline every 10 minutes (respecting the update frequency of TfNSW)?
-		// If data is stale, try again sooner (5 minutes)
-		let refreshMinutes = isStale ? 5 : 10
+		// STEP 4: Schedule next refresh
+		// - If we have fresh data: check again in 10 minutes
+		// - If data is stale (API failed): try again in 5 minutes
+		let refreshMinutes = showStaleIndicator ? 5 : 10
 		guard
 			let nextUpdate = Calendar.current.date(
 				byAdding: .minute,
@@ -128,6 +144,8 @@ struct FacilityProvider: AppIntentTimelineProvider {
 			return Timeline(entries: [entry], policy: .atEnd)
 		}
 
+		// Return single entry with adaptive refresh schedule
+		// Widget will continue showing cached data until next timeline refresh
 		return Timeline(entries: [entry], policy: .after(nextUpdate))
 	}
 

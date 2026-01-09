@@ -215,7 +215,7 @@ struct FocusedFacilityWidgetView: View {
 									.font(.largeTitle)
 									.foregroundStyle(.secondary)
 
-				Text("No carpark select")
+				Text("No carpark selected")
 					.font(.subheadline)
 					.fontWeight(.semibold)
 					.foregroundStyle(.primary)

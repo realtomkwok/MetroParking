@@ -28,7 +28,8 @@ final class ParkingFacility {
 
 	// User preferences
 	var isFavourite: Bool
-	var notificationThreshold: Int?  // TODO: For feature "notify when under X spaces"
+	/// Future (v0.5.0+): Threshold for vacancy notifications
+	var notificationThreshold: Int?
 	var lastVisited: Date?
 
 	// Occupancy cache - stored properties

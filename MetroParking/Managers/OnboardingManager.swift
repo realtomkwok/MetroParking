@@ -8,12 +8,10 @@
 import SwiftUI
 
 /// Manages the onboarding flow state and navigation
-/// Controls when onboarding is shown and tracks user progress through pages
+/// Controls when onboarding is shown and tracks user completion
 ///
-/// TODO: instead of multiple pages in the onboarding, there'll be only one page
-/// on the sheet for the simplicity, however, we can utilise the TIpKIt and track the pages user visits and
-/// show useful, contextual tips (for example, explaining what the star button does in the detail view, etc)
-///
+/// Future enhancement (v0.5.0+): Consider TipKit integration for contextual,
+/// in-app tips instead of or in addition to the initial onboarding sheet.
 @MainActor
 @Observable
 final class OnboardingManager {

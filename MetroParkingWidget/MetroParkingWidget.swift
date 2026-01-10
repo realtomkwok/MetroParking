@@ -201,7 +201,7 @@ struct FacilityWidget: Widget {
 		.description(
 			"Quick view for the vacancy status and available spaces of a selected carpark."
 		)
-		.supportedFamilies([.systemSmall, .systemMedium])
+		.supportedFamilies([.systemSmall])
 		.contentMarginsDisabled()
 	}
 }

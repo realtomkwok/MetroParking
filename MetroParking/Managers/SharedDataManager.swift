@@ -201,7 +201,8 @@ extension SharedDataManager {
 		}
 	}
 
-	// TODO: Unregister the widget when being removed from the home screen
+	/// Deregisters a widget facility when removed from home screen
+	/// Note: Currently requires manual cleanup; automatic detection planned for future release
 	func deregisterWidgetFacility(_ facilityId: String) {
 		guard let userDefaults = sharedDefaults else {
 			Logger.widget.error("❌ Failed to access shared UserDefaults")

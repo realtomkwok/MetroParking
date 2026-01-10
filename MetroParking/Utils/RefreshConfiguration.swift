@@ -110,8 +110,8 @@ enum RefreshConfiguration {
 
 	/// API call constraints
 	enum API {
-		/// Minimum delay between sequential API calls (200ms = 5 calls/sec TfNSW limit)
-		static let minCallInterval: TimeInterval = 0.2
+		/// Minimum delay between sequential API calls (400ms between calls)
+		static let minCallInterval: TimeInterval = 0.4
 
 		/// Delay between UI updates for cascade animation effect
 		static let uiStaggerDelay: TimeInterval = 0.08  // 80ms

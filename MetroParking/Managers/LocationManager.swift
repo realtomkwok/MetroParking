@@ -64,7 +64,8 @@ extension LocationManager {
 
 	private func setupLocationManger() {
 		CLLocationMgr.delegate = self
-		CLLocationMgr.desiredAccuracy = kCLLocationAccuracyHundredMeters  // TODO: Play around with different variants
+		// 100m accuracy provides good balance for parking distance calculations while preserving battery life
+		CLLocationMgr.desiredAccuracy = kCLLocationAccuracyHundredMeters
 		CLLocationMgr.distanceFilter = 100  // Update every 100 metres
 
 		/// Get current authorisation status

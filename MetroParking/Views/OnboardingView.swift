@@ -36,7 +36,7 @@ struct OnboardingView: View {
 							.fontWeight(.bold)
 
 						Text(
-							"Find real-time parking availability at Park&Ride carparks."
+							"Find real-time parking availability at Park&Ride carparks in NSW."
 						)
 						.font(.body)
 						.foregroundStyle(.secondary)
@@ -49,27 +49,28 @@ struct OnboardingView: View {
 					VStack(alignment: .leading, spacing: 16) {
 						FeatureRow(
 							order: 0,
+							icon: "gauge.open.with.lines.needle.33percent",
+							title: "Info at a Glance",
+							description:
+								"A glanceable overview of carpark availability, location and more."
+						)
+						FeatureRow(
+							order: 1,
 							icon: "star.square.on.square.fill",
 							title: "Pin Your Favourite",
 							description:
-								"Quick access to frequently used carparks on the top."
+								"Quick access to frequently used carparks on the top of the list."
 						)
 
 						FeatureRow(
-							order: 1,
+							order: 2,
 							icon: "square.grid.2x2.fill",
 							title: "Live Widgets",
 							description:
 								"Quick look on the carpark's availability on your home screen."
 						)
 
-						FeatureRow(
-							order: 2,
-							icon: "bell.badge.fill",
-							title: "Smart Alerts",
-							description:
-								"Get notified when carparks you're watching become available."
-						)
+
 					}
 
 					Spacer(minLength: 32)
@@ -118,17 +119,11 @@ struct FeatureRow: View {
 	let description: String
 
 	var body: some View {
-		HStack(alignment: .center, spacing: 16) {
+		HStack(alignment: .top, spacing: 24) {
 			Image(systemName: icon)
-				.font(.title2)
+				.font(.title)
 				.foregroundStyle(Color.accentColor)
 				.frame(width: 40)
-				.symbolEffect(
-					.bounce,
-					options: .repeat(
-						.periodic(delay: 2.0 + Double(order) * 0.3)
-					).speed(1)
-				)
 
 			VStack(alignment: .leading, spacing: 4) {
 				Text(title)

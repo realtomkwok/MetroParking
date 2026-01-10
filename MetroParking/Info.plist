@@ -7,6 +7,10 @@
 		<string>com.tomkwok.MetroParking.refresh</string>
 		<string>com.tomkwok.MetroParking.process</string>
 	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>comgooglemaps</string>
+	</array>
 	<key>CAR_PARK_BASE_URL</key>
 	<string>$(CAR_PARK_BASE_URL)</string>
 	<key>CFBundleDocumentTypes</key>

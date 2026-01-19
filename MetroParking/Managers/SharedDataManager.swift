@@ -18,12 +18,18 @@ class SharedDataManager {
 
 	static var shared = SharedDataManager()
 
+	// MARK: - Widget ID Cache (reduces UserDefaults reads)
+	private var _cachedWidgetIds: [String]?
+	private var _widgetIdsCacheTime: Date = .distantPast
+	private let widgetIdsCacheValidity: TimeInterval = 2.0  // 2 seconds TTL
+
 	private init() {}
 
 	// MARK: - SwiftData Container
 
 	/// Schema version for destructive migration (pre-launch only)
-	private static let schemaVersion = "v4"
+	/// v5: Added _displayTitle and _displaySubtitle cached properties to ParkingFacility
+	private static let schemaVersion = "v5"
 	private static let schemaVersionKey = "ModelSchemaVersion"
 
 	/// Shared ModelContainer instance used by both app and widget
@@ -196,6 +202,7 @@ extension SharedDataManager {
 			ids.append(facilityId)
 			userDefaults.set(ids, forKey: Self.widgetFacilityIdsKey)
 			userDefaults.synchronize()
+			invalidateWidgetIdsCache()
 
 			Logger.widget.info("✅ Registered facility ID: \(facilityId)")
 		}
@@ -208,11 +215,12 @@ extension SharedDataManager {
 			Logger.widget.error("❌ Failed to access shared UserDefaults")
 			return
 		}
-		
+
 		var ids = getWidgetFacilityIDs()
 		ids.removeAll { $0 == facilityId }
 		userDefaults.set(ids, forKey: Self.widgetFacilityIdsKey)
 		userDefaults.synchronize()
+		invalidateWidgetIdsCache()
 
 		Logger.widget.info("✅ Deregistered facility ID: \(facilityId)")
 	}
@@ -376,13 +384,28 @@ extension SharedDataManager {
 	}
 
 	/// Get all facility IDs currently displayed in widgets
+	/// Uses a short-lived cache to avoid repeated UserDefaults reads during view rendering
 	func getWidgetFacilityIDs() -> [String] {
+		// Return cached value if still valid
+		if let cached = _cachedWidgetIds,
+		   Date().timeIntervalSince(_widgetIdsCacheTime) < widgetIdsCacheValidity {
+			return cached
+		}
+
 		guard let userDefaults = sharedDefaults else {
 			Logger.widget.warning("Couldn't find user defaults.")
 			return []
 		}
 
-		return userDefaults.stringArray(forKey: Self.widgetFacilityIdsKey) ?? []
+		let ids = userDefaults.stringArray(forKey: Self.widgetFacilityIdsKey) ?? []
+		_cachedWidgetIds = ids
+		_widgetIdsCacheTime = Date()
+		return ids
+	}
+
+	/// Invalidates the widget ID cache, forcing a fresh read on next access
+	func invalidateWidgetIdsCache() {
+		_cachedWidgetIds = nil
 	}
 
 	/// Check if a facility is currently displayed in any widget

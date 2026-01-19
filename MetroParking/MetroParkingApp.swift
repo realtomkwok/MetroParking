@@ -20,17 +20,26 @@ struct MetroParkingApp: App {
 
 	init() {
 		setupConfiguration()
-		
+
 		// Initialise AppStateManager to set up lifecycle observers
 		_ = AppStateManager.shared
-		
+
 		BackgroundTaskManager.shared.registerBackgroundTasks()
+
+		// Schedule initial processing task if none pending (handles fresh install or force-quit)
+		BackgroundTaskManager.shared.scheduleProcessingTaskIfNeeded()
+
+		// Configure TipKit for contextual tips
+		try? Tips.configure([
+			.displayFrequency(.daily)
+		])
 	}
 
 	var body: some Scene {
 		WindowGroup {
 			ContentView()
 				.modelContainer(sharedModelContainer)
+				.environment(SearchManager.shared)
 				.environment(AppStateManager.shared)
 				.environment(FacilityManager.shared)
 				.environment(LocationManager.shared)

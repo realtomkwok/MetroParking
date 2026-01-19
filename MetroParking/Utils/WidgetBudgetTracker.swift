@@ -84,12 +84,8 @@ extension WidgetBudgetTracker {
 extension WidgetBudgetTracker {
 
 	func recordReload() {
-		var history = getReloadHistory()
+		var history = getReloadHistory()  // Already filtered to last 24 hours
 		history.append(Date())
-
-		// Keep last 24 hours only
-		let oneDayAgo = Date().addingTimeInterval(-24 * 60 * 60)
-		history = history.filter { $0 > oneDayAgo }
 
 		saveReloadHistory(history)
 		Logger.widget.notice(
@@ -112,7 +108,10 @@ extension WidgetBudgetTracker {
 		else {
 			return []
 		}
-		return dates
+
+		// Filter to last 24 hours to ensure budget resets correctly
+		let oneDayAgo = Date().addingTimeInterval(-24 * 60 * 60)
+		return dates.filter { $0 > oneDayAgo }
 	}
 
 	private func saveReloadHistory(_ dates: [Date]) {

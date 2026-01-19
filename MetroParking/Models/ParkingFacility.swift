@@ -47,6 +47,10 @@ final class ParkingFacility {
 	private var _routeTravelTime: TimeInterval?
 	private var _routeTimestamp: Date?
 
+	// Display name cache - avoids regex parsing on every access
+	private var _displayTitle: String?
+	private var _displaySubtitle: String?
+
 	@Relationship(deleteRule: .cascade, inverse: \ParkingZone.facility)
 	var zones: [ParkingZone] = []
 
@@ -281,20 +285,33 @@ final class ParkingFacility {
 	}
 
 	var displayName: (title: String, subtitle: String) {
+		// Return cached values if available
+		if let title = _displayTitle, let subtitle = _displaySubtitle {
+			return (title: title, subtitle: subtitle)
+		}
+
+		// Parse and cache the display name
 		let stripped = name.removePrefix("Park&Ride - ").localizedCapitalized
 
 		// Match pattern: "Title (Subtitle)"
 		// Captures: title before parentheses, and subtitle inside parentheses
 		let pattern = /^(.+?)\s*\((.+?)\)$/
 
+		let result: (title: String, subtitle: String)
 		if let match = stripped.firstMatch(of: pattern) {
 			let title = String(match.1).trimmingCharacters(in: .whitespaces)
 			let subtitle = String(match.2).trimmingCharacters(in: .whitespaces)
-			return (title: title, subtitle: subtitle)
+			result = (title: title, subtitle: subtitle)
 		} else {
 			// No parentheses found
-			return (title: stripped, subtitle: "")
+			result = (title: stripped, subtitle: "")
 		}
+
+		// Cache the result for future access
+		_displayTitle = result.title
+		_displaySubtitle = result.subtitle
+
+		return result
 	}
 
 	// Convenience accessors for backward compatibility and cleaner access

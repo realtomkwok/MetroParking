@@ -9,7 +9,7 @@ import Foundation
 import SwiftUI
 
 struct BackgroundGradient: View {
-	@State private var isAnimating = false
+	@State var isAnimating = false
 
 	@Environment(\.colorScheme) private var scheme
 

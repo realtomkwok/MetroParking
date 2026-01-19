@@ -73,8 +73,9 @@ extension AppStateManager {
 			await facilityManager.updateWidgetBeforeBackground()
 		}
 
-		// Schedule background refresh task
+		// Schedule background refresh tasks
 		BackgroundTaskManager.shared.scheduleAppRefresh()
+		BackgroundTaskManager.shared.scheduleProcessingTask()
 	}
 }
 

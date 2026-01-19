@@ -18,14 +18,13 @@ struct ContentView: View {
 	@Environment(FacilityManager.self) private var facilityDataMgr
 	@Environment(OnboardingManager.self) private var onboardingMgr
 	@Environment(DeepLinkManager.self) private var deepLinkMgr
+	@Environment(SearchManager.self) private var searchMgr
 	@Environment(\.dismiss) private var dismiss
 
-	@State private var searchText: String = ""
-	@State private var selectedSorting: SortingOption = .name
-	@State private var selectedSortingOrder: SortingOrder = .ascending
 	@State private var filterIsOn: Bool = false
-	@State private var selectedFilter: FilterOption = .pinned
-	@State private var isSearchFieldFocused: Bool = false
+	@State private var selectedSorting: SortingOption = .distance
+	@State private var selectedSortingOrder: SortingOrder = .ascending
+	@State private var selectedFilter: FilterOption = .available
 	@State private var selectedFacility: ParkingFacility?
 	@State private var isFilterMenuPresented: Bool = false
 	@State private var deepLinkedFacility: ParkingFacility?
@@ -42,7 +41,7 @@ struct ContentView: View {
 		let filteredFacilities =
 			allFacilities
 			.filtered(by: filterIsOn ? selectedFilter : .all)
-			.searchFiltered(by: searchText)
+			.searchFiltered(by: searchMgr.searchText)
 			.sorted(by: selectedSorting, order: selectedSortingOrder)
 
 		// Separate into pinned and unpinned after filtering/sorting
@@ -86,10 +85,11 @@ struct ContentView: View {
 
 	var body: some View {
 		@Bindable var onboarding = onboardingMgr
+		@Bindable var search = searchMgr
 
 		NavigationStack {
 			ZStack {
-				BackgroundGradient()
+				BackgroundGradient(isAnimating: false)
 				FacilityList(
 					nameSpace: navigationNamespace,
 					groupedFacilities: groupedFacilities,
@@ -106,9 +106,10 @@ struct ContentView: View {
 				}
 				.toolbarTitleDisplayMode(.inlineLarge)
 				.searchable(
-					text: $searchText,
-					isPresented: $isSearchFieldFocused,
-					placement: .automatic
+					text: $search.searchText,
+					isPresented: $search.isSearchFieldFocused,
+					placement: .automatic,
+					prompt: "Station name or suburb"
 				)
 				.scrollEdgeEffectStyle(.soft, for: .vertical)
 				.scrollContentBackground(.hidden)
@@ -336,6 +337,7 @@ extension ContentView {
 		.environment(LookAroundManager.shared)
 		.environment(OnboardingManager.shared)
 		.environment(DeepLinkManager.shared)
+		.environment(SearchManager.shared)
 }
 
 #Preview("Empty State") {
@@ -345,4 +347,5 @@ extension ContentView {
 		.environment(LookAroundManager.shared)
 		.environment(OnboardingManager.shared)
 		.environment(DeepLinkManager.shared)
+		.environment(SearchManager.shared)
 }

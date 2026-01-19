@@ -40,8 +40,9 @@ struct RouteInfo: Sendable {
 
 }
 
+@MainActor
 @Observable
-class ETAManager {
+final class ETAManager {
 
 	// MARK: - Observable State
 

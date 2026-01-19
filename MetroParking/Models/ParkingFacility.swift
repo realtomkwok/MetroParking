@@ -357,7 +357,7 @@ final class ParkingFacility {
 	var refreshTier: RefreshTier {
 		// Watched: Favourites OR displayed in any widget
 		if self.isFavourite { return .watched }
-		if SharedDataManager.shared.isCurrentlyInWidget(self.facilityId) {
+		if SharedDataManager.isInWidget(self.facilityId) {
 			return .watched
 		}
 

@@ -10,8 +10,9 @@ import MapKit
 import OSLog
 import SwiftUI
 
+@MainActor
 @Observable
-class AppStateManager {
+final class AppStateManager {
 
 	static let shared = AppStateManager()
 

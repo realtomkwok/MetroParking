@@ -104,7 +104,9 @@ extension FacilityDetailView {
 			}
 		}
 		.navigationAllowDismissalGestures(
-			AllowedNavigationDismissalGestures([.edgePanGesturesOnly])
+			AllowedNavigationDismissalGestures(
+				[.swipeToGoBack, .zoomEdgePanToDismiss]
+			)
 		)
 	}
 
@@ -582,11 +584,11 @@ struct DetailSections: View {
 		}
 		.clipShape(.containerRelative)
 		.animation(.smooth, value: lookAroundMgr.isLoading)
-		.animation(.smooth, value: lookAroundMgr.errorMessage)
-		.animation(
-			.smooth,
-			value: lookAroundMgr.lookAroundScene
-		)
+//		.animation(.smooth, value: lookAroundMgr.errorMessage)
+//		.animation(
+//			.smooth,
+//			value: lookAroundMgr.lookAroundScene
+//		)
 	}
 
 	/// Future (v0.6.0+): Display nearby parking facilities

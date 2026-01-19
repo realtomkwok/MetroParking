@@ -82,7 +82,7 @@ struct WidgetAPIService {
             )
 
             // Save to shared cache (main app will also read this)
-            SharedDataManager.shared.saveWidgetData(updatedData, triggerReload: false)
+            await SharedDataManager.shared.saveWidgetData(updatedData, triggerReload: false)
 
             print("✅ Widget API: Fetched fresh data for \(displayName.title) - \(available)/\(total) available")
 

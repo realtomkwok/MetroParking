@@ -11,8 +11,9 @@ import MapKit
 import OSLog
 import SwiftUI
 
+@MainActor
 @Observable
-class LocationManager: NSObject, CLLocationManagerDelegate {
+final class LocationManager: NSObject, CLLocationManagerDelegate {
 
 	static let shared = LocationManager()
 

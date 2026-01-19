@@ -16,8 +16,9 @@ import OSLog
 import SwiftData
 import SwiftUI
 
+@MainActor
 @Observable
-class FacilityManager {
+final class FacilityManager {
 
 	static let shared = FacilityManager()
 
@@ -38,12 +39,6 @@ class FacilityManager {
 	private var lastScheduleTime: Date?
 
 	private init() {}
-
-	/// Note: `deinit` will never be called for a singleton, but included
-	/// for safety if architecture changes to non-singleton pattern
-	deinit {
-		refreshTask?.cancel()
-	}
 
 	func setModelContext(_ context: ModelContext) {
 		self.modelContext = context
@@ -147,7 +142,6 @@ extension FacilityManager {
 	///   - forced: Force refresh critical facilities even if cache is valid
 	///   - context: Optional ModelContext to use (for background operations). If nil, uses stored context
 	///   - shouldScheduleNext: Whether to schedule the next auto-refresh cycle (default: true)
-	@MainActor
 	func performLoad(forced: Bool = false, context: ModelContext? = nil, shouldScheduleNext: Bool = true) async {
 		// Prevent concurrent refresh operations
 		let operationId = UUID()
@@ -280,7 +274,6 @@ extension FacilityManager {
 	/// Fetch a single facility's data from the API.
 	/// Note: This method does NOT apply rate limiting - caller should use APIDispatcher.
 	/// - Returns: The API response if successful, nil otherwise.
-	@MainActor
 	func loadFacility(_ facility: ParkingFacility) async -> ParkingAPIResponse? {
 		guard facility.shouldRefresh(appState: .active) else {
 			Logger.facilityRefresh
@@ -321,7 +314,7 @@ extension FacilityManager {
 		
 		lastScheduleTime = Date()
 
-		refreshTask = Task { @MainActor in
+		refreshTask = Task {
 			try? await Task.sleep(for: .seconds(interval))
 
 			// Check if task was cancelled
@@ -399,7 +392,6 @@ extension FacilityManager {
 
 	/// Update widget with the most recent data before app goes to background
 	/// Called by AppStateManager when app is backgrounding
-	@MainActor
 	func updateWidgetBeforeBackground() async {
 
 		// Get all widget facility IDs

@@ -7,8 +7,9 @@
 
 import Foundation
 
+@MainActor
 @Observable
-class SearchManager {
+final class SearchManager {
 
 	static let shared = SearchManager()
 

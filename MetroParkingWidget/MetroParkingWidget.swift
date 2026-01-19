@@ -89,13 +89,13 @@ struct FacilityProvider: AppIntentTimelineProvider {
 		}
 
 		// Register this facility as being displayed in a widget
-		SharedDataManager.shared.registerWidgetFacility(selectedFacility.id)
+		await SharedDataManager.shared.registerWidgetFacility(selectedFacility.id)
 
 		// STEP 1: Load cached data immediately (prevents placeholder flash)
 		// Try SwiftData first (most recent), then UserDefaults fallback
 		var displayData = await loadFacilityData(facilityId: selectedFacility.id)
 		if displayData == nil {
-			displayData = SharedDataManager.shared.loadWidgetData(
+			displayData = await SharedDataManager.shared.loadWidgetData(
 				forFacilityId: selectedFacility.id
 			)
 		}
@@ -175,7 +175,7 @@ struct FacilityProvider: AppIntentTimelineProvider {
 			)
 
 			// Convert to widget data format
-			return SharedDataManager.shared.makeWidgetData(from: facility)
+			return await SharedDataManager.shared.makeWidgetData(from: facility)
 		} catch {
 			print("❌ Widget: Failed to load facility data: \(error)")
 			return nil

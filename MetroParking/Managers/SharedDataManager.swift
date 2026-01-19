@@ -11,10 +11,11 @@ import OSLog
 import SwiftData
 import WidgetKit
 
-class SharedDataManager {
+@MainActor
+final class SharedDataManager {
 
-	// App Group
-	static let appGroupIdentifier: String = "group.com.tomkwok.MetroParking"
+	// App Group - nonisolated for access from non-MainActor contexts
+	nonisolated static let appGroupIdentifier: String = "group.com.tomkwok.MetroParking"
 
 	static var shared = SharedDataManager()
 
@@ -136,7 +137,7 @@ class SharedDataManager {
 
 extension SharedDataManager {
 
-	private static let widgetFacilityIdsKey: String = "widgetFacilityIds"
+	nonisolated private static let widgetFacilityIdsKey: String = "widgetFacilityIds"
 
 	// MARK: - Widget Data Strucure
 	/// Cache structure
@@ -411,6 +412,16 @@ extension SharedDataManager {
 	/// Check if a facility is currently displayed in any widget
 	func isCurrentlyInWidget(_ facilityId: String) -> Bool {
 		return getWidgetFacilityIDs().contains(facilityId)
+	}
+
+	/// Check if a facility is in a widget (nonisolated for use from SwiftData models)
+	/// Reads directly from UserDefaults without cache for thread safety
+	nonisolated static func isInWidget(_ facilityId: String) -> Bool {
+		guard let defaults = UserDefaults(suiteName: appGroupIdentifier) else {
+			return false
+		}
+		let ids = defaults.stringArray(forKey: widgetFacilityIdsKey) ?? []
+		return ids.contains(facilityId)
 	}
 }
 

@@ -9,8 +9,9 @@ import MapKit
 import Foundation
 import OSLog
 
+@MainActor
 @Observable
-class LookAroundManager {
+final class LookAroundManager {
 
 	static let shared = LookAroundManager()
 

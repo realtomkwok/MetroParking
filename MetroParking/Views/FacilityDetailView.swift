@@ -26,6 +26,8 @@ struct FacilityDetailView: View {
 	@State private var allowDismissalGesture:
 		AllowedNavigationDismissalGestures = .none
 
+	@State private var showMap: Bool = false
+
 	// Fixed camera position to prevent zoom issues
 	@State private var cameraPosition: MapCameraPosition
 
@@ -61,6 +63,7 @@ extension FacilityDetailView {
 	var body: some View {
 		ScrollView(.vertical) {
 			MapHeader
+				.zIndex(0)
 			// Detail Content with background that overlays the map
 			VStack {
 				DetailSections(facility: facility)
@@ -91,6 +94,12 @@ extension FacilityDetailView {
 		// Ensure view resets when switching facilities
 		.id(facility.facilityId)
 		.task(id: facility.facilityId) {
+			try? await Task.sleep(for: .milliseconds(0.3))
+
+			withAnimation(.smooth) {
+				showMap = true
+			}
+
 			// Update Look Around when facility changes
 			lookAroundMgr.coordinate = facility.coordinate
 			await performInitialTasks()
@@ -110,40 +119,45 @@ extension FacilityDetailView {
 		)
 	}
 
+	@ViewBuilder
 	private var MapHeader: some View {
 		// Sticky Map Header with fixed camera
-		GeometryReader { geometry in
-			let minY = geometry.frame(in: .scrollView).minY
-			let size = geometry.size
-			let height = size.height + max(-minY, minY)
-
-			ZStack(alignment: .bottomTrailing) {
-				Map(position: .constant(cameraPosition)) {
-					Marker(
-						facility.displayName.title,
-						systemImage: "parkingsign.circle.fill",
-						coordinate: facility.coordinate
+		if showMap {
+			GeometryReader { geometry in
+				let minY = geometry.frame(in: .scrollView).minY
+				let size = geometry.size
+				let height = size.height + max(-minY, minY)
+				
+				ZStack(alignment: .bottomTrailing) {
+					Map(position: .constant(cameraPosition)) {
+						Marker(
+							facility.displayName.title,
+							systemImage: "parkingsign.circle.fill",
+							coordinate: facility.coordinate
+						)
+						.tint(Color.accentColor)
+					}
+					.safeAreaPadding(.leading, 26)
+					.safeAreaPadding(.bottom, 16)
+					.mapStyle(
+						.standard(
+							elevation: .realistic,
+							emphasis: .muted,
+						)
 					)
-					.tint(Color.accentColor)
+					.mapControlVisibility(.hidden)
+					.frame(width: size.width, height: height)
+					.backport.concentricClipShape()
+					.allowsHitTesting(false)
+					.offset(y: minY > 0 ? -minY : minY * -0.2)
 				}
-				.safeAreaPadding(.leading, 26)
-				.safeAreaPadding(.bottom, 16)
-				.mapStyle(
-					.standard(
-						elevation: .realistic,
-						emphasis: .muted,
-						showsTraffic: true,
-					)
-				)
-				.mapControlVisibility(.hidden)
-				.frame(width: size.width, height: height)
-				.backport.concentricClipShape()
-				.allowsHitTesting(false)
-				.offset(y: minY > 0 ? -minY : minY * 0.5)
 			}
+			.frame(height: 400)
+			.transition(.blurReplace)
+		} else {
+			Color.clear
+			.frame(height: 400)
 		}
-		.frame(height: 400)
-		.zIndex(0)
 	}
 
 	private func performInitialTasks() async {
@@ -288,7 +302,7 @@ struct DetailSections: View {
 			.regular,
 			in: .rect
 		)
-		.clipShape(.rect(corners: .concentric(minimum: 24), isUniform: true))
+		.clipShape(.containerRelative)
 	}
 
 	@ViewBuilder
@@ -584,11 +598,6 @@ struct DetailSections: View {
 		}
 		.clipShape(.containerRelative)
 		.animation(.smooth, value: lookAroundMgr.isLoading)
-//		.animation(.smooth, value: lookAroundMgr.errorMessage)
-//		.animation(
-//			.smooth,
-//			value: lookAroundMgr.lookAroundScene
-//		)
 	}
 
 	/// Future (v0.6.0+): Display nearby parking facilities

@@ -96,15 +96,7 @@ struct OnboardingView: View {
 			.scrollEdgeEffectStyle(.soft, for: .vertical)
 		}
 		.background {
-			BackgroundGradient(
-				animation:
-					.spring(
-						response: 5.0,
-						dampingFraction: 10.0,
-						blendDuration: 10.0
-					)
-					.repeatForever(autoreverses: true)
-			)
+			BackgroundGradient(isAnimating: true)
 		}
 		.interactiveDismissDisabled()
 	}

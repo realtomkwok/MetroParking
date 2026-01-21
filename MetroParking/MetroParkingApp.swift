@@ -19,7 +19,12 @@ struct MetroParkingApp: App {
 	}
 
 	init() {
+
 		setupConfiguration()
+
+		Task.detached(priority: .userInitiated) {
+			_ = await SharedDataManager.prepareStoreDirectory()
+		}
 
 		// Initialise AppStateManager to set up lifecycle observers
 		_ = AppStateManager.shared
@@ -29,10 +34,6 @@ struct MetroParkingApp: App {
 		// Schedule initial processing task if none pending (handles fresh install or force-quit)
 		BackgroundTaskManager.shared.scheduleProcessingTaskIfNeeded()
 
-		// Configure TipKit for contextual tips
-		try? Tips.configure([
-			.displayFrequency(.daily)
-		])
 	}
 
 	var body: some Scene {

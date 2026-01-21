@@ -49,13 +49,7 @@ struct ParkingProgressGauge: View {
 			Text("")
 		}
 		.gaugeStyle(.accessoryCircular)
-		.tint(
-			Gradient(colors: [
-				AvailabilityStatus.available.fill,
-				AvailabilityStatus.almostFull.fill,
-				AvailabilityStatus.full.fill,
-			])
-		)
+		.tint(Gradient(colors: AvailabilityStatus.gradientColors))
 		.contentTransition(.numericText(value: Double(available)))
 		.breathingAnimation(isRefreshing, minOpacity: 0.5, duration: 0.8)
 	}

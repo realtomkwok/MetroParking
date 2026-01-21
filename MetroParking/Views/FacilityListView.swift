@@ -117,6 +117,7 @@ extension FacilityList {
 			VStack(alignment: .leading) {
 				HStack(alignment: .center, spacing: 4) {
 					Text(facility.displayName.title)
+						.multilineTextAlignment(.leading)
 						.font(.headline)
 						.fontWeight(.bold)
 						.contentTransition(.identity)

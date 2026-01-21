@@ -48,24 +48,6 @@ final class SharedDataManager {
 			groupContainer: .identifier(appGroupIdentifier)
 		)
 
-		// Ensure the Application Support directory exists in the App Group container
-		// This prevents CoreData error logs on first launch
-		let storeURL = modelConfiguration.url
-		let storeDirectory = storeURL.deletingLastPathComponent()
-
-		if !FileManager.default.fileExists(atPath: storeDirectory.path) {
-			do {
-				try FileManager.default.createDirectory(
-					at: storeDirectory,
-					withIntermediateDirectories: true,
-					attributes: nil
-				)
-				Logger.facilityData.info("📁 Created store directory: \(storeDirectory.path)")
-			} catch {
-				Logger.facilityData.error("❌ Failed to create store directory: \(error.localizedDescription)")
-			}
-		}
-
 		do {
 			// Check if schema version has changed
 			let storedVersion = UserDefaults.standard.string(
@@ -80,15 +62,6 @@ final class SharedDataManager {
 				)
 				Logger.facilityData.info(
 					"🗑️ Clearing old data store for migration..."
-				)
-
-				// Clean up old store files
-				try? FileManager.default.removeItem(at: storeURL)
-				try? FileManager.default.removeItem(
-					at: storeURL.appendingPathExtension("shm")
-				)
-				try? FileManager.default.removeItem(
-					at: storeURL.appendingPathExtension("wal")
 				)
 			}
 
@@ -422,6 +395,31 @@ extension SharedDataManager {
 		}
 		let ids = defaults.stringArray(forKey: widgetFacilityIdsKey) ?? []
 		return ids.contains(facilityId)
+	}
+
+	/// Check if the model container was created successfully
+	nonisolated static func prepareStoreDirectory() async -> Bool {
+		let storeDirectory = FileManager.default
+			.containerURL(
+				forSecurityApplicationGroupIdentifier: appGroupIdentifier
+			)
+
+		guard let storeDirectory else { return false }
+
+		if FileManager.default.fileExists(atPath: storeDirectory.path) {
+			return true
+		}
+
+		do {
+			try FileManager.default.createDirectory(
+				at: storeDirectory,
+				withIntermediateDirectories: true,
+				attributes: nil
+			)
+			return true
+		} catch {
+			return false
+		}
 	}
 }
 

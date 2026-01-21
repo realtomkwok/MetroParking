@@ -15,11 +15,14 @@ struct ContentView: View {
 	@Namespace private var filterToggleNamespace
 
 	// Access managers from environment
+	@Environment(\.modelContext) private var modelContext
+	@Environment(\.dismiss) private var dismiss
+	@Environment(\.isSearching) private var isSearching
+
 	@Environment(FacilityManager.self) private var facilityDataMgr
 	@Environment(OnboardingManager.self) private var onboardingMgr
 	@Environment(DeepLinkManager.self) private var deepLinkMgr
 	@Environment(SearchManager.self) private var searchMgr
-	@Environment(\.dismiss) private var dismiss
 
 	@State private var filterIsOn: Bool = false
 	@State private var selectedSorting: SortingOption = .distance
@@ -28,6 +31,7 @@ struct ContentView: View {
 	@State private var selectedFacility: ParkingFacility?
 	@State private var isFilterMenuPresented: Bool = false
 	@State private var deepLinkedFacility: ParkingFacility?
+	@State private var isSettingsPresented: Bool = false
 
 	// Single query for all facilities - let SwiftData handle animations smoothly
 	@Query(animation: .smooth)
@@ -40,7 +44,7 @@ struct ContentView: View {
 		// Filter and sort all facilities once
 		let filteredFacilities =
 			allFacilities
-			.filtered(by: filterIsOn ? selectedFilter : .all)
+			.filtered(by: filterIsOn ? selectedFilter : nil)
 			.searchFiltered(by: searchMgr.searchText)
 			.sorted(by: selectedSorting, order: selectedSortingOrder)
 
@@ -69,18 +73,23 @@ struct ContentView: View {
 		return sections
 	}
 
-	@ViewBuilder
-	private var navigationSubtitleView: some View {
-		ZStack {
-			if facilityDataMgr.isRefreshing {
-				Text(facilityDataMgr.loadProgress.description)
-					.zIndex(1)
-			} else {
-				Text("Pull down to refresh")
-					.zIndex(0)
+	private var navigationSubtitle: Text {
+
+		if filterIsOn {
+			switch selectedFilter {
+			case .pinned:
+				return Text("Showing pinned car parks only")
+			case .available:
+				return Text("Showing available car parks only")
 			}
 		}
-		.transition(.blurReplace)
+
+		if facilityDataMgr.isRefreshing {
+			return Text(facilityDataMgr.loadProgress.description)
+		}
+
+		return Text("All updated")
+
 	}
 
 	var body: some View {
@@ -96,28 +105,36 @@ struct ContentView: View {
 					selectedFacility: $selectedFacility,
 					isInteractionDisabled: isFilterMenuPresented
 				)
-				.navigationTitle("MetroParking")
-				.refreshable {
-					await facilityDataMgr.performLoad(forced: true)
-				}
-				.toolbar {
-					TopBar()
-					BottomBarActions()
-				}
-				.toolbarTitleDisplayMode(.inlineLarge)
-				.searchable(
-					text: $search.searchText,
-					isPresented: $search.isSearchFieldFocused,
-					placement: .automatic,
-					prompt: "Station name or suburb"
-				)
-				.scrollEdgeEffectStyle(.soft, for: .vertical)
-				.scrollContentBackground(.hidden)
 			}
+			.navigationTitle("MetroParking")
+			.navigationSubtitle(navigationSubtitle)
+			.toolbarTitleDisplayMode(.inlineLarge)
+			.refreshable {
+				await facilityDataMgr.performLoad(forced: true)
+			}
+			.toolbar {
+				TopBar()
+			}
+			.toolbar {
+				BottomBar()
+
+			}
+			.searchable(
+				text: $search.searchText,
+				isPresented: $search.isSearchFieldFocused,
+				placement: .toolbar,
+				prompt: "Station or suburb"
+			)
+			.searchToolbarBehavior(filterIsOn ? .minimize : .automatic)
+			.scrollEdgeEffectStyle(.soft, for: .vertical)
+			.scrollContentBackground(.hidden)
 		}
 		.backport.concentricClipShape()
 		.ignoresSafeArea()
 		.containerShape(.rect(cornerRadius: 24))
+		.sheet(isPresented: $isSettingsPresented) {
+			SettingsView()
+		}
 		.sheet(isPresented: $onboarding.isShowingOnboarding) {
 			OnboardingView()
 				.environment(OnboardingManager.shared)
@@ -125,9 +142,9 @@ struct ContentView: View {
 		.sheet(item: $deepLinkedFacility) { facility in
 			DetailSheet(selectedFacility: facility)
 				.presentationDragIndicator(.visible)
-			//			.presentationCornerRadius(24)
+				.navigationAllowDismissalGestures([.none])
 		}
-		.onChange(of: deepLinkMgr.selectedFacilityId) { oldValue, newValue in
+		.onChange(of: deepLinkMgr.selectedFacilityId) { _, newValue in
 			guard let facilityId = newValue else { return }
 			handleDeepLink(facilityId: facilityId)
 		}
@@ -138,7 +155,7 @@ struct ContentView: View {
 extension ContentView {
 
 	@ViewBuilder
-	func DetailSheet(selectedFacility: ParkingFacility) -> some View {
+	private func DetailSheet(selectedFacility: ParkingFacility) -> some View {
 		NavigationStack {
 			FacilityDetailView(
 				namespace: navigationNamespace,
@@ -161,16 +178,16 @@ extension ContentView {
 extension ContentView {
 
 	private func handleDeepLink(facilityId: String) {
+		// Use SwiftData predicate query for O(1) lookup instead of O(n) array scan
+		// This also avoids creating a dependency on the entire allFacilities array
+		let descriptor = FetchDescriptor<ParkingFacility>(
+			predicate: #Predicate { $0.facilityId == facilityId }
+		)
 
-		guard
-			let facility = allFacilities.first(where: {
-				$0.facilityId == facilityId
-			})
-		else {
-			Logger
-				.deeplink.error(
-					"⚠️ Deep link: No facility found with ID: \(facilityId)"
-				)
+		guard let facility = try? modelContext.fetch(descriptor).first else {
+			Logger.deeplink.error(
+				"⚠️ Deep link: No facility found with ID: \(facilityId)"
+			)
 			deepLinkMgr.clearSelection()
 			return
 		}
@@ -186,7 +203,6 @@ extension ContentView {
 
 		// Clear the deep link handler after navigation is initiated
 		deepLinkMgr.clearSelection()
-
 	}
 }
 
@@ -202,7 +218,8 @@ extension ContentView {
 					await facilityDataMgr.performLoad()
 				}
 			} label: {
-				Image(systemName: "arrow.clockwise")
+				Label("Refresh", systemImage: "arrow.clockwise")
+					.labelStyle(.iconOnly)
 					.symbolEffect(
 						.rotate,
 						isActive: facilityDataMgr.isRefreshing
@@ -213,33 +230,17 @@ extension ContentView {
 		}
 
 		ToolbarItem(placement: .topBarTrailing) {
-			SettingsView()
+			Button {
+				isSettingsPresented.toggle()
+			} label: {
+				Label("Settings", systemImage: "ellipsis")
+					.labelStyle(.iconOnly)
+			}
 		}
-
-		ToolbarItem(placement: .largeSubtitle) {
-			navigationSubtitleView
-				.font(.footnote)
-				.foregroundStyle(.secondary)
-				.animation(.smooth, value: facilityDataMgr.isRefreshing)
-		}
-
-		ToolbarItem(
-			placement: .subtitle,
-		) {
-			navigationSubtitleView
-				.font(.footnote)
-				.foregroundStyle(.secondary)
-				.animation(.smooth, value: facilityDataMgr.isRefreshing)
-		}
-
 	}
 
 	@ToolbarContentBuilder
-	func BottomBarActions() -> some ToolbarContent {
-		DefaultToolbarItem(kind: .search, placement: .bottomBar)
-
-		ToolbarSpacer(.flexible, placement: .bottomBar)
-
+	func BottomBar() -> some ToolbarContent {
 		ToolbarItemGroup(placement: .bottomBar) {
 
 			Toggle(isOn: $filterIsOn.animation(.snappy)) {
@@ -250,70 +251,11 @@ extension ContentView {
 				.labelStyle(.iconOnly)
 
 			}
-			.glassEffectID("filterToggle", in: filterToggleNamespace)
 
 			if filterIsOn {
-				Menu {
-					LabeledPickerSection(
-						title: "Show only",
-						icon: "line.3.horizontal.decrease",
-						selection: $selectedFilter,
-						options: FilterOption.allCases
-					)
 
-					LabeledPickerSection(
-						title: "Sort by",
-						icon: "arrow.up.arrow.down",
-						selection: $selectedSorting,
-						options: SortingOption.allCases
-					)
-
-					LabeledPickerSection(
-						title: "Order",
-						icon: "",
-						selection: $selectedSortingOrder,
-						options: SortingOrder.allCases
-					)
-				} label: {
-					VStack(alignment: .leading, spacing: 2) {
-						Text("Show only")
-							.font(.caption2)
-							.foregroundStyle(.secondary)
-						HStack(alignment: .center) {
-							Text(selectedFilter.display.title)
-								.font(.caption)
-								.fontWeight(.semibold)
-							Image(
-								systemName: "chevron.down"
-							)
-							.font(.system(size: 8))
-							.fontWeight(.semibold)
-						}
-						.foregroundStyle(Color.accentColor)
-					}
-				}
-				.menuStyle(.button)
-				.glassEffectID("filterMenu", in: filterToggleNamespace)
-			}
-		}
-	}
-
-			/// A reusable picker section for options with display properties
-		struct LabeledPickerSection<T>: View
-		where
-		T: CaseIterable & Hashable & PickerOptionDisplayable,
-		T.DisplayType: BasicDisplayable
-		{
-			let title: String
-			let icon: String
-			@Binding var selection: T
-			let options: [T]
-
-			var body: some View {
-					// Use Picker directly in menu instead of nesting Menu within Menu
-					// This avoids UIPreviewTarget crashes with nested menus
-				Picker(selection: $selection) {
-					ForEach(Array(options), id: \.self) { option in
+				Picker(selection: $selectedFilter) {
+					ForEach(FilterOption.allCases, id: \.self) { option in
 						Label(
 							option.display.title,
 							systemImage: option.display.systemImage
@@ -321,12 +263,93 @@ extension ContentView {
 						.tag(option)
 					}
 				} label: {
-					Label(title, systemImage: icon)
-					Text(selection.display.title)
+					Text("Text")
 				}
-				.pickerStyle(.menu)
+				.pickerStyle(.inline)
 			}
 		}
+
+		ToolbarSpacer(.flexible, placement: .bottomBar)
+
+		DefaultToolbarItem(kind: .search, placement: .bottomBar)
+
+		ToolbarSpacer(.flexible, placement: .bottomBar)
+
+		ToolbarItem(id: "Sorting", placement: .bottomBar) {
+
+			Menu {
+				let isAscending: Bool = selectedSortingOrder == .ascending
+
+				Picker(selection: $selectedSortingOrder) {
+					ForEach(SortingOrder.allCases, id: \.self) { order in
+						Label(
+							selectedSorting.display.subtitle(
+								ascending: order == .ascending
+							),
+							systemImage: order.display.systemImage
+						)
+						.tag(order)
+					}
+				} label: {
+					Label(
+						"Order",
+						systemImage: isAscending
+							? "text.line.first.and.arrowtriangle.forward"
+							: "text.line.last.and.arrowtriangle.forward"
+					)
+					Text(
+						selectedSorting.display.subtitle(
+							ascending: isAscending
+						)
+					)
+				}
+				.pickerStyle(.menu)
+
+				Picker(selection: $selectedSorting) {
+					ForEach(SortingOption.allCases, id: \.self) { option in
+						Label(
+							option.display.title,
+							systemImage: option.display.systemImage
+						)
+						.tag(option)
+					}
+				} label: {
+					Text("Sort by")
+				}
+			} label: {
+				Label("Sort by", systemImage: "arrow.up.arrow.down")
+			}
+		}
+
+	}
+
+	/// A reusable picker section for options with display properties
+	struct LabeledPickerSection<T>: View
+	where
+		T: CaseIterable & Hashable & PickerOptionDisplayable,
+		T.DisplayType: BasicDisplayable
+	{
+		let title: String
+		let icon: String
+		@Binding var selection: T
+		let options: [T]
+
+		var body: some View {
+			Picker(selection: $selection) {
+				ForEach(Array(options), id: \.self) { option in
+					Label(
+						option.display.title,
+						systemImage: option.display.systemImage
+					)
+					.tag(option)
+				}
+			} label: {
+				Label(title, systemImage: icon)
+				Text(selection.display.title)
+			}
+			.pickerStyle(.menu)
+		}
+	}
 }
 
 #Preview("With Pinned Facilities") {

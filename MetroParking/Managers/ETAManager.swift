@@ -26,8 +26,7 @@ struct RouteInfo: Sendable {
 
 	/// Get formatted distance
 	var formattedDistance: String {
-		let formatter = MKDistanceFormatter()
-		return formatter.string(fromDistance: distance)
+		ETAManager.distanceFormatter.string(fromDistance: distance)
 	}
 
 	/// Get formatted travel time
@@ -43,6 +42,15 @@ struct RouteInfo: Sendable {
 @MainActor
 @Observable
 final class ETAManager {
+
+	// MARK: - Static Formatters
+
+	/// Cached distance formatter - creating formatters is expensive
+	nonisolated static let distanceFormatter: MKDistanceFormatter = {
+		let formatter = MKDistanceFormatter()
+		formatter.unitStyle = .abbreviated
+		return formatter
+	}()
 
 	// MARK: - Observable State
 
@@ -126,9 +134,9 @@ final class ETAManager {
 		isDirectionAvailable = false
 
 		let task = Task {
-			// Create source and destination using facility's mapItem
+			// Create source and destination using facility's mapItem (synchronous, no network)
 			let source = MKMapItem.forCurrentLocation()
-			let destination = await facility.getMapItem()
+			let destination = facility.getOrCreateMapItem()
 
 			Logger.eta.debug("  → Creating MKDirections request for full route")
 			let request = MKDirections.Request()
@@ -278,9 +286,9 @@ final class ETAManager {
 		currentFacilityID = facility.facilityId
 
 		let task = Task {
-			// Create source and destination using facility's mapItem
+			// Create source and destination using facility's mapItem (synchronous, no network)
 			let source = MKMapItem.forCurrentLocation()
-			let destination = await facility.getMapItem()
+			let destination = facility.getOrCreateMapItem()
 
 			Logger.eta.debug("  → Creating MKDirections request")
 			let request = MKDirections.Request()
@@ -392,8 +400,9 @@ final class ETAManager {
 		Logger.eta.debug(
 			"🚗 getETA: Calculating for '\(facility.displayName.title)'"
 		)
+		// Create source and destination using facility's mapItem (synchronous, no network)
 		let source = MKMapItem.forCurrentLocation()
-		let destination = await facility.getMapItem()
+		let destination = facility.getOrCreateMapItem()
 
 		let request = MKDirections.Request()
 		request.source = source
@@ -457,10 +466,7 @@ final class ETAManager {
 
 	/// Format distance to readable string
 	func formatDistance(_ distance: CLLocationDistance) -> String {
-		let formatter = MKDistanceFormatter()
-		formatter.unitStyle = .abbreviated
-
-		return formatter.string(fromDistance: distance)
+		Self.distanceFormatter.string(fromDistance: distance)
 	}
 
 	/// Get formatted ETA string for display

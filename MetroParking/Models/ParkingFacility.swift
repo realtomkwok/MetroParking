@@ -529,10 +529,7 @@ enum AvailabilityStatus: CaseIterable {
 		}
 	}
 
-	/// Returns colours for the occupancy gradient (excludes noData)
-	static var gradientColors: [Color] {
-		return [available.fill, almostFull.fill, full.fill]
-	}
+	static let gradient = Gradient(colors: [available.fill, almostFull.fill, full.fill])
 
 	/// Returns all status colours including noData
 	static var allColors: [Color] {

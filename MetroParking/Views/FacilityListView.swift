@@ -41,9 +41,23 @@ struct FacilityList: View {
 			.map { FacilitySection(title: $0.title, facilities: $0.facilities) }
 	}
 
+	private var sectionStructureHash: Int {
+		var hasher = Hasher()
+		for (title, facilities) in groupedFacilities {
+			hasher.combine(title)
+			for facility in facilities {
+				hasher.combine(facility.persistentModelID)
+			}
+		}
+
+		return hasher.finalize()
+	}
+
 	var body: some View {
+		let currentSections = sections
+
 		List {
-			ForEach(sections) { section in
+			ForEach(currentSections) { section in
 				Section {
 					ForEach(section.facilities, id: \.persistentModelID) {
 						facility in
@@ -54,11 +68,12 @@ struct FacilityList: View {
 				}
 			}
 		}
+		.accessibilityIdentifier("facility-list")
 		.listStyle(.plain)
 		// Animate when section structure changes OR when facilities move between sections
 		.animation(
 			.smooth(),
-			value: sections.map { $0.facilities.map(\.persistentModelID) }
+			value: sectionStructureHash
 		)
 		.navigationDestination(item: $selectedFacility) { facility in
 			FacilityDetailView(namespace: nameSpace, facility: facility)
@@ -80,8 +95,10 @@ extension FacilityList {
 			FacilityRowView(
 				facility: facility,
 				isRefreshing: facilityDataMgr
-					.isRefreshing)
+					.isRefreshing
+			)
 		}
+		.accessibilityIdentifier("facility-row-\(facility.facilityId)")
 		.disabled(isInteractionDisabled)
 		.listRowInsets(
 			EdgeInsets(top: 8, leading: 8, bottom: 4, trailing: 8)
@@ -90,14 +107,17 @@ extension FacilityList {
 		.listRowSeparator(.hidden)
 		.matchedTransitionSource(id: facility.facilityId, in: nameSpace)
 		.buttonStyle(.glass)
-		.buttonBorderShape(.capsule)
 		.swipeActions(edge: .leading) {
 			leadingSwipeAction(for: facility)
 		}
 	}
 
 	@ViewBuilder
-	func FacilityRowView(facility: ParkingFacility, isRefreshing: Bool) -> some View {
+	func FacilityRowView(facility: ParkingFacility, isRefreshing: Bool)
+		-> some View
+	{
+
+		let staleness = facility.refreshStatus.staleness
 
 		HStack(alignment: .center, spacing: 12) {
 			VStack(alignment: .center) {
@@ -106,12 +126,14 @@ extension FacilityList {
 					available: facility.vacancy.available,
 					total: facility.totalSpaces,
 					availabilityStatus: facility.availabilityStatus,
-					isRefreshing: isRefreshing && facility.refreshStatus.staleness == .stale
+					isRefreshing: isRefreshing
+					&& staleness == .stale
 				)
 			}
 			.padding(8)
 			.background(
-				.ultraThinMaterial, in: .circle
+				.ultraThinMaterial,
+				in: .circle
 			)
 
 			VStack(alignment: .leading) {
@@ -147,9 +169,10 @@ extension FacilityList {
 
 			Spacer()
 		}
+		.padding(.vertical, 4)
 		.opacity(facility.refreshStatus.staleness.opacity)
 		.animation(.smooth, value: facility.isFavourite)
-		.animation(.smooth, value: facility.refreshStatus.staleness)
+		.animation(.smooth, value: staleness)
 	}
 
 	@ViewBuilder

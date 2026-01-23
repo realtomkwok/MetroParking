@@ -29,6 +29,7 @@ struct OnboardingView: View {
 							.frame(width: 128, height: 128)
 							.aspectRatio(contentMode: .fit)
 							.shadow(radius: 64)
+							.accessibilityHidden(true)
 
 
 						Text("Welcome to MetroParking")
@@ -90,6 +91,7 @@ struct OnboardingView: View {
 						.padding()
 						.background(Color.accentColor)
 				}
+				.accessibilityIdentifier("get-started-button")
 				.buttonStyle(.glassProminent)
 				.padding()
 			}
@@ -99,6 +101,7 @@ struct OnboardingView: View {
 			BackgroundGradient(isAnimating: true)
 		}
 		.interactiveDismissDisabled()
+		.accessibilityIdentifier("onboarding-view")
 	}
 }
 

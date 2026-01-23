@@ -11,7 +11,8 @@ import SwiftUI
 
 struct SettingsView: View {
 	@Environment(\.dismiss) private var dismiss
-
+	@Environment(\.openURL) private var openUrl
+	
 	let version =
 		Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
 		?? "--"
@@ -22,62 +23,73 @@ struct SettingsView: View {
 	var body: some View {
 		NavigationStack {
 			List {
+
 				Section("Help") {
 					SettingsRow(
 						"Tips",
 						icon: "sparkles",
-						action: .navigation { AnyView(Settings_TipsView()) }
+						destination: { Settings_TipsView() }
 					)
 					SettingsRow(
-						"Report a bug",
-						icon: "ladybug",
-						action: .navigation { AnyView(EmptyView()) }
+						"Feedback",
+						icon: "bubble.left.and.exclamationmark.bubble.right",
+						destination: { Settings_FeedbackView() }
 					)
 				}
-				Section("About") {
+				Section {
 					SettingsRow(
 						"Developer",
 						icon: "figure.flexibility",
-						action: .externalLink(URL(string: "https://tomkwok.xyz")!)
+						externalURL: URL(string: "https://tomkwok.xyz")!
 					) {
 						Text("Tom Kwok")
-							.foregroundStyle(.foreground)
-
+							.foregroundStyle(.primary)
 					}
 					SettingsRow(
 						"Version",
-						icon: "info.circle"
-					) {
-						Text("\(version) (\(build))")
-							.foregroundStyle(.secondary)
-					}
+						icon: "info.circle",
+						accessory: {
+							Text("\(version) (\(build))")
+								.foregroundStyle(.secondary)
+						}
+					)
+				} header: {
+					Text("About")
+				} footer: {
+					Text(
+						"Data provided by [Transport for NSW Open Data](https://opendata.transport.nsw.gov.au/data/dataset/car-park-api)"
+					)
 				}
 
 				#if DEBUG
-					Section("Developer") {
+					Section("Debug") {
 						SettingsRow(
 							"API Debug",
 							icon: "hammer",
-							action: .navigation {
-								AnyView(
-									APIUsageDebugView()
-										.environment(FacilityManager.shared)
-								)
+							destination: {
+								APIUsageDebugView()
+									.environment(FacilityManager.shared)
 							}
 						)
 						SettingsRow(
 							"Background Refresh",
 							icon: "arrow.clockwise.circle",
-							action: .navigation { AnyView(BackgroundRefreshDebugView()) }
+							destination: {
+								BackgroundRefreshDebugView()
+							}
 						)
 					}
 				#endif
 			}
-//			.navigationTitle("Settings")
+			.navigationTitle("More")
+			.toolbarTitleDisplayMode(.large)
 			.toolbar {
 				ToolbarItem(placement: .topBarTrailing) {
-					Button("Close", systemImage: "xmark") {
+					Button {
 						dismiss()
+					} label: {
+						Label("Close", systemImage: "xmark")
+							.labelStyle(.iconOnly)
 					}
 				}
 			}
@@ -104,156 +116,337 @@ struct SettingsSubpage<Content: View>: View {
 	}
 }
 
-// MARK: - Settings Row Label Style
-
-/// Consistent label styling for settings rows: blue icon, primary text.
-struct SettingsLabelStyle: LabelStyle {
-	func makeBody(configuration: LabelStyleConfiguration) -> some View {
-		HStack(spacing: 12) {
-			configuration.icon
-				.foregroundStyle(Color.blue)
-			configuration.title
-				.foregroundStyle(Color.primary)
-		}
-	}
-}
-
 // MARK: - Unified Settings Row
 
-/// Defines the action type for a settings row.
+/// Defines the interaction type for a settings row.
 enum SettingsRowAction {
-	/// Navigates to a destination view within the navigation stack.
-	case navigation(() -> AnyView)
-	/// Opens a URL in an in-app Safari sheet.
-	case externalLink(URL)
-	/// No action - displays content only.
+	/// Navigates to a destination view within the NavigationStack.
+	case navigation
+	/// Opens an external URL in Safari (in-app sheet).
+	case externalURL(URL)
+	/// Opens an external URL using the system handler.
+	case systemURL(URL)
+	/// Executes a custom action.
+	case action(() -> Void)
+	/// No interaction (static display only).
 	case none
 }
 
-/// A unified, reusable settings row that handles navigation, external links, and static display.
-struct SettingsRow<Accessory: View>: View {
+/// A unified, reusable settings row that handles navigation, external links, actions, and static display.
+///
+/// Usage examples:
+/// ```swift
+/// // Navigation to a destination view
+/// SettingsRow("Profile", icon: "person") {
+///     ProfileView()
+/// }
+///
+/// // External URL (opens in Safari sheet)
+/// SettingsRow("Website", icon: "globe", externalURL: URL(string: "https://example.com")!)
+///
+/// // System URL (opens via openURL environment)
+/// SettingsRow("Email", icon: "envelope", systemURL: URL(string: "mailto:hi@example.com")!)
+///
+/// // Custom action
+/// SettingsRow("Reset", icon: "arrow.counterclockwise", action: { resetSettings() })
+///
+/// // Static row with accessory
+/// SettingsRow("Version", icon: "info.circle") {
+///     Text("1.0.0").foregroundStyle(.secondary)
+/// }
+/// ```
+struct SettingsRow<Destination: View, Accessory: View>: View {
 	let title: String
 	let subtitle: String?
 	let icon: String
-	let action: SettingsRowAction
+	let rowAction: SettingsRowAction
+	let destination: Destination?
 	@ViewBuilder let accessory: Accessory
 
+	@Environment(\.openURL) private var openURL
 	@State private var isShowingSafari = false
 
-	/// Creates a settings row with a trailing accessory view.
+	// MARK: - Navigation Initialiser
+
+	/// Creates a settings row with navigation to a destination view.
 	init(
 		_ title: String,
 		subtitle: String? = nil,
 		icon: String,
-		action: SettingsRowAction = .none,
+		@ViewBuilder destination: () -> Destination,
 		@ViewBuilder accessory: () -> Accessory
 	) {
 		self.title = title
 		self.subtitle = subtitle
 		self.icon = icon
-		self.action = action
+		self.rowAction = .navigation
+		self.destination = destination()
 		self.accessory = accessory()
 	}
 
+	// MARK: - Action-Based Initialisers
+
+	/// Creates a settings row with an external URL (opens in Safari sheet).
+	init(
+		_ title: String,
+		subtitle: String? = nil,
+		icon: String,
+		externalURL: URL,
+		@ViewBuilder accessory: () -> Accessory
+	) where Destination == EmptyView {
+		self.title = title
+		self.subtitle = subtitle
+		self.icon = icon
+		self.rowAction = .externalURL(externalURL)
+		self.destination = nil
+		self.accessory = accessory()
+	}
+
+	/// Creates a settings row with a system URL (opens via openURL).
+	init(
+		_ title: String,
+		subtitle: String? = nil,
+		icon: String,
+		systemURL: URL,
+		@ViewBuilder accessory: () -> Accessory
+	) where Destination == EmptyView {
+		self.title = title
+		self.subtitle = subtitle
+		self.icon = icon
+		self.rowAction = .systemURL(systemURL)
+		self.destination = nil
+		self.accessory = accessory()
+	}
+
+	/// Creates a settings row with a custom action.
+	init(
+		_ title: String,
+		subtitle: String? = nil,
+		icon: String,
+		action: @escaping () -> Void,
+		@ViewBuilder accessory: () -> Accessory
+	) where Destination == EmptyView {
+		self.title = title
+		self.subtitle = subtitle
+		self.icon = icon
+		self.rowAction = .action(action)
+		self.destination = nil
+		self.accessory = accessory()
+	}
+
+	/// Creates a settings row with no interaction (static content only).
+	init(
+		_ title: String,
+		subtitle: String? = nil,
+		icon: String,
+		@ViewBuilder accessory: () -> Accessory
+	) where Destination == EmptyView {
+		self.title = title
+		self.subtitle = subtitle
+		self.icon = icon
+		self.rowAction = .none
+		self.destination = nil
+		self.accessory = accessory()
+	}
+
+	// MARK: - Body
+
 	var body: some View {
 		Group {
-			switch action {
-			case .navigation(let destination):
-				NavigationLink {
-					destination()
-				} label: {
-					rowLabel
+			switch rowAction {
+			case .navigation:
+				if let destination {
+					NavigationLink {
+						destination
+					} label: {
+						rowContent
+					}
 				}
 
-			case .externalLink(let url):
+			case .externalURL(let url):
 				Button {
 					isShowingSafari = true
 				} label: {
-					HStack {
-						rowLabel
-						Spacer()
-						accessory
-					}
+					rowContent
 				}
 				.sheet(isPresented: $isShowingSafari) {
 					SafariView(url: url)
 				}
 
-			case .none:
-				LabeledContent {
-					accessory
+			case .systemURL(let url):
+				Button {
+					openURL(url)
 				} label: {
-					labelContent
+					rowContent
 				}
+
+			case .action(let action):
+				Button(action: action) {
+					rowContent
+				}
+
+			case .none:
+				rowContent
 			}
 		}
 	}
 
-	/// The row label used for navigation and external link actions.
-	private var rowLabel: some View {
+	// MARK: - Private Views
+
+	/// The full row content with label and accessory.
+	private var rowContent: some View {
 		LabeledContent {
-			if case .navigation = action {
-				accessory
-			}
+			accessory
 		} label: {
-			labelContent
-		}
-	}
-
-	/// The label content (icon + title + optional subtitle).
-	private var labelContent: some View {
-		HStack {
-			Label(title, systemImage: icon)
-				.labelStyle(SettingsLabelStyle())
+			Label {
+				Text(title)
+					.foregroundStyle(Color.primary)
+			} icon: {
+				Image(systemName: icon)
+			}
 			if let subtitle, !subtitle.isEmpty {
 				Text(subtitle)
-					.foregroundStyle(.secondary)
+					.font(.caption)
+					.foregroundStyle(Color.secondary)
 			}
 		}
 	}
 }
 
-/// Convenience initialiser for rows without accessory content.
+// MARK: - Convenience Initialisers (No Accessory)
+
 extension SettingsRow where Accessory == EmptyView {
+	/// Creates a settings row with navigation and no accessory.
 	init(
 		_ title: String,
 		subtitle: String? = nil,
 		icon: String,
-		action: SettingsRowAction = .none
+		@ViewBuilder destination: () -> Destination
 	) {
+		self.init(
+			title,
+			subtitle: subtitle,
+			icon: icon,
+			destination: destination
+		) {
+			EmptyView()
+		}
+	}
+
+	/// Creates a settings row with an external URL and no accessory.
+	init(
+		_ title: String,
+		subtitle: String? = nil,
+		icon: String,
+		externalURL: URL
+	) where Destination == EmptyView {
+		self.init(
+			title,
+			subtitle: subtitle,
+			icon: icon,
+			externalURL: externalURL
+		) {
+			EmptyView()
+		}
+	}
+
+	/// Creates a settings row with a system URL and no accessory.
+	init(
+		_ title: String,
+		subtitle: String? = nil,
+		icon: String,
+		systemURL: URL
+	) where Destination == EmptyView {
+		self.init(title, subtitle: subtitle, icon: icon, systemURL: systemURL) {
+			EmptyView()
+		}
+	}
+
+	/// Creates a settings row with a custom action and no accessory.
+	init(
+		_ title: String,
+		subtitle: String? = nil,
+		icon: String,
+		action: @escaping () -> Void
+	) where Destination == EmptyView {
 		self.init(title, subtitle: subtitle, icon: icon, action: action) {
 			EmptyView()
 		}
+	}
+
+	/// Creates a settings row with no interaction and no accessory.
+	init(
+		_ title: String,
+		subtitle: String? = nil,
+		icon: String
+	) where Destination == EmptyView {
+		self.title = title
+		self.subtitle = subtitle
+		self.icon = icon
+		self.rowAction = .none
+		self.destination = nil
+		self.accessory = EmptyView()
 	}
 }
 
 // MARK: - Tips Subpage
 
-private struct Settings_TipsView: View {
-	var body: some View {
-		SettingsSubpage("Tips") {
-			List {
-				Section("Navigation") {
-					Label(
-						"Swipe right to pin a car park",
-						systemImage: "arrow.right.to.line"
+@ViewBuilder
+private func Settings_TipsView() -> some View {
+	SettingsSubpage("Tips") {
+		List {
+			Section("Navigation") {
+				Label(
+					"Swipe right to pin a car park",
+					systemImage: "arrow.right.to.line"
+				)
+				.contentTransition(
+					.symbolEffect(
+						.replace.magic(fallback: .downUp.byLayer),
+						options: .repeat(.periodic(delay: 3.0))
 					)
-					.contentTransition(
-						.symbolEffect(
-							.replace.magic(fallback: .downUp.byLayer),
-							options: .repeat(.periodic(delay: 3.0))
-						)
-					)
-					Label(
-						"Swipe left to get direction to a car park",
-						systemImage: "arrow.left.to.line"
-					)
-					Label(
-						"Swipe down to refresh the list",
-						systemImage: "arrow.clockwise"
-					)
-				}
-				// Add more tips as needed
+				)
+				Label(
+					"Swipe left to get direction to a car park",
+					systemImage: "arrow.left.to.line"
+				)
+				Label(
+					"Swipe down to refresh the list",
+					systemImage: "arrow.clockwise"
+				)
+			}
+			// Add more tips as needed
+		}
+	}
+}
+
+@ViewBuilder
+private func Settings_FeedbackView() -> some View {
+	SettingsSubpage("Feedback") {
+		List {
+			Section {
+				SettingsRow(
+					"Report a bug",
+					icon: "ladybug",
+					externalURL: URL(
+						string: "https://testflight.apple.com/join/metroparking"
+					)!
+				)
+				SettingsRow(
+					"Request a feature",
+					icon: "plus.bubble",
+					externalURL: URL(
+						string: "https://testflight.apple.com/join/metroparking"
+					)!
+				)
+			}
+			Section("Issue not listed?") {
+				SettingsRow(
+					"Contact Developer",
+					subtitle: "via Email",
+					icon: "envelope",
+					systemURL: URL(string: "mailto:tom@itsnoice.com")!
+				)
 			}
 		}
 	}

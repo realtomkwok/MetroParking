@@ -42,14 +42,14 @@ struct ParkingProgressGauge: View {
 				.foregroundStyle(isAvailable ? .primary : .tertiary)
 		} minimumValueLabel: {
 			Text("\(total)")
-				.font(.system(size: 8))
+				.font(.caption2)
 				.fontWidth(.init(0.1))
 				.foregroundStyle(.secondary)
 		} maximumValueLabel: {
 			Text("")
 		}
 		.gaugeStyle(.accessoryCircular)
-		.tint(Gradient(colors: AvailabilityStatus.gradientColors))
+		.tint(AvailabilityStatus.gradient)
 		.contentTransition(.numericText(value: Double(available)))
 		.breathingAnimation(isRefreshing, minOpacity: 0.5, duration: 0.8)
 	}

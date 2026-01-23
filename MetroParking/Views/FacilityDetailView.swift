@@ -65,13 +65,14 @@ extension FacilityDetailView {
 			MapHeader
 				.zIndex(0)
 			// Detail Content with background that overlays the map
-			VStack {
-				DetailSections(facility: facility)
-					.backport.concentricClipShape()
-			}
-			.padding()
-			.zIndex(1)
+
+			DetailSections(facility: facility)
+				.accessibilityIdentifier("detail-sections")
+				.backport.concentricClipShape()
+				.zIndex(1)
 		}
+		.accessibilityElement(children: .contain)
+		.accessibilityIdentifier("detail-view")
 		.containerShape(.rect(cornerRadius: 48))
 		.background(Color(UIColor.systemGroupedBackground))
 		.scrollTargetBehavior(.paging)
@@ -127,7 +128,7 @@ extension FacilityDetailView {
 				let minY = geometry.frame(in: .scrollView).minY
 				let size = geometry.size
 				let height = size.height + max(-minY, minY)
-				
+
 				ZStack(alignment: .bottomTrailing) {
 					Map(position: .constant(cameraPosition)) {
 						Marker(
@@ -156,7 +157,7 @@ extension FacilityDetailView {
 			.transition(.blurReplace)
 		} else {
 			Color.clear
-			.frame(height: 400)
+				.frame(height: 400)
 		}
 	}
 
@@ -297,11 +298,8 @@ struct DetailSections: View {
 				)
 		}
 		.padding(.horizontal, 20)
-		.padding(.vertical, 18)
-		.glassEffect(
-			.regular,
-			in: .rect
-		)
+		.padding(.vertical, 16)
+		.background(.regularMaterial)
 		.clipShape(.containerRelative)
 	}
 
@@ -361,9 +359,7 @@ struct DetailSections: View {
 				.linearCapacity
 			)
 			.tint(
-				Gradient(
-					colors: AvailabilityStatus.gradientColors
-				)
+				AvailabilityStatus.gradient
 			)
 			.opacity(facility.refreshStatus.staleness.opacity)
 		}
@@ -603,38 +599,42 @@ struct DetailSections: View {
 	/// Future (v0.6.0+): Display nearby parking facilities
 
 	var body: some View {
-		DetailCard(
-			label: (
-				"Vacancy",
-				"parkingsign.circle.fill",
-				.blue
-			),
-			content: VacancyView,
-			trailingTopContent: {
-				TimelineView(.periodic(from: .now, by: 60)) { context in
-					let timeInterval = context.date.timeIntervalSince(
-						facility.refreshStatus.lastUpdated
-					)
-
-					if timeInterval < 60 {
-						Text("updated just now")
-					} else {
-						Text(
-							"updated \(facility.refreshStatus.lastUpdated.formatted(.relative(presentation: .named, unitsStyle: .narrow)))"
+		VStack {
+			DetailCard(
+				label: (
+					"Vacancy",
+					"parkingsign.circle.fill",
+					.blue
+				),
+				content: VacancyView,
+				trailingTopContent: {
+					TimelineView(.periodic(from: .now, by: 60)) { context in
+						let timeInterval = context.date.timeIntervalSince(
+							facility.refreshStatus.lastUpdated
 						)
+
+						if timeInterval < 60 {
+							Text("updated just now")
+						} else {
+							Text(
+								"updated \(facility.refreshStatus.lastUpdated.formatted(.relative(presentation: .named, unitsStyle: .narrow)))"
+							)
+						}
 					}
+					.monospacedDigit()
+					.font(.footnote)
 				}
-				.monospacedDigit()
-				.font(.footnote)
-			}
-		)
+			)
 
-		DetailCard(
-			label: ("Travels", "location.north.circle.fill", .accentColor),
-			content: TrafficView
-		)
+			DetailCard(
+				label: ("Travels", "location.north.circle.fill", .accentColor),
+				content: TrafficView
+			)
 
-		LookAroundView()
+			LookAroundView()
+		}
+		.padding()
+
 	}
 }
 

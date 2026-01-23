@@ -9,6 +9,7 @@
 //  so main app can also benefit from the fresh data.
 
 import Foundation
+import OSLog
 
 /// Lightweight API service for widget-only use
 /// Fetches fresh vacancy data and updates the shared cache
@@ -21,6 +22,8 @@ import Foundation
 struct WidgetAPIService {
 
     static let shared = WidgetAPIService()
+
+	private let logger = Logger.api
 
     private let session = URLSession.shared
     private let decoder = JSONDecoder()
@@ -84,12 +87,18 @@ struct WidgetAPIService {
             // Save to shared cache (main app will also read this)
             await SharedDataManager.shared.saveWidgetData(updatedData, triggerReload: false)
 
-            print("✅ Widget API: Fetched fresh data for \(displayName.title) - \(available)/\(total) available")
+			logger
+				.info(
+					"✅ Widget API: Fetched fresh data for \(displayName.title) - \(available)/\(total) available"
+				)
 
             return updatedData
 
         } catch {
-            print("❌ Widget API: Failed to fetch facility \(facilityId): \(error.localizedDescription)")
+			logger
+				.error(
+					"❌ Widget API: Failed to fetch facility \(facilityId): \(error.localizedDescription)"
+				)
             return nil
         }
     }

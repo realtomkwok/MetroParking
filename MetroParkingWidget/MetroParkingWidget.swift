@@ -9,6 +9,7 @@ import AppIntents
 import SwiftData
 import SwiftUI
 import WidgetKit
+import OSLog
 
 struct FacilityEntry: TimelineEntry {
 	let date: Date
@@ -44,6 +45,7 @@ struct FacilityEntry: TimelineEntry {
 }
 
 struct FacilityProvider: AppIntentTimelineProvider {
+	let logger = Logger.widget
 
 	typealias Entry = FacilityEntry
 	typealias Intent = FocusedFacilityWidgetConfigs
@@ -106,15 +108,21 @@ struct FacilityProvider: AppIntentTimelineProvider {
 		let isDataStale = displayData?.cacheTimestamp.timeIntervalSinceNow ?? -.infinity < -staleThreshold
 
 		if isDataStale {
-			print("🔄 Widget: Data is stale, fetching fresh from API...")
+			Logger
+				.widget
+				.info("🔄 Widget: Data is stale, fetching fresh from API...")
 			if let freshData = await WidgetAPIService.shared.fetchAndUpdateCache(
 				facilityId: selectedFacility.id,
 				existingData: displayData
 			) {
 				displayData = freshData
-				print("✅ Widget: Got fresh data - \(freshData.availableSpaces)/\(freshData.totalSpaces) available")
+				Logger
+					.widget
+					.info("✅ Widget: Got fresh data - \(freshData.availableSpaces)/\(freshData.totalSpaces) available")
 			} else {
-				print("⚠️ Widget: API fetch failed, using cached data")
+				Logger
+					.widget
+					.warning("⚠️ Widget: API fetch failed, using cached data")
 			}
 		}
 
@@ -166,18 +174,22 @@ struct FacilityProvider: AppIntentTimelineProvider {
 		do {
 			let facilities = try context.fetch(descriptor)
 			guard let facility = facilities.first else {
-				print("⚠️ Widget: No facility found with ID: \(facilityId)")
+				logger
+					.error(
+						"⚠️ Widget: No facility found with ID: \(facilityId)"
+					)
 				return nil
 			}
 
-			print(
+			logger.info(
 				"✅ Widget: Loaded facility '\(facility.displayName.title)' with \(facility.vacancy.available) available spaces"
 			)
 
 			// Convert to widget data format
 			return await SharedDataManager.shared.makeWidgetData(from: facility)
 		} catch {
-			print("❌ Widget: Failed to load facility data: \(error)")
+			logger
+				.error("❌ Widget: Failed to load facility data: \(error)")
 			return nil
 		}
 	}

@@ -99,7 +99,7 @@ extension LocationManager {
 			authorisationStatus == .authorizedAlways
 				|| authorisationStatus == .authorizedWhenInUse
 		else {
-			print("❌ Location not authorised")
+			Logger.location.error("❌ Location not authorised")
 			return
 		}
 
@@ -117,7 +117,7 @@ extension LocationManager {
 	private func showLocationSettingsAlert() {
 		errorMsg =
 			"Location access is required for this feature. Please enable it in Settings."
-		print("📍 Need to direct user to Settings")
+		Logger.location.error("📍 Need to direct user to Settings")
 	}
 
 }

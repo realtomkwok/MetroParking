@@ -19,6 +19,8 @@ struct MetroParkingApp: App {
 	}
 
 	init() {
+		// Handle UI testing launch arguments
+		handleUITestingArguments()
 
 		setupConfiguration()
 
@@ -34,6 +36,39 @@ struct MetroParkingApp: App {
 		// Schedule initial processing task if none pending (handles fresh install or force-quit)
 		BackgroundTaskManager.shared.scheduleProcessingTaskIfNeeded()
 
+	}
+
+	/// Handles launch arguments for UI testing and screenshot automation
+	private func handleUITestingArguments() {
+		let arguments = ProcessInfo.processInfo.arguments
+
+		// Check if running in UI testing mode
+		guard arguments.contains("UI_TESTING") else { return }
+
+		#if DEBUG
+		print("🧪 Running in UI Testing mode")
+		#endif
+
+		// Reset state for clean screenshots
+		if arguments.contains("RESET_STATE") {
+			#if DEBUG
+			print("🔄 Resetting app state for UI testing")
+			#endif
+			// Clear UserDefaults to show onboarding
+			if let bundleID = Bundle.main.bundleIdentifier {
+				UserDefaults.standard.removePersistentDomain(forName: bundleID)
+				UserDefaults.standard.synchronize()
+			}
+		}
+
+		// Skip onboarding for tests that don't need it
+		if arguments.contains("SKIP_ONBOARDING") {
+			#if DEBUG
+			print("⏭️ Skipping onboarding for UI test")
+			#endif
+			UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+			UserDefaults.standard.synchronize()
+		}
 	}
 
 	var body: some Scene {

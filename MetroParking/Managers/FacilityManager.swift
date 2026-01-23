@@ -173,11 +173,22 @@ extension FacilityManager {
 		// Fetch facilities using the working context
 		let allFacilities: [ParkingFacility] = await getFacilities(from: workingContext!)
 
+		// Apply user's active filter if enabled (to prioritize refreshing what the user sees)
+		let preFilteredFacilities: [ParkingFacility]
+		if UserPreferences.shared.filterIsOn {
+			preFilteredFacilities = UserPreferences.shared.preferredFilterOption.apply(to: allFacilities)
+			Logger.facilityRefresh.debug(
+				"📍 Filter active (\(UserPreferences.shared.preferredFilterOption.display.title)): \(preFilteredFacilities.count)/\(allFacilities.count) facilities"
+			)
+		} else {
+			preFilteredFacilities = allFacilities
+		}
+
 		// Single-pass filtering and categorisation (2-tier system)
 		var watched: [ParkingFacility] = []
 		var unwatched: [ParkingFacility] = []
 
-		for facility in allFacilities {
+		for facility in preFilteredFacilities {
 			// Check if facility needs refresh (uses foreground cache validity)
 			guard facility.shouldRefresh(appState: .active, forced: forced) else { continue }
 
@@ -198,13 +209,14 @@ extension FacilityManager {
 		// Build priority-ordered list: watched first, then unwatched
 		// Sort each group according to user's preferred sort option for visual consistency
 		let sortOption = UserPreferences.shared.preferredSortOption
-		let sortedWatched = sortOption.apply(to: watched)
-		let sortedUnwatched = sortOption.apply(to: unwatched)
+		let sortOrder = UserPreferences.shared.preferredSortingOrder
+		let sortedWatched = sortOption.apply(to: watched, order: sortOrder)
+		let sortedUnwatched = sortOption.apply(to: unwatched, order: sortOrder)
 		let toLoad = sortedWatched + sortedUnwatched
 
 		Logger.facilityRefresh
 			.debug(
-				"Loading \(toLoad.count) facilities (\(watched.count) watched, \(unwatched.count) unwatched) sorted by \(sortOption.display.title)"
+				"Loading \(toLoad.count) facilities (\(watched.count) watched, \(unwatched.count) unwatched) sorted by \(sortOption.display.title) (\(sortOrder.rawValue))"
 			)
 
 		loadProgress = .loading(0, toLoad.count)

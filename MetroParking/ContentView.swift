@@ -23,11 +23,8 @@ struct ContentView: View {
 	@Environment(OnboardingManager.self) private var onboardingMgr
 	@Environment(DeepLinkManager.self) private var deepLinkMgr
 	@Environment(SearchManager.self) private var searchMgr
+	@Environment(UserPreferences.self) private var preferences
 
-	@State private var filterIsOn: Bool = false
-	@State private var selectedSorting: SortingOption = .distance
-	@State private var selectedSortingOrder: SortingOrder = .ascending
-	@State private var selectedFilter: FilterOption = .available
 	@State private var selectedFacility: ParkingFacility?
 	@State private var isFilterMenuPresented: Bool = false
 	@State private var deepLinkedFacility: ParkingFacility?
@@ -44,9 +41,15 @@ struct ContentView: View {
 		// Filter and sort all facilities once
 		let filteredFacilities =
 			allFacilities
-			.filtered(by: filterIsOn ? selectedFilter : nil)
+			.filtered(
+				by: preferences.filterIsOn
+					? preferences.preferredFilterOption : nil
+			)
 			.searchFiltered(by: searchMgr.searchText)
-			.sorted(by: selectedSorting, order: selectedSortingOrder)
+			.sorted(
+				by: preferences.preferredSortOption,
+				order: preferences.preferredSortingOrder
+			)
 
 		// Separate into pinned and unpinned after filtering/sorting
 		let pinnedFacilities = filteredFacilities.filter { $0.isFavourite }
@@ -75,8 +78,8 @@ struct ContentView: View {
 
 	private var navigationSubtitle: Text {
 
-		if filterIsOn {
-			switch selectedFilter {
+		if preferences.filterIsOn {
+			switch preferences.preferredFilterOption {
 			case .pinned:
 				return Text("Showing pinned car parks only")
 			case .available:
@@ -95,6 +98,7 @@ struct ContentView: View {
 	var body: some View {
 		@Bindable var onboarding = onboardingMgr
 		@Bindable var search = searchMgr
+		@Bindable var preferences = preferences
 
 		NavigationStack {
 			ZStack {
@@ -105,6 +109,20 @@ struct ContentView: View {
 					selectedFacility: $selectedFacility,
 					isInteractionDisabled: isFilterMenuPresented
 				)
+				.toolbar {
+					TopBar()
+				}
+				.toolbar {
+					BottomBar()
+
+				}
+				.searchable(
+					text: $search.searchText,
+					isPresented: $search.isSearchFieldFocused,
+					placement: .toolbar,
+					prompt: "Station or suburb"
+				)
+				.searchToolbarBehavior(preferences.filterIsOn ? .minimize : .automatic)
 			}
 			.navigationTitle("MetroParking")
 			.navigationSubtitle(navigationSubtitle)
@@ -112,20 +130,6 @@ struct ContentView: View {
 			.refreshable {
 				await facilityDataMgr.performLoad(forced: true)
 			}
-			.toolbar {
-				TopBar()
-			}
-			.toolbar {
-				BottomBar()
-
-			}
-			.searchable(
-				text: $search.searchText,
-				isPresented: $search.isSearchFieldFocused,
-				placement: .toolbar,
-				prompt: "Station or suburb"
-			)
-			.searchToolbarBehavior(filterIsOn ? .minimize : .automatic)
 			.scrollEdgeEffectStyle(.soft, for: .vertical)
 			.scrollContentBackground(.hidden)
 		}
@@ -236,25 +240,29 @@ extension ContentView {
 				Label("Settings", systemImage: "ellipsis")
 					.labelStyle(.iconOnly)
 			}
+			.accessibilityIdentifier("settings-button")
 		}
 	}
 
 	@ToolbarContentBuilder
 	func BottomBar() -> some ToolbarContent {
+		@Bindable var preferences = preferences
+
 		ToolbarItemGroup(placement: .bottomBar) {
 
-			Toggle(isOn: $filterIsOn.animation(.snappy)) {
+			Toggle(isOn: $preferences.filterIsOn.animation(.snappy)) {
 				Label(
 					"Filter",
 					systemImage: "line.3.horizontal.decrease"
 				)
 				.labelStyle(.iconOnly)
-
 			}
+			.accessibilityIdentifier("filter-toggle")
+			.sensoryFeedback(.selection, trigger: preferences.filterIsOn)
 
-			if filterIsOn {
+			if preferences.filterIsOn {
 
-				Picker(selection: $selectedFilter) {
+				Picker(selection: $preferences.preferredFilterOption) {
 					ForEach(FilterOption.allCases, id: \.self) { option in
 						Label(
 							option.display.title,
@@ -278,12 +286,13 @@ extension ContentView {
 		ToolbarItem(id: "Sorting", placement: .bottomBar) {
 
 			Menu {
-				let isAscending: Bool = selectedSortingOrder == .ascending
+				let isAscending: Bool =
+					preferences.preferredSortingOrder == .ascending
 
-				Picker(selection: $selectedSortingOrder) {
+				Picker(selection: $preferences.preferredSortingOrder) {
 					ForEach(SortingOrder.allCases, id: \.self) { order in
 						Label(
-							selectedSorting.display.subtitle(
+							preferences.preferredSortOption.display.subtitle(
 								ascending: order == .ascending
 							),
 							systemImage: order.display.systemImage
@@ -298,14 +307,14 @@ extension ContentView {
 							: "text.line.last.and.arrowtriangle.forward"
 					)
 					Text(
-						selectedSorting.display.subtitle(
+						preferences.preferredSortOption.display.subtitle(
 							ascending: isAscending
 						)
 					)
 				}
 				.pickerStyle(.menu)
 
-				Picker(selection: $selectedSorting) {
+				Picker(selection: $preferences.preferredSortOption) {
 					ForEach(SortingOption.allCases, id: \.self) { option in
 						Label(
 							option.display.title,
@@ -361,6 +370,7 @@ extension ContentView {
 		.environment(OnboardingManager.shared)
 		.environment(DeepLinkManager.shared)
 		.environment(SearchManager.shared)
+		.environment(UserPreferences.shared)
 }
 
 #Preview("Empty State") {
@@ -371,4 +381,5 @@ extension ContentView {
 		.environment(OnboardingManager.shared)
 		.environment(DeepLinkManager.shared)
 		.environment(SearchManager.shared)
+		.environment(UserPreferences.shared)
 }

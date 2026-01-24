@@ -29,7 +29,7 @@ enum RefreshConfiguration {
 
 	/// How often to trigger the next refresh cycle when app is active
 	enum ForegroundInterval {
-		static let standard: TimeInterval = 90  // 90 seconds between refresh cycles
+		static let standard: TimeInterval = 300  // 300 seconds between refresh cycles
 	}
 
 	// MARK: - Cache Validity by Tier (Simplified 2-Tier System)
@@ -43,8 +43,8 @@ enum RefreshConfiguration {
 	enum CacheValidity {
 		/// Foreground cache validity (when app is active)
 		enum Foreground {
-			static let watched: TimeInterval = 90      // 90 seconds - widgets + favourites
-			static let unwatched: TimeInterval = 300   // 5 minutes - others (visible on screen)
+			static let watched: TimeInterval = 300      // 5 minutes - widgets + favourites
+			static let unwatched: TimeInterval = 900   // 15 minutes - others (visible on screen)
 		}
 
 		/// Background cache validity (for background tasks)
@@ -110,8 +110,8 @@ enum RefreshConfiguration {
 
 	/// API call constraints
 	enum API {
-		/// Minimum delay between sequential API calls (200ms = 5 calls/sec TfNSW limit)
-		static let minCallInterval: TimeInterval = 0.2
+		/// Minimum delay between sequential API calls (400ms between calls)
+		static let minCallInterval: TimeInterval = 0.4
 
 		/// Delay between UI updates for cascade animation effect
 		static let uiStaggerDelay: TimeInterval = 0.08  // 80ms

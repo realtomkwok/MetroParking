@@ -99,7 +99,8 @@ struct FacilityQuery: EntityStringQuery {
 			let facilities = try context.fetch(descriptor)
 			return facilities.map { FacilityEntity(from: $0) }
 		} catch {
-			print("❌ Failed to fetch suggested facilities: \(error)")
+			Logger.widget
+				.error("❌ Failed to fetch suggested facilities: \(error)")
 			return []
 		}
 	}
@@ -118,7 +119,8 @@ struct FacilityQuery: EntityStringQuery {
 			let favorites = try context.fetch(descriptor)
 			return favorites.first.map { FacilityEntity(from: $0) }
 		} catch {
-			print("❌ Failed to fetch default facility: \(error)")
+			Logger.widget
+				.error("❌ Failed to fetch default facility: \(error)")
 			return nil
 		}
 	}

@@ -171,11 +171,11 @@ class TimeFormatter {
 	func formatAge(since date: Date, style: TimeFormatStyle = .abbreviated)
 		-> String
 	{
-		let formatter = RelativeDateTimeFormatter()
-		formatter.locale = Locale.current
-		formatter.unitsStyle = style == .relativeShort ? .abbreviated : .full
+		relativeDateFormatter.locale = Locale.current
+		relativeDateFormatter.unitsStyle = style == .relativeShort ? .abbreviated : .full
 
-		return formatter.localizedString(for: date, relativeTo: Date())
+		return relativeDateFormatter
+			.localizedString(for: date, relativeTo: Date())
 	}
 
 	/// Format future of data, e.g. ETA (always positive, "in" format)
@@ -184,11 +184,12 @@ class TimeFormatter {
 		style: TimeFormatStyle = .abbreviated
 	) -> String {
 		let futureDate = Date().addingTimeInterval(timeInterval)
-		let formatter = RelativeDateTimeFormatter()
-		formatter.locale = Locale.current
-		formatter.unitsStyle = style == .relativeShort ? .abbreviated : .full
 
-		return formatter.localizedString(for: futureDate, relativeTo: Date())
+		relativeDateFormatter.locale = Locale.current
+		relativeDateFormatter.unitsStyle = style == .relativeShort ? .abbreviated : .full
+
+		return relativeDateFormatter
+			.localizedString(for: futureDate, relativeTo: Date())
 	}
 }
 

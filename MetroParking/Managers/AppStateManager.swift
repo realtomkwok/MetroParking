@@ -10,8 +10,9 @@ import MapKit
 import OSLog
 import SwiftUI
 
+@MainActor
 @Observable
-class AppStateManager {
+final class AppStateManager {
 
 	static let shared = AppStateManager()
 
@@ -73,8 +74,9 @@ extension AppStateManager {
 			await facilityManager.updateWidgetBeforeBackground()
 		}
 
-		// Schedule background refresh task
+		// Schedule background refresh tasks
 		BackgroundTaskManager.shared.scheduleAppRefresh()
+		BackgroundTaskManager.shared.scheduleProcessingTask()
 	}
 }
 

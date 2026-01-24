@@ -13,6 +13,7 @@ struct ParkingProgressGauge: View {
 	let displayVacancy: String
 	let total: Int
 	let availabilityStatus: AvailabilityStatus
+	var isRefreshing: Bool = false
 
 	private var isAvailable: Bool
 
@@ -20,7 +21,8 @@ struct ParkingProgressGauge: View {
 		occupancy: Double,
 		available: Int,
 		total: Int,
-		availabilityStatus: AvailabilityStatus
+		availabilityStatus: AvailabilityStatus,
+		isRefreshing: Bool = false
 	) {
 		self.occupancy = occupancy
 		self.available = available
@@ -28,6 +30,7 @@ struct ParkingProgressGauge: View {
 		self.total = total
 		self.availabilityStatus = availabilityStatus
 		self.isAvailable = availabilityStatus != .noData
+		self.isRefreshing = isRefreshing
 	}
 
 	var body: some View {
@@ -39,21 +42,16 @@ struct ParkingProgressGauge: View {
 				.foregroundStyle(isAvailable ? .primary : .tertiary)
 		} minimumValueLabel: {
 			Text("\(total)")
-				.font(.system(size: 8))
+				.font(.caption2)
 				.fontWidth(.init(0.1))
 				.foregroundStyle(.secondary)
 		} maximumValueLabel: {
 			Text("")
 		}
 		.gaugeStyle(.accessoryCircular)
-		.tint(
-			Gradient(colors: [
-				AvailabilityStatus.available.fill,
-				AvailabilityStatus.almostFull.fill,
-				AvailabilityStatus.full.fill,
-			])
-		)
+		.tint(AvailabilityStatus.gradient)
 		.contentTransition(.numericText(value: Double(available)))
+		.breathingAnimation(isRefreshing, minOpacity: 0.5, duration: 0.8)
 	}
 }
 

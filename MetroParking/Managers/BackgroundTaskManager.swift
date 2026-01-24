@@ -135,6 +135,25 @@ extension BackgroundTaskManager {
 		}
 	}
 
+	/// Schedule a processing task only if none is currently pending.
+	/// Used at app launch to ensure the task chain is always started.
+	func scheduleProcessingTaskIfNeeded() {
+		BGTaskScheduler.shared.getPendingTaskRequests { [weak self] requests in
+			guard let self = self else { return }
+
+			let hasProcessingTask = requests.contains {
+				$0.identifier == Self.processingTaskID
+			}
+
+			if !hasProcessingTask {
+				Logger.facilityRefresh.info("📅 No processing task pending, scheduling initial task")
+				self.scheduleProcessingTask()
+			} else {
+				Logger.facilityRefresh.debug("⏭️ Processing task already pending, skipping schedule")
+			}
+		}
+	}
+
 	private func logSchedulingError(_ error: Error, taskType: String) {
 		Logger.facilityRefresh.error(
 			"❌ Failed to schedule \(taskType): \(error.localizedDescription)"
@@ -192,8 +211,8 @@ extension BackgroundTaskManager {
 		// Track execution time for debugging
 		UserDefaults.standard.set(Date(), forKey: "lastProcessingTask")
 
-		// Schedule next processing task for future
-		scheduleProcessingTask()
+		// Note: Schedule next task AFTER completion, not before
+		// This prevents wasted scheduling if the task is cancelled/expires
 
 		let workTask = Task {
 			await performFullRefresh()
@@ -205,9 +224,15 @@ extension BackgroundTaskManager {
 		}
 
 		await workTask.value
-		task.setTaskCompleted(success: !workTask.isCancelled)
 
-		Logger.facilityRefresh.notice("✅ Processing task completed (success: \(!workTask.isCancelled))")
+		let success = !workTask.isCancelled
+		task.setTaskCompleted(success: success)
+
+		// Schedule next processing task after completion
+		// This ensures the task chain continues even if this task was cancelled
+		scheduleProcessingTask()
+
+		Logger.facilityRefresh.notice("✅ Processing task completed (success: \(success)), next task scheduled")
 	}
 }
 

@@ -26,6 +26,8 @@ struct FacilityDetailView: View {
 	@State private var allowDismissalGesture:
 		AllowedNavigationDismissalGestures = .none
 
+	@State private var showMap: Bool = false
+
 	// Fixed camera position to prevent zoom issues
 	@State private var cameraPosition: MapCameraPosition
 
@@ -39,7 +41,7 @@ struct FacilityDetailView: View {
 				MapCamera(
 					centerCoordinate: facility.coordinate,
 					distance: 500,
-					// TODO: dynamic heading with gyroscope's movement
+					/// Future (v0.5.0+): Dynamic heading with gyroscope movement
 					heading: 0,
 					pitch: 60
 				)
@@ -52,11 +54,26 @@ struct FacilityDetailView: View {
 /// Body
 extension FacilityDetailView {
 
+	private var _navigationTitle: String {
+		facility.displayName.subtitle.isEmpty
+			? facility.displayName.title
+			: "\(facility.displayName.title) (\(facility.displayName.subtitle))"
+	}
+
 	var body: some View {
 		ScrollView(.vertical) {
-			ScrollContent
+			MapHeader
+				.zIndex(0)
+			// Detail Content with background that overlays the map
+
+			DetailSections(facility: facility)
+				.accessibilityIdentifier("detail-sections")
+				.backport.concentricClipShape()
+				.zIndex(1)
 		}
-		//		.backport.scrollEdgeEffectStyle(.soft, for: .bottom)
+		.accessibilityElement(children: .contain)
+		.accessibilityIdentifier("detail-view")
+		.containerShape(.rect(cornerRadius: 48))
 		.background(Color(UIColor.systemGroupedBackground))
 		.scrollTargetBehavior(.paging)
 		.scrollIndicators(.hidden)
@@ -69,11 +86,7 @@ extension FacilityDetailView {
 		.toolbar {
 			BottomBarActions()
 		}
-		.navigationTitle(
-			facility.displayName.subtitle.isEmpty
-				? facility.displayName.title
-				: "\(facility.displayName.title) (\(facility.displayName.subtitle))"
-		)
+		.navigationTitle(_navigationTitle)
 		.backport.navigationSubtitle(
 			Text(facility.address)
 		)
@@ -82,6 +95,12 @@ extension FacilityDetailView {
 		// Ensure view resets when switching facilities
 		.id(facility.facilityId)
 		.task(id: facility.facilityId) {
+			try? await Task.sleep(for: .milliseconds(0.3))
+
+			withAnimation(.smooth) {
+				showMap = true
+			}
+
 			// Update Look Around when facility changes
 			lookAroundMgr.coordinate = facility.coordinate
 			await performInitialTasks()
@@ -95,58 +114,51 @@ extension FacilityDetailView {
 			}
 		}
 		.navigationAllowDismissalGestures(
-			AllowedNavigationDismissalGestures([.edgePanGesturesOnly])
+			AllowedNavigationDismissalGestures(
+				[.swipeToGoBack, .zoomEdgePanToDismiss]
+			)
 		)
 	}
 
-	private var ScrollContent: some View {
-		VStack(spacing: 0) {
-			MapHeader
-			// Detail Content with background that overlays the map
-			VStack {
-				DetailSections(facility: facility)
-					.backport.concentricClipShape()
-			}
-			.padding()
-			.zIndex(1)
-		}
-		.containerShape(.rect(cornerRadius: 48))
-	}
-
+	@ViewBuilder
 	private var MapHeader: some View {
 		// Sticky Map Header with fixed camera
-		GeometryReader { geometry in
-			let minY = geometry.frame(in: .scrollView).minY
-			let size = geometry.size
-			let height = size.height + max(-minY, minY)
+		if showMap {
+			GeometryReader { geometry in
+				let minY = geometry.frame(in: .scrollView).minY
+				let size = geometry.size
+				let height = size.height + max(-minY, minY)
 
-			ZStack(alignment: .bottomTrailing) {
-				Map(position: .constant(cameraPosition)) {
-					Marker(
-						facility.displayName.title,
-						systemImage: "parkingsign.circle.fill",
-						coordinate: facility.coordinate
+				ZStack(alignment: .bottomTrailing) {
+					Map(position: .constant(cameraPosition)) {
+						Marker(
+							facility.displayName.title,
+							systemImage: "parkingsign.circle.fill",
+							coordinate: facility.coordinate
+						)
+						.tint(Color.accentColor)
+					}
+					.safeAreaPadding(.leading, 26)
+					.safeAreaPadding(.bottom, 16)
+					.mapStyle(
+						.standard(
+							elevation: .realistic,
+							emphasis: .muted,
+						)
 					)
-					.tint(Color.accentColor)
+					.mapControlVisibility(.hidden)
+					.frame(width: size.width, height: height)
+					.backport.concentricClipShape()
+					.allowsHitTesting(false)
+					.offset(y: minY > 0 ? -minY : minY * -0.2)
 				}
-				.safeAreaPadding(.leading, 26)
-				.safeAreaPadding(.bottom, 16)
-				.mapStyle(
-					.standard(
-						elevation: .realistic,
-						emphasis: .muted,
-						showsTraffic: true,
-					)
-				)
-				.mapControlVisibility(.hidden)
-				.frame(width: size.width, height: height)
-				.backport.concentricClipShape()
-				.allowsHitTesting(false)
-				.offset(y: minY > 0 ? -minY : minY * 0.5)
 			}
+			.frame(height: 400)
+			.transition(.blurReplace)
+		} else {
+			Color.clear
+				.frame(height: 400)
 		}
-		.frame(height: 400)
-		.zIndex(0)
 	}
 
 	private func performInitialTasks() async {
@@ -185,6 +197,7 @@ extension FacilityDetailView {
 			transportType: .automobile
 		)
 	}
+
 }
 
 /// Toolbar
@@ -200,20 +213,20 @@ extension FacilityDetailView {
 				ZStack {
 					if facilityDataMgr.isRefreshing {
 						ProgressView()
-							.transition(.blurReplace)
 							.zIndex(1)
 					}
 
 					Image(systemName: "arrow.clockwise")
-						.transition(.blurReplace)
 						.zIndex(0)
 
 				}
+				.transition(.blurReplace)
 				.contentTransition(.symbolEffect(.replace.downUp))
 				.animation(.smooth, value: facilityDataMgr.isRefreshing)
+				.disabled(facilityDataMgr.isRefreshing)
+
 			}
 			.accessibilityLabel("Refresh")
-			.disabled(facilityDataMgr.isRefreshing)
 		}
 	}
 
@@ -235,21 +248,7 @@ extension FacilityDetailView {
 			.contentTransition(.symbolEffect(.replace.magic(fallback: .downUp)))
 		}
 
-		// TODO: Live activities
-		//		ToolbarItem(placement: .bottomBar) {
-		//			Button {
-		//
-		//			} label: {
-		//				Label(
-		//					"Live Activity",
-		//					systemImage: "app.badge"
-		//				)
-		//				.labelStyle(.titleAndIcon)
-		//			}
-		//			.contentTransition(
-		//				.symbolEffect(.replace.magic(fallback: .downUp))
-		//			)
-		//		}
+		/// Future (v0.5.0+): Live Activity toolbar button for real-time parking monitoring
 	}
 }
 
@@ -262,6 +261,7 @@ extension FacilityDetailView {
 struct DetailSections: View {
 	var facility: ParkingFacility
 
+	@Environment(FacilityManager.self) private var facilityDataMgr
 	@Environment(LookAroundManager.self) private var lookAroundMgr
 	@Environment(ETAManager.self) private var etaMgr
 	@Environment(LocationManager.self) private var locationMgr
@@ -298,14 +298,9 @@ struct DetailSections: View {
 				)
 		}
 		.padding(.horizontal, 20)
-		.padding(.vertical, 18)
-		.frame(maxWidth: .infinity, alignment: .leading)
-		.backport.glassEffect(
-			.regular,
-			in: .rect(cornerRadius: 24, style: .circular)
-			// NOTE: ConcentricRectangle() filled the shape doesn't work
-		)
-		.fontDesign(.rounded)
+		.padding(.vertical, 16)
+		.background(.regularMaterial)
+		.clipShape(.containerRelative)
 	}
 
 	@ViewBuilder
@@ -332,6 +327,10 @@ struct DetailSections: View {
 					.font(.title)
 					.fontWeight(.semibold)
 					.opacity(facility.refreshStatus.staleness.opacity)
+					.breathingAnimation(
+						facility.refreshStatus.staleness == .stale
+							&& facilityDataMgr.isRefreshing
+					)
 
 					Text("spaces")
 						.font(.callout)
@@ -360,9 +359,7 @@ struct DetailSections: View {
 				.linearCapacity
 			)
 			.tint(
-				Gradient(
-					colors: AvailabilityStatus.gradientColors
-				)
+				AvailabilityStatus.gradient
 			)
 			.opacity(facility.refreshStatus.staleness.opacity)
 		}
@@ -499,7 +496,7 @@ struct DetailSections: View {
 
 					Spacer()
 
-					// TODO: Providing options for map apps that has been installed
+					/// Future: Detect installed map apps and provide selection menu
 					Menu {
 						Button("Apple Maps") {
 							Task {
@@ -509,7 +506,10 @@ struct DetailSections: View {
 							}
 						}
 						Button("Google Maps") {
-							// TODO: Add Google Maps support
+							openInGoogleMaps(
+								coordinate: facility.coordinate,
+								destinationName: facility.name
+							)
 						}
 					} label: {
 						Label(
@@ -575,90 +575,66 @@ struct DetailSections: View {
 						.zIndex(0)
 				}
 			} else if let scene = lookAroundMgr.lookAroundScene {
-				if #available(iOS 26.0, *) {
-					LookAroundPreview(initialScene: scene)
-						.frame(height: 200)
-						.clipShape(.containerRelative)
-						.transition(.blurReplace)
-						.backport.glassEffect(
-							.clear,
-							in: .rect(
-								corners: .concentric,
-								isUniform: true
-							),
-							fallbackBackground: Color(
-								UIColor.secondarySystemGroupedBackground
-							)
+				LookAroundPreview(initialScene: scene)
+					.frame(height: 200)
+					.clipShape(.containerRelative)
+					.transition(.blurReplace)
+					.backport.glassEffect(
+						.clear,
+						in: .rect(
+							corners: .concentric,
+							isUniform: true
+						),
+						fallbackBackground: Color(
+							UIColor.secondarySystemGroupedBackground
 						)
-						.zIndex(0)
-				} else {
-					// Fallback on earlier versions
-					LookAroundPreview(initialScene: scene)
-						.frame(height: 200)
-						.clipShape(.containerRelative)
-						.transition(.blurReplace)
-						.zIndex(0)
-				}
+					)
+					.zIndex(0)
 			}
 		}
 		.clipShape(.containerRelative)
 		.animation(.smooth, value: lookAroundMgr.isLoading)
-		.animation(.smooth, value: lookAroundMgr.errorMessage)
-		.animation(
-			.smooth,
-			value: lookAroundMgr.lookAroundScene
-		)
 	}
 
-	@ViewBuilder
-	func NearbyFacilitiesView() -> some View {
-		// TODO: Implement nearby facilities functionality
-		// You'll need to fetch or pass in a collection of nearby facilities
-		// For now, this is a placeholder structure
-
-		EmptyView()
-
-		// Example structure when you have nearby facilities:
-		// List(nearbyFacilities, id: \.facilityId) { nearbyFacility in
-		//     HStack {
-		//         // Facility row content
-		//     }
-		// }
-	}
+	/// Future (v0.6.0+): Display nearby parking facilities
 
 	var body: some View {
-		DetailCard(
-			label: (
-				"Vacancy",
-				"parkingsign.circle.fill",
-				.blue
-			),
-			content: VacancyView,
-			trailingTopContent: {
-				TimelineView(.periodic(from: .now, by: 60)) { context in
-					let timeInterval = context.date.timeIntervalSince(
-						facility.refreshStatus.lastUpdated
-					)
-
-					if timeInterval < 60 {
-						Text("updated just now")
-					} else {
-						Text(
-							"updated \(facility.refreshStatus.lastUpdated.formatted(.relative(presentation: .named, unitsStyle: .narrow)))"
+		VStack {
+			DetailCard(
+				label: (
+					"Vacancy",
+					"parkingsign.circle.fill",
+					.blue
+				),
+				content: VacancyView,
+				trailingTopContent: {
+					TimelineView(.periodic(from: .now, by: 60)) { context in
+						let timeInterval = context.date.timeIntervalSince(
+							facility.refreshStatus.lastUpdated
 						)
+
+						if timeInterval < 60 {
+							Text("updated just now")
+						} else {
+							Text(
+								"updated \(facility.refreshStatus.lastUpdated.formatted(.relative(presentation: .named, unitsStyle: .narrow)))"
+							)
+						}
 					}
+					.monospacedDigit()
+					.font(.footnote)
 				}
-				.monospacedDigit()
-				.font(.footnote)
-			}
-		)
+			)
 
-		DetailCard(
-			label: ("Travels", "location.north.circle.fill", .accentColor),
-			content: TrafficView
-		)
+			DetailCard(
+				label: ("Travels", "location.north.circle.fill", .accentColor),
+				content: TrafficView
+			)
 
-		LookAroundView()
+			LookAroundView()
+		}
+		.padding()
+
 	}
 }
 
@@ -666,20 +642,14 @@ struct DetailSections: View {
 	@Previewable @Namespace var namespace
 
 	NavigationStack {
-		if #available(iOS 26.0, *) {
-			FacilityDetailView(
-				namespace: namespace,
-				facility: ParkingFacility.sample(status: .available)
-			)
-			.environment(FacilityManager.shared)
-			.environment(LookAroundManager.shared)
-			.environment(ETAManager.shared)
-			.environment(LocationManager.shared)
-
-		} else {
-			// Fallback on earlier versions
-			Text("Preview unavailable")
-		}
+		FacilityDetailView(
+			namespace: namespace,
+			facility: ParkingFacility.sample(status: .available)
+		)
+		.environment(FacilityManager.shared)
+		.environment(LookAroundManager.shared)
+		.environment(ETAManager.shared)
+		.environment(LocationManager.shared)
 	}
 	.modelContainer(.preview())
 }
@@ -688,19 +658,14 @@ struct DetailSections: View {
 	@Previewable @Namespace var namespace
 
 	NavigationStack {
-		if #available(iOS 26.0, *) {
-			FacilityDetailView(
-				namespace: namespace,
-				facility: ParkingFacility.sample(status: .noData)
-			)
-			.environment(FacilityManager.shared)
-			.environment(LookAroundManager.shared)
-			.environment(ETAManager.shared)
-			.environment(LocationManager.shared)
-		} else {
-			// Fallback on earlier versions
-			Text("Preview unavailable")
-		}
+		FacilityDetailView(
+			namespace: namespace,
+			facility: ParkingFacility.sample(status: .noData)
+		)
+		.environment(FacilityManager.shared)
+		.environment(LookAroundManager.shared)
+		.environment(ETAManager.shared)
+		.environment(LocationManager.shared)
 	}
 	.modelContainer(.preview())
 }

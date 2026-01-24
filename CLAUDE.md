@@ -6,8 +6,8 @@ This document provides context for AI assistants working on the MetroParking iOS
 
 MetroParking is a native iOS app for monitoring real-time parking availability at NSW Transport Park&Ride facilities. Built with SwiftUI and SwiftData, it integrates with the TfNSW Car Park API to provide live occupancy data for 37 facilities across NSW.
 
-**Current Version**: 0.4.0 (December 2025)
-**Platform**: iOS 18.4+ (iOS 26.0+ for onboarding)
+**Current Version**: 0.4.0 (Beta - January 2026)
+**Platform**: iOS 26.0+
 **Language**: Swift (SwiftUI)
 **Architecture**: MVVM with SwiftData persistence and App Groups for widget support
 
@@ -439,25 +439,23 @@ SwiftData model for individual parking zones within a facility.
 - [x] Review and fix `LocationManager` implementation
 - [x] Widget data stops refreshing - fixed with proper App Groups setup
 - [x] Concurrency issues causing overlapping refreshes - fixed with operation locks
-- [ ] Better UX for displaying stale data
+- [x] Better UX for displaying stale data - breathing animation while refreshing
 
 ### High Priority
 - [x] Rewrite MapKit using `MKMapItem` and `MKAddress`
 - [ ] Implement server-side caching for scaling
-- **[ ] Live Activities for vacancy tracking** ← **NEXT PRIORITY (v0.5.0)**
 - [x] Home/Lock screen widgets
-- [ ] Backup supports for iOS 18
+- [x] Google Maps navigation support
+- [x] Code cleanup for v0.4.0 beta release (TODOs converted to documentation)
 
-### Feature Roadmap (v0.5.0 - v0.6.0)
+### Feature Roadmap (v0.5.0+)
 
-**v0.5.0 (January 2025) - Live Activities & Notifications**
+**v0.5.0+ (Next Major Version) - Live Activities & Notifications**
 - [ ] Live Activities for real-time parking monitoring on Lock Screen/Dynamic Island
   - See `Docs/LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md` for detailed implementation guide
-  - Estimated: 3-4 sessions
   - Dependencies: Existing `BackgroundTaskManager` and App Groups infrastructure
 - [ ] Push notifications for vacancy alerts (after Live Activities)
   - See `Docs/NOTIFICATION_FEATURES_PLAN.md` for detailed implementation guide
-  - Estimated: 4-5 sessions
   - Can integrate with Live Activities for remote push updates
 
 **v0.6.0+ (Future)**
@@ -486,6 +484,9 @@ Use Simulator `iPhone 17 Pro, iOS 26.2` to build and test for now.
 - Current working branch: `1.0/reboot`
 
 ### Recent Commits
+- v0.4.0 beta preparation: Cleaned up all TODOs and converted to documentation comments
+- Removed iOS < 26 fallback code, now requires iOS 26.0+
+- Removed placeholder functions for future features (Live Activities, notifications)
 - Added onboarding screen with feature highlights and OnboardingManager
 - Implemented UserPreferences for centralized settings using @AppStorage
 - Created comprehensive settings menu with navigation
@@ -554,16 +555,23 @@ When working on this project:
 
 ---
 
-## Next Steps: Live Activities Implementation
+## Next Steps: Beta Release (v0.4.0)
 
-**Implementation Decision (December 28, 2025)**:
-- **Priority**: Live Activities first, push notifications second
-- **Rationale**: Live Activities are independent of UserNotifications framework and provide better UX for parking monitoring (always-visible vs. alert-based)
-- **Dependencies**: Existing background refresh infrastructure is ready - no notification services needed
-- **Implementation Guide**: See `Docs/LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md` for complete step-by-step guide
-- **Estimated Effort**: 3-4 implementation sessions
-- **Enhancement Path**: After Live Activities work locally, can add ActivityKit push notifications for remote updates (extends to 12 hours)
+**Current Focus**: Preparing for public beta release to gather user feedback.
+
+**Recently Completed (January 2026)**:
+- [x] Stale data UX - breathing animation while refreshing
+- [x] Dynamic last updated time in navigation subtitle
+- [x] Settings navigation from menu
+- [x] Google Maps navigation support
+- [x] Codebase cleanup - all TODOs converted to documentation comments
+- [x] iOS 26.0+ minimum requirement enforced
+
+**Deferred to v0.5.0+ (Next Major Version)**:
+- Live Activities for Lock Screen/Dynamic Island
+- Push notifications for vacancy alerts
+- See `Docs/LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md` and `Docs/NOTIFICATION_FEATURES_PLAN.md` for implementation guides
 
 ---
 
-Last updated: December 28, 2025
+Last updated: January 9, 2026

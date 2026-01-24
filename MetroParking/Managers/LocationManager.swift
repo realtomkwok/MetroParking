@@ -11,8 +11,9 @@ import MapKit
 import OSLog
 import SwiftUI
 
+@MainActor
 @Observable
-class LocationManager: NSObject, CLLocationManagerDelegate {
+final class LocationManager: NSObject, CLLocationManagerDelegate {
 
 	static let shared = LocationManager()
 
@@ -64,7 +65,8 @@ extension LocationManager {
 
 	private func setupLocationManger() {
 		CLLocationMgr.delegate = self
-		CLLocationMgr.desiredAccuracy = kCLLocationAccuracyHundredMeters  // TODO: Play around with different variants
+		// 100m accuracy provides good balance for parking distance calculations while preserving battery life
+		CLLocationMgr.desiredAccuracy = kCLLocationAccuracyHundredMeters
 		CLLocationMgr.distanceFilter = 100  // Update every 100 metres
 
 		/// Get current authorisation status
@@ -97,7 +99,7 @@ extension LocationManager {
 			authorisationStatus == .authorizedAlways
 				|| authorisationStatus == .authorizedWhenInUse
 		else {
-			print("❌ Location not authorised")
+			Logger.location.error("❌ Location not authorised")
 			return
 		}
 
@@ -115,7 +117,7 @@ extension LocationManager {
 	private func showLocationSettingsAlert() {
 		errorMsg =
 			"Location access is required for this feature. Please enable it in Settings."
-		print("📍 Need to direct user to Settings")
+		Logger.location.error("📍 Need to direct user to Settings")
 	}
 
 }

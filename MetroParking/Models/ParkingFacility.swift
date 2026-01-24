@@ -28,7 +28,8 @@ final class ParkingFacility {
 
 	// User preferences
 	var isFavourite: Bool
-	var notificationThreshold: Int?  // TODO: For feature "notify when under X spaces"
+	/// Future (v0.5.0+): Threshold for vacancy notifications
+	var notificationThreshold: Int?
 	var lastVisited: Date?
 
 	// Occupancy cache - stored properties
@@ -46,8 +47,26 @@ final class ParkingFacility {
 	private var _routeTravelTime: TimeInterval?
 	private var _routeTimestamp: Date?
 
+	// Display name cache - avoids regex parsing on every access
+	private var _displayTitle: String = ""
+	private var _displaySubtitle: String = ""
+
 	@Relationship(deleteRule: .cascade, inverse: \ParkingZone.facility)
 	var zones: [ParkingZone] = []
+
+	// MARK: - Static Formatters (performance optimisation)
+
+	/// Shared ISO8601 date formatter - creating formatters is expensive
+	private static let iso8601Formatter: ISO8601DateFormatter = {
+		let formatter = ISO8601DateFormatter()
+		return formatter
+	}()
+
+	/// Regex pattern for parsing display names - compiled once
+	private static let displayNamePattern = /^(.+?)\s*\((.+?)\)$/
+
+	/// Cached MapItem - not persisted to SwiftData
+	@Transient private var _cachedMapItem: MKMapItem?
 
 	// MARK: - Initialisers
 
@@ -61,14 +80,15 @@ final class ParkingFacility {
 		self._longitude = Double(apiResponse.location.longitude) ?? 0
 		self.totalSpaces = Int(apiResponse.spots) ?? 0
 
-		let dateFormatter = ISO8601DateFormatter()
 		self._lastUpdated =
-			dateFormatter.date(from: apiResponse.messageDate) ?? Date()
+			Self.iso8601Formatter.date(from: apiResponse.messageDate) ?? Date()
 		self.lastVisited = nil
 
 		self.isFavourite = false
 		self.notificationThreshold = nil
 
+		// Parse display name once during initialization
+		self._parseAndCacheDisplayName()
 	}
 
 	// Direct init for static facilities (initial load)
@@ -92,6 +112,23 @@ final class ParkingFacility {
 		self.lastVisited = nil
 		self.isFavourite = false
 		self.notificationThreshold = nil
+
+		// Parse display name once during initialization
+		self._parseAndCacheDisplayName()
+	}
+
+	/// Parses the facility name and caches the display title/subtitle
+	/// Called once during initialization to avoid regex parsing on every access
+	private func _parseAndCacheDisplayName() {
+		let stripped = name.removePrefix("Park&Ride - ").localizedCapitalized
+
+		if let match = stripped.firstMatch(of: Self.displayNamePattern) {
+			_displayTitle = String(match.1).trimmingCharacters(in: .whitespaces)
+			_displaySubtitle = String(match.2).trimmingCharacters(in: .whitespaces)
+		} else {
+			_displayTitle = stripped
+			_displaySubtitle = ""
+		}
 	}
 
 	// MARK: - Nested Types
@@ -112,14 +149,19 @@ final class ParkingFacility {
 		let travelTime: TimeInterval
 		let calculatedAt: Date
 
+		/// Cached distance formatter - creating formatters is expensive
+		private static let distanceFormatter: MKDistanceFormatter = {
+			let formatter = MKDistanceFormatter()
+			formatter.unitStyle = .abbreviated
+			return formatter
+		}()
+
 		var isValid: Bool {
 			calculatedAt.timeIntervalSinceNow > -3600  // Valid for 1 hour
 		}
 
 		var formattedDistance: String {
-			let formatter = MKDistanceFormatter()
-			formatter.unitStyle = .abbreviated
-			return formatter.string(fromDistance: distance)
+			Self.distanceFormatter.string(fromDistance: distance)
 		}
 
 		var formattedTravelTime: String {
@@ -279,21 +321,10 @@ final class ParkingFacility {
 		)
 	}
 
+	/// Returns the parsed display name (title and subtitle)
+	/// Values are cached during initialization for optimal performance
 	var displayName: (title: String, subtitle: String) {
-		let stripped = name.removePrefix("Park&Ride - ").localizedCapitalized
-
-		// Match pattern: "Title (Subtitle)"
-		// Captures: title before parentheses, and subtitle inside parentheses
-		let pattern = /^(.+?)\s*\((.+?)\)$/
-
-		if let match = stripped.firstMatch(of: pattern) {
-			let title = String(match.1).trimmingCharacters(in: .whitespaces)
-			let subtitle = String(match.2).trimmingCharacters(in: .whitespaces)
-			return (title: title, subtitle: subtitle)
-		} else {
-			// No parentheses found
-			return (title: stripped, subtitle: "")
-		}
+		return (title: _displayTitle, subtitle: _displaySubtitle)
 	}
 
 	// Convenience accessors for backward compatibility and cleaner access
@@ -339,7 +370,7 @@ final class ParkingFacility {
 	var refreshTier: RefreshTier {
 		// Watched: Favourites OR displayed in any widget
 		if self.isFavourite { return .watched }
-		if SharedDataManager.shared.isCurrentlyInWidget(self.facilityId) {
+		if SharedDataManager.isInWidget(self.facilityId) {
 			return .watched
 		}
 
@@ -358,8 +389,28 @@ final class ParkingFacility {
 // MARK: - Data Refresh
 extension ParkingFacility {
 
-	/// Returns an MKMapItem for this facility
+	/// Returns a cached or newly created MKMapItem using local data only.
+	/// This method is SYNCHRONOUS and does not make network requests.
+	/// Use this for navigation and directions to avoid UI hangs.
+	func getOrCreateMapItem() -> MKMapItem {
+		if let cached = _cachedMapItem {
+			return cached
+		}
+
+		let mapItem: MKMapItem
+		let location = CLLocation(latitude: _latitude, longitude: _longitude)
+		let fullAddress = "\(_address), \(_suburb)"
+		let mkAddress = MKAddress(fullAddress: fullAddress, shortAddress: _address)
+		mapItem = MKMapItem(location: location, address: mkAddress)
+		mapItem.name = displayName.title
+
+		_cachedMapItem = mapItem
+		return mapItem
+	}
+
+	/// Returns an MKMapItem for this facility (async version for backward compatibility)
 	/// - Returns: A configured MKMapItem with the facility's location and details
+	/// - Note: Prefer `getOrCreateMapItem()` for synchronous access without network calls
 	func getMapItem() async -> MKMapItem {
 		return await MapsManager.shared.createMapItem(for: self)
 	}
@@ -478,10 +529,7 @@ enum AvailabilityStatus: CaseIterable {
 		}
 	}
 
-	/// Returns colours for the occupancy gradient (excludes noData)
-	static var gradientColors: [Color] {
-		return [available.fill, almostFull.fill, full.fill]
-	}
+	static let gradient = Gradient(colors: [available.fill, almostFull.fill, full.fill])
 
 	/// Returns all status colours including noData
 	static var allColors: [Color] {

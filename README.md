@@ -24,13 +24,13 @@ the [TfNSW Car Park API](https://data.nsw.gov.au/data/dataset/2-car-park-api).
 - **Onboarding Experience**: Welcome screen on first launch with feature highlights
 - **Settings Menu**: Comprehensive settings including notifications, widgets, and app preferences
 
-### Coming Soon
-- **Live Activities** (v0.5.0): Real-time parking monitoring on Lock Screen and Dynamic Island
-- **Push Notifications** (v0.5.0): Vacancy alerts and threshold-based notifications
+### Coming Soon (v0.5.0+)
+- **Live Activities**: Real-time parking monitoring on Lock Screen and Dynamic Island
+- **Push Notifications**: Vacancy alerts and threshold-based notifications
 
 ## Requirements
 
-- iOS 18.4+
+- iOS 26.0+
 - Xcode 16.3+
 - TfNSW API Key ([Get one here](https://opendata.transport.nsw.gov.au/))
 
@@ -363,29 +363,19 @@ version.
 - [ ] Consider historical patterns from Supabase insights
 - [ ] Add "best time to arrive" suggestions based on trend data
 
-### Live Activities & Widgets
-- **[ ] Implement Live Activities for tracking selected facility availability** ← **NEXT PRIORITY**
-  - [ ] Create Live Activity extension target with ActivityKit
-  - [ ] Define `ParkingActivityAttributes` for static/dynamic state
-  - [ ] Build Lock Screen UI with availability display
-  - [ ] Implement Dynamic Island views (compact, expanded, minimal)
-  - [ ] Integrate with `BackgroundTaskManager` for real-time updates
-  - [ ] Add in-app controls to start/stop Live Activities
-  - See `Docs/LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md` for detailed implementation guide
+### Widgets
 - [x] Add home screen widgets with AppIntent configuration
 - [x] Implement widget budget tracking (60 reloads/day limit)
 - [x] Add App Groups for app ↔ widget data sharing
 - [ ] Create additional widget sizes (medium, large)
 - [ ] Add lock screen widgets for quick vacancy checks
-- [ ] Support ActivityKit push notifications for 12-hour Live Activities
 
-### Notifications (After Live Activities)
+### Live Activities & Notifications (v0.5.0+)
+- [ ] Implement Live Activities for tracking selected facility availability
+  - See `Docs/LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md` for detailed implementation guide
 - [ ] Add push notification support for vacancy alerts
 - [ ] Implement threshold-based notifications ("Alert when under X spaces")
-- [ ] Add departure reminders based on traffic conditions
-- [ ] Support notification scheduling for regular commute times
-- [ ] Integrate with Live Activities for remote push updates
-- See `Docs/NOTIFICATION_FEATURES_PLAN.md` for detailed implementation guide
+  - See `Docs/NOTIFICATION_FEATURES_PLAN.md` for detailed implementation guide
 
 ### Location Services
 - [x] Review and improve `LocationManager` implementation
@@ -397,19 +387,15 @@ version.
 
 ## Next Steps
 
-**Upcoming Features (v0.5.0 - January 2025)**:
+**Current: v0.4.0 Beta**
+- Public beta release for user feedback
+- Core parking monitoring features complete
+- Widgets and background refresh ready
 
-1. **Live Activities** (Next Priority)
-   - Real-time parking monitoring on Lock Screen and Dynamic Island
-   - See `Docs/LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md` for implementation guide
-   - No notification services required - independent feature leveraging existing background refresh
-   - Estimated: 3-4 implementation sessions
-
-2. **Push Notifications** (After Live Activities)
-   - Vacancy alerts with threshold-based notifications
-   - See `Docs/NOTIFICATION_FEATURES_PLAN.md` for implementation guide
-   - Can integrate with Live Activities for remote push updates
-   - Estimated: 4-5 implementation sessions
+**v0.5.0+ (Next Major Version)**:
+- Live Activities for Lock Screen/Dynamic Island
+- Push notifications for vacancy alerts
+- See documentation in `Docs/` for implementation guides
 
 ## Acknowledgments
 

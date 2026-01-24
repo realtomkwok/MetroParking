@@ -10,6 +10,7 @@ import SwiftData
 import SwiftUI
 import SwiftUIBackports
 
+/// Future features: Live Activity/notification swipe actions (v0.5.0+)
 struct FacilityList: View {
 	var nameSpace: Namespace.ID
 	let groupedFacilities: [(title: String?, facilities: [ParkingFacility])]
@@ -18,6 +19,7 @@ struct FacilityList: View {
 	var isInteractionDisabled: Bool = false
 
 	@Environment(\.modelContext) private var modelContext
+	@Environment(FacilityManager.self) private var facilityDataMgr
 
 	// MARK: - Identifiable Section
 
@@ -39,9 +41,23 @@ struct FacilityList: View {
 			.map { FacilitySection(title: $0.title, facilities: $0.facilities) }
 	}
 
+	private var sectionStructureHash: Int {
+		var hasher = Hasher()
+		for (title, facilities) in groupedFacilities {
+			hasher.combine(title)
+			for facility in facilities {
+				hasher.combine(facility.persistentModelID)
+			}
+		}
+
+		return hasher.finalize()
+	}
+
 	var body: some View {
+		let currentSections = sections
+
 		List {
-			ForEach(sections) { section in
+			ForEach(currentSections) { section in
 				Section {
 					ForEach(section.facilities, id: \.persistentModelID) {
 						facility in
@@ -52,11 +68,12 @@ struct FacilityList: View {
 				}
 			}
 		}
+		.accessibilityIdentifier("facility-list")
 		.listStyle(.plain)
 		// Animate when section structure changes OR when facilities move between sections
 		.animation(
 			.smooth(),
-			value: sections.map { $0.facilities.map(\.persistentModelID) }
+			value: sectionStructureHash
 		)
 		.navigationDestination(item: $selectedFacility) { facility in
 			FacilityDetailView(namespace: nameSpace, facility: facility)
@@ -72,51 +89,57 @@ extension FacilityList {
 
 	@ViewBuilder
 	private func ListRow(for facility: ParkingFacility) -> some View {
-		if #available(iOS 26.0, *) {
-			Button {
-				selectedFacility = facility
-			} label: {
-				FacilityRowView(facility: facility)
-			}
-			.disabled(isInteractionDisabled)
-			.listRowInsets(
-				EdgeInsets(top: 8, leading: 8, bottom: 4, trailing: 8)
+		Button {
+			selectedFacility = facility
+		} label: {
+			FacilityRowView(
+				facility: facility,
+				isRefreshing: facilityDataMgr
+					.isRefreshing
 			)
-			.listRowBackground(Color.clear)
-			.listRowSeparator(.hidden)
-			.matchedTransitionSource(id: facility.facilityId, in: nameSpace)
-			.buttonStyle(.glass)
-			.buttonBorderShape(.capsule)
-			.swipeActions(edge: .leading) {
-				leadingSwipeAction(for: facility)
-			}
-			.swipeActions(edge: .trailing, allowsFullSwipe: false) {
-				trailingSwipeActions(for: facility)
-			}
-		} else {
-			// Fallback on earlier versions
+		}
+		.accessibilityIdentifier("facility-row-\(facility.facilityId)")
+		.disabled(isInteractionDisabled)
+		.listRowInsets(
+			EdgeInsets(top: 8, leading: 8, bottom: 4, trailing: 8)
+		)
+		.listRowBackground(Color.clear)
+		.listRowSeparator(.hidden)
+		.matchedTransitionSource(id: facility.facilityId, in: nameSpace)
+		.buttonStyle(.glass)
+		.swipeActions(edge: .leading) {
+			leadingSwipeAction(for: facility)
 		}
 	}
 
 	@ViewBuilder
-	func FacilityRowView(facility: ParkingFacility) -> some View {
+	func FacilityRowView(facility: ParkingFacility, isRefreshing: Bool)
+		-> some View
+	{
+
+		let staleness = facility.refreshStatus.staleness
+
 		HStack(alignment: .center, spacing: 12) {
 			VStack(alignment: .center) {
 				ParkingProgressGauge(
 					occupancy: facility.vacancy.occupancy,
 					available: facility.vacancy.available,
 					total: facility.totalSpaces,
-					availabilityStatus: facility.availabilityStatus
+					availabilityStatus: facility.availabilityStatus,
+					isRefreshing: isRefreshing
+					&& staleness == .stale
 				)
 			}
 			.padding(8)
 			.background(
-				.ultraThinMaterial, in: .circle
+				.ultraThinMaterial,
+				in: .circle
 			)
 
 			VStack(alignment: .leading) {
 				HStack(alignment: .center, spacing: 4) {
 					Text(facility.displayName.title)
+						.multilineTextAlignment(.leading)
 						.font(.headline)
 						.fontWeight(.bold)
 						.contentTransition(.identity)
@@ -146,9 +169,10 @@ extension FacilityList {
 
 			Spacer()
 		}
+		.padding(.vertical, 4)
 		.opacity(facility.refreshStatus.staleness.opacity)
 		.animation(.smooth, value: facility.isFavourite)
-		.animation(.smooth, value: facility.refreshStatus.staleness)
+		.animation(.smooth, value: staleness)
 	}
 
 	@ViewBuilder
@@ -172,27 +196,6 @@ extension FacilityList {
 	}
 
 	@ViewBuilder
-	private func trailingSwipeActions(for facility: ParkingFacility)
-		-> some View
-	{
-		Button {
-			// TODO: Enable live activity/notifications
-			enableLiveActivity(for: facility)
-		} label: {
-			Label("Live", systemImage: "bell.badge")
-		}
-		.tint(.orange)
-
-		Button {
-			// TODO: Open in Maps app
-			//			openInMaps(facility: facility)
-		} label: {
-			Label("Go", systemImage: "arrow.trianglehead.turn.up.right.diamond")
-		}
-		.tint(.blue)
-	}
-
-	@ViewBuilder
 	private func SectionHeader(title: String?) -> some View {
 		if let title = title, !title.isEmpty {
 			Text(title)
@@ -200,14 +203,5 @@ extension FacilityList {
 				.foregroundStyle(.primary)
 				.transition(.blurReplace.combined(with: .move(edge: .top)))
 		}
-	}
-}
-
-// MARK: - Helper functions
-
-extension FacilityList {
-	private func enableLiveActivity(for facility: ParkingFacility) {
-		// TODO: Implement live activity
-		print("Enable live activity for \(facility.displayName)")
 	}
 }

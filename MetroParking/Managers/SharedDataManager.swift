@@ -11,19 +11,26 @@ import OSLog
 import SwiftData
 import WidgetKit
 
-class SharedDataManager {
+@MainActor
+final class SharedDataManager {
 
-	// App Group
-	static let appGroupIdentifier: String = "group.com.tomkwok.MetroParking"
+	// App Group - nonisolated for access from non-MainActor contexts
+	nonisolated static let appGroupIdentifier: String = "group.com.tomkwok.MetroParking"
 
 	static var shared = SharedDataManager()
+
+	// MARK: - Widget ID Cache (reduces UserDefaults reads)
+	private var _cachedWidgetIds: [String]?
+	private var _widgetIdsCacheTime: Date = .distantPast
+	private let widgetIdsCacheValidity: TimeInterval = 2.0  // 2 seconds TTL
 
 	private init() {}
 
 	// MARK: - SwiftData Container
 
 	/// Schema version for destructive migration (pre-launch only)
-	private static let schemaVersion = "v4"
+	/// v5: Added _displayTitle and _displaySubtitle cached properties to ParkingFacility
+	private static let schemaVersion = "v5"
 	private static let schemaVersionKey = "ModelSchemaVersion"
 
 	/// Shared ModelContainer instance used by both app and widget
@@ -41,24 +48,6 @@ class SharedDataManager {
 			groupContainer: .identifier(appGroupIdentifier)
 		)
 
-		// Ensure the Application Support directory exists in the App Group container
-		// This prevents CoreData error logs on first launch
-		let storeURL = modelConfiguration.url
-		let storeDirectory = storeURL.deletingLastPathComponent()
-
-		if !FileManager.default.fileExists(atPath: storeDirectory.path) {
-			do {
-				try FileManager.default.createDirectory(
-					at: storeDirectory,
-					withIntermediateDirectories: true,
-					attributes: nil
-				)
-				Logger.facilityData.info("📁 Created store directory: \(storeDirectory.path)")
-			} catch {
-				Logger.facilityData.error("❌ Failed to create store directory: \(error.localizedDescription)")
-			}
-		}
-
 		do {
 			// Check if schema version has changed
 			let storedVersion = UserDefaults.standard.string(
@@ -73,15 +62,6 @@ class SharedDataManager {
 				)
 				Logger.facilityData.info(
 					"🗑️ Clearing old data store for migration..."
-				)
-
-				// Clean up old store files
-				try? FileManager.default.removeItem(at: storeURL)
-				try? FileManager.default.removeItem(
-					at: storeURL.appendingPathExtension("shm")
-				)
-				try? FileManager.default.removeItem(
-					at: storeURL.appendingPathExtension("wal")
 				)
 			}
 
@@ -130,7 +110,7 @@ class SharedDataManager {
 
 extension SharedDataManager {
 
-	private static let widgetFacilityIdsKey: String = "widgetFacilityIds"
+	nonisolated private static let widgetFacilityIdsKey: String = "widgetFacilityIds"
 
 	// MARK: - Widget Data Strucure
 	/// Cache structure
@@ -196,22 +176,25 @@ extension SharedDataManager {
 			ids.append(facilityId)
 			userDefaults.set(ids, forKey: Self.widgetFacilityIdsKey)
 			userDefaults.synchronize()
+			invalidateWidgetIdsCache()
 
 			Logger.widget.info("✅ Registered facility ID: \(facilityId)")
 		}
 	}
 
-	// TODO: Unregister the widget when being removed from the home screen
+	/// Deregisters a widget facility when removed from home screen
+	/// Note: Currently requires manual cleanup; automatic detection planned for future release
 	func deregisterWidgetFacility(_ facilityId: String) {
 		guard let userDefaults = sharedDefaults else {
 			Logger.widget.error("❌ Failed to access shared UserDefaults")
 			return
 		}
-		
+
 		var ids = getWidgetFacilityIDs()
 		ids.removeAll { $0 == facilityId }
 		userDefaults.set(ids, forKey: Self.widgetFacilityIdsKey)
 		userDefaults.synchronize()
+		invalidateWidgetIdsCache()
 
 		Logger.widget.info("✅ Deregistered facility ID: \(facilityId)")
 	}
@@ -375,18 +358,68 @@ extension SharedDataManager {
 	}
 
 	/// Get all facility IDs currently displayed in widgets
+	/// Uses a short-lived cache to avoid repeated UserDefaults reads during view rendering
 	func getWidgetFacilityIDs() -> [String] {
+		// Return cached value if still valid
+		if let cached = _cachedWidgetIds,
+		   Date().timeIntervalSince(_widgetIdsCacheTime) < widgetIdsCacheValidity {
+			return cached
+		}
+
 		guard let userDefaults = sharedDefaults else {
 			Logger.widget.warning("Couldn't find user defaults.")
 			return []
 		}
 
-		return userDefaults.stringArray(forKey: Self.widgetFacilityIdsKey) ?? []
+		let ids = userDefaults.stringArray(forKey: Self.widgetFacilityIdsKey) ?? []
+		_cachedWidgetIds = ids
+		_widgetIdsCacheTime = Date()
+		return ids
+	}
+
+	/// Invalidates the widget ID cache, forcing a fresh read on next access
+	func invalidateWidgetIdsCache() {
+		_cachedWidgetIds = nil
 	}
 
 	/// Check if a facility is currently displayed in any widget
 	func isCurrentlyInWidget(_ facilityId: String) -> Bool {
 		return getWidgetFacilityIDs().contains(facilityId)
+	}
+
+	/// Check if a facility is in a widget (nonisolated for use from SwiftData models)
+	/// Reads directly from UserDefaults without cache for thread safety
+	nonisolated static func isInWidget(_ facilityId: String) -> Bool {
+		guard let defaults = UserDefaults(suiteName: appGroupIdentifier) else {
+			return false
+		}
+		let ids = defaults.stringArray(forKey: widgetFacilityIdsKey) ?? []
+		return ids.contains(facilityId)
+	}
+
+	/// Check if the model container was created successfully
+	nonisolated static func prepareStoreDirectory() async -> Bool {
+		let storeDirectory = FileManager.default
+			.containerURL(
+				forSecurityApplicationGroupIdentifier: appGroupIdentifier
+			)
+
+		guard let storeDirectory else { return false }
+
+		if FileManager.default.fileExists(atPath: storeDirectory.path) {
+			return true
+		}
+
+		do {
+			try FileManager.default.createDirectory(
+				at: storeDirectory,
+				withIntermediateDirectories: true,
+				attributes: nil
+			)
+			return true
+		} catch {
+			return false
+		}
 	}
 }
 

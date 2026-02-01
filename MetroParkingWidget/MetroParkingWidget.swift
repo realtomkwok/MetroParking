@@ -19,7 +19,7 @@ struct FacilityEntry: TimelineEntry {
 	let configuration: FocusedFacilityWidgetConfigs
 
 	var deepLinkURL: URL? {
-		guard let facilityData = self.facilityData else { return nil }
+		guard !isPlaceholder, let facilityData = self.facilityData else { return nil }
 		return URL(string: "metroparking://facility/\(facilityData.facilityId)")
 	}
 
@@ -209,9 +209,9 @@ struct FacilityWidget: Widget {
 			FocusedFacilityWidgetView(entry: entry)
 				.widgetURL(entry.deepLinkURL)
 		}
-		.configurationDisplayName("Carpark Vacancy")
+		.configurationDisplayName("Car Park Vacancy")
 		.description(
-			"Quick view for the vacancy status and available spaces of a selected carpark."
+			"Quick view for the vacancy status and available spaces of a selected car park."
 		)
 		.supportedFamilies([.systemSmall])
 		.contentMarginsDisabled()
@@ -220,12 +220,12 @@ struct FacilityWidget: Widget {
 
 struct FocusedFacilityWidgetConfigs: WidgetConfigurationIntent {
 
-	static var title: LocalizedStringResource = "Carpark Vacancy"
+	static var title: LocalizedStringResource = "Car Park Vacancy"
 	static var description = IntentDescription(
-		"Select a carpark from the list to display on the widget."
+		"Select a car park from the list to display on the widget."
 	)
 
-	@Parameter(title: "Carpark")
+	@Parameter(title: "Car Park")
 	var facility: FacilityEntity?
 
 	init(facility: FacilityEntity? = nil) {

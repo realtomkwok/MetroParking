@@ -46,7 +46,7 @@ struct FocusedFacilityWidgetView: View {
 	@ViewBuilder
 	private func backgroundView() -> some View {
 		VStack {
-			Image("WidgetBackground/Signs")
+			Image("WidgetBackground_Signs")
 				.resizable()
 				.widgetAccentedRenderingMode(.accentedDesaturated)
 				.scaleEffect(1.2, anchor: .bottomTrailing)
@@ -139,14 +139,9 @@ struct FocusedFacilityWidgetView: View {
 										value: Double(facility.availableSpaces)
 									)
 								)
-							Text("/\(facility.totalSpaces)")
+							Text("spaces")
 								.font(.subheadline)
 								.opacity(0.7)
-								.contentTransition(
-									.numericText(
-										value: Double(facility.totalSpaces)
-									)
-								)
 								.foregroundStyle(.secondary)
 						}
 
@@ -211,16 +206,17 @@ struct FocusedFacilityWidgetView: View {
 			backgroundView()
 
 			VStack(alignment: .center, spacing: 4) {
-								Image(systemName: "questionmark.circle")
-									.font(.largeTitle)
-									.foregroundStyle(.secondary)
+				Image(systemName: "questionmark.circle")
+					.font(.largeTitle)
+					.foregroundStyle(.secondary)
 
-				Text("No carpark selected")
+				Text("Car park not selected")
 					.font(.subheadline)
 					.fontWeight(.semibold)
 					.foregroundStyle(.primary)
+					.multilineTextAlignment(.center)
 
-				Text("Long press to select")
+				Text("Long press to edit")
 					.font(.caption)
 					.foregroundStyle(.secondary)
 					.multilineTextAlignment(.center)

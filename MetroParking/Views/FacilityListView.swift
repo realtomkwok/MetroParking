@@ -170,7 +170,7 @@ extension FacilityList {
 			Spacer()
 		}
 		.padding(.vertical, 4)
-		.opacity(facility.refreshStatus.staleness.opacity)
+		.opacity(facility.refreshStatus.staleness.displayOpacity)
 		.animation(.smooth, value: facility.isFavourite)
 		.animation(.smooth, value: staleness)
 	}

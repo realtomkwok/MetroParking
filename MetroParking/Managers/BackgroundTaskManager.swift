@@ -303,7 +303,13 @@ extension BackgroundTaskManager {
 						id: facility.facilityId
 					)
 
-					facility.updateFromAPI(response)
+					facility
+						.updateOccupancy(
+							occupied: Int(response.occupancy.total ?? "0") ?? 0,
+							totalSpaces: Int(
+								response.spots
+							) ?? facility.totalSpaces
+						)
 
 					// Update widget cache if this facility is displayed in a widget
 					// Note: Widget reload happens once at end via WidgetBudgetTracker
@@ -388,7 +394,14 @@ extension BackgroundTaskManager {
 						id: facility.facilityId
 					)
 
-					facility.updateFromAPI(response)
+					facility
+						.updateOccupancy(
+							occupied: Int(response.occupancy.total ?? "0") ?? 0,
+							totalSpaces: Int(
+								response.spots
+							) ?? facility.totalSpaces
+						)
+
 					successCount += 1
 
 					// Update widget cache if this facility is displayed in a widget

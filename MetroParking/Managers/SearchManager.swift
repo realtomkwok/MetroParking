@@ -27,7 +27,7 @@ final class SearchManager {
 	func suburbSuggestions(from facilities: [ParkingFacility]) -> [String] {
 		guard searchText.count >= 2 else { return [] }
 
-		let uniqueSuburbs = Set(facilities.map { $0.suburb })
+		let uniqueSuburbs = Set(facilities.map { $0.location.suburb })
 		return uniqueSuburbs
 			.filter { $0.localizedCaseInsensitiveContains(searchText) }
 			.sorted()

@@ -334,7 +334,7 @@ final class MapsManager {
 	/// - Parameter facility: The parking facility
 	/// - Note: This method updates observable state and should be called from the UI
 	func loadLookAroundScene(for facility: ParkingFacility) async {
-		let coordinate = facility.coordinate
+		let coordinate = facility.location.coordinate
 		let facilityId = facility.facilityId
 
 		// Cancel any existing task for this facility
@@ -440,7 +440,7 @@ final class MapsManager {
 
 		mapItem.openInMaps(launchOptions: [
 			MKLaunchOptionsMapCenterKey: NSValue(
-				mkCoordinate: facility.coordinate
+				mkCoordinate: facility.location.coordinate
 			),
 			MKLaunchOptionsMapSpanKey: NSValue(
 				mkCoordinateSpan: MKCoordinateSpan(

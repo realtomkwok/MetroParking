@@ -318,7 +318,7 @@ extension Array where Element == ParkingFacility {
 			)
 				|| facility.displayName.subtitle
 					.localizedCaseInsensitiveContains(searchText)
-				|| facility.suburb.localizedCaseInsensitiveContains(searchText)
+			|| facility.location.suburb.localizedCaseInsensitiveContains(searchText)
 		}
 	}
 

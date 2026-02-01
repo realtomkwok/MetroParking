@@ -238,9 +238,13 @@ extension FacilityManager {
 			}
 
 			do {
-				let response = try await ParkingAPIService.shared.fetchFacility(
+				let rawResponse = try await ParkingAPIService.shared.fetchFacility(
 					id: facility.facilityId
 				)
+
+				// Extract occupancy directly from API response
+				let occupied = Int(rawResponse.occupancy.total ?? "0") ?? 0
+				let totalSpaces = Int(rawResponse.spots) ?? facility.totalSpaces
 
 				// Update UI immediately with animation (cascade effect)
 				if processedCount > 0 {
@@ -248,8 +252,13 @@ extension FacilityManager {
 				}
 
 				withAnimation(.snappy) {
-					facility.updateFromAPI(response)
+					facility
+						.updateOccupancy(
+							occupied: occupied,
+							totalSpaces: totalSpaces
+						)
 				}
+				
 				SharedDataManager.shared.cacheWidgetDataIfSelected(facility)
 
 				processedCount += 1
@@ -286,7 +295,7 @@ extension FacilityManager {
 	/// Fetch a single facility's data from the API.
 	/// Note: This method does NOT apply rate limiting - caller should use APIDispatcher.
 	/// - Returns: The API response if successful, nil otherwise.
-	func loadFacility(_ facility: ParkingFacility) async -> ParkingAPIResponse? {
+	func loadFacility(_ facility: ParkingFacility) async -> ParkingApiModel? {
 		guard facility.shouldRefresh(appState: .active) else {
 			Logger.facilityRefresh
 				.info("⏭️ Cache still valid for \(facility.displayName.title)")

@@ -39,7 +39,7 @@ struct FacilityDetailView: View {
 		_cameraPosition = State(
 			initialValue: .camera(
 				MapCamera(
-					centerCoordinate: facility.coordinate,
+					centerCoordinate: facility.location.coordinate,
 					distance: 500,
 					/// Future (v0.5.0+): Dynamic heading with gyroscope movement
 					heading: 0,
@@ -88,7 +88,7 @@ extension FacilityDetailView {
 		}
 		.navigationTitle(_navigationTitle)
 		.backport.navigationSubtitle(
-			Text(facility.address)
+			Text(facility.location.address)
 		)
 		.toolbarTitleDisplayMode(.inline)
 		.toolbarBackgroundVisibility(.visible, for: .navigationBar)
@@ -102,7 +102,7 @@ extension FacilityDetailView {
 			}
 
 			// Update Look Around when facility changes
-			lookAroundMgr.coordinate = facility.coordinate
+			lookAroundMgr.coordinate = facility.location.coordinate
 			await performInitialTasks()
 		}
 		.onChange(of: locationMgr.isLocationAvailable) { _, isAvailable in
@@ -134,7 +134,7 @@ extension FacilityDetailView {
 						Marker(
 							facility.displayName.title,
 							systemImage: "parkingsign.circle.fill",
-							coordinate: facility.coordinate
+							coordinate: facility.location.coordinate
 						)
 						.tint(Color.accentColor)
 					}
@@ -326,7 +326,7 @@ struct DetailSections: View {
 					}
 					.font(.title)
 					.fontWeight(.semibold)
-					.opacity(facility.refreshStatus.staleness.opacity)
+					.opacity(facility.refreshStatus.staleness.displayOpacity)
 					.breathingAnimation(
 						facility.refreshStatus.staleness == .stale
 							&& facilityDataMgr.isRefreshing
@@ -361,7 +361,7 @@ struct DetailSections: View {
 			.tint(
 				AvailabilityStatus.gradient
 			)
-			.opacity(facility.refreshStatus.staleness.opacity)
+			.opacity(facility.refreshStatus.staleness.displayOpacity)
 		}
 		.animation(.smooth, value: facility.refreshStatus.staleness)
 	}
@@ -507,7 +507,7 @@ struct DetailSections: View {
 						}
 						Button("Google Maps") {
 							openInGoogleMaps(
-								coordinate: facility.coordinate,
+								coordinate: facility.location.coordinate,
 								destinationName: facility.name
 							)
 						}

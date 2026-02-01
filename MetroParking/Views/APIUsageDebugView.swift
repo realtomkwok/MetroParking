@@ -17,7 +17,10 @@ struct APIUsageDebugView: View {
     
     // Computed property to sort facilities by last refreshed time
     private var sortedFacilities: [ParkingFacility] {
-        facilities.sorted { $0.refreshStatus.lastRefreshed > $1.refreshStatus.lastRefreshed }
+		facilities
+			.sorted {
+				$0.refreshStatus.lastUpdated > $1.refreshStatus.lastUpdated
+			}
     }
     
     var body: some View {
@@ -142,7 +145,7 @@ struct APIUsageDebugView: View {
             VStack(alignment: .trailing, spacing: 2) {
 				Text(facility.vacancy.isCacheValid ? "✅" : "⏰")
 				Text(
-					"\(facility.refreshStatus.lastRefreshed.formatted(.relative(presentation: .named, unitsStyle: .abbreviated))))s ago"
+					"\(facility.refreshStatus.lastUpdated.formatted(.relative(presentation: .named, unitsStyle: .abbreviated))))s ago"
 				)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
@@ -173,7 +176,7 @@ struct APIUsageDebugView: View {
             VStack(alignment: .trailing, spacing: 2) {
 				Text(
 					facility.refreshStatus
-						.lastRefreshed
+						.lastUpdated
 						.formatted(.relative(presentation: .numeric))
 				)
                     .font(.caption)

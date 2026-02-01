@@ -301,7 +301,7 @@ extension SharedDataManager {
 			name: facility.name,
 			displayTitle: displayName.title,
 			displaySubtitle: displayName.subtitle,
-			address: facility.address,
+			address: facility.location.address,
 			availableSpaces: vacancy.available,
 			totalSpaces: vacancy.total,
 			occupancyRatio: vacancy.occupancy,

@@ -49,18 +49,18 @@ struct PreviewHelper {
 	static func mockAPIResponse(
 		for facility: ParkingFacility,
 		occupancyRatio: Double
-	) -> ParkingAPIResponse {
+	) -> ParkingApiModel {
 		let occupied = Int(Double(facility.totalSpaces) * occupancyRatio)
 
-		return ParkingAPIResponse(
+		return ParkingApiModel(
 			tsn: "preview-tsn",
 			spots: String(facility.totalSpaces),
 			zones: [],
 			location: ParkingLocationAPI(
-				suburb: facility.suburb,
-				address: facility.address,
-				latitude: String(facility.latitude),
-				longitude: String(facility.longitude)
+				suburb: facility.location.suburb,
+				address: facility.location.address,
+				latitude: String(facility.location.latitude),
+				longitude: String(facility.location.longitude)
 			),
 			occupancy: ParkingOccupancyAPI(
 				loop: nil,
@@ -84,8 +84,12 @@ struct PreviewHelper {
 	) {
 		guard ratio > 0 else { return }  // Leave as noData if ratio is 0
 
-		let mockResponse = mockAPIResponse(for: facility, occupancyRatio: ratio)
-		facility.updateFromAPI(mockResponse)
+		let occupied = Int(Double(facility.totalSpaces) * ratio)
+		facility
+			.updateOccupancy(
+				occupied: occupied,
+				totalSpaces: facility.totalSpaces
+			)
 	}
 
 	/// Apply route information to a facility
@@ -141,10 +145,10 @@ extension ParkingFacility {
 		let facility = ParkingFacility(
 			facilityId: sourceFacility.facilityId,
 			name: sourceFacility.name,
-			suburb: sourceFacility.suburb,
-			address: sourceFacility.address,
-			latitude: sourceFacility.latitude,
-			longitude: sourceFacility.longitude,
+			suburb: sourceFacility.location.suburb,
+			address: sourceFacility.location.address,
+			latitude: sourceFacility.location.latitude,
+			longitude: sourceFacility.location.longitude,
 			totalSpaces: sourceFacility.totalSpaces
 		)
 
@@ -191,10 +195,10 @@ extension ParkingFacility {
 			let facility = ParkingFacility(
 				facilityId: source.facilityId,
 				name: source.name,
-				suburb: source.suburb,
-				address: source.address,
-				latitude: source.latitude,
-				longitude: source.longitude,
+				suburb: source.location.suburb,
+				address: source.location.address,
+				latitude: source.location.latitude,
+				longitude: source.location.longitude,
 				totalSpaces: source.totalSpaces
 			)
 
@@ -281,10 +285,10 @@ extension ModelContainer {
 					let facility = ParkingFacility(
 						facilityId: source.facilityId,
 						name: source.name,
-						suburb: source.suburb,
-						address: source.address,
-						latitude: source.latitude,
-						longitude: source.longitude,
+						suburb: source.location.suburb,
+						address: source.location.address,
+						latitude: source.location.latitude,
+						longitude: source.location.longitude,
 						totalSpaces: source.totalSpaces
 					)
 

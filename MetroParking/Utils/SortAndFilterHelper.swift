@@ -40,6 +40,7 @@ struct SortingOrderDisplay: BasicDisplayable {
 struct FilterOptionDisplay: BasicDisplayable {
 	let title: String
 	let systemImage: String
+	let systemImageAfter: String
 }
 
 enum SortingOption: String, CaseIterable, Codable, Hashable,
@@ -237,13 +238,18 @@ enum FilterOption: String, CaseIterable, Codable, Hashable,
 
 		case .pinned:
 			return
-				FilterOptionDisplay(title: "Pinned", systemImage: "star")
+				FilterOptionDisplay(
+					title: "Pinned",
+					systemImage: "star",
+					systemImageAfter: "star.fill"
+				)
 
 		case .available:
 			return
 				FilterOptionDisplay(
 					title: "Available",
-					systemImage: "checkmark.circle.fill"
+					systemImage: "checkmark.circle",
+					systemImageAfter: "checkmark.circle.fill"
 				)
 
 		}

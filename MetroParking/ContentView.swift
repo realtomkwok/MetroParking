@@ -122,7 +122,17 @@ struct ContentView: View {
 					placement: .toolbar,
 					prompt: "Station or suburb"
 				)
-				.searchToolbarBehavior(preferences.filterIsOn ? .minimize : .automatic)
+				.overlay {
+					if groupedFacilities.isEmpty {
+						ContentUnavailableView(
+							"No Car Park",
+							systemImage: "questionmark.diamond.fill"
+						)
+					}
+				}
+				.searchToolbarBehavior(
+					preferences.filterIsOn ? .minimize : .automatic
+				)
 			}
 			.navigationTitle("MetroParking")
 			.navigationSubtitle(navigationSubtitle)
@@ -217,20 +227,11 @@ extension ContentView {
 	func TopBar() -> some ToolbarContent {
 
 		ToolbarItem(placement: .topBarTrailing) {
-			Button {
-				Task {
-					await facilityDataMgr.performLoad()
-				}
-			} label: {
-				Label("Refresh", systemImage: "arrow.clockwise")
-					.labelStyle(.iconOnly)
-					.symbolEffect(
-						.rotate,
-						isActive: facilityDataMgr.isRefreshing
-					)
-			}
-			.accessibilityLabel("Refresh")
-			.disabled(facilityDataMgr.isRefreshing)
+			RefreshButton(
+				action: { await facilityDataMgr.performLoad(forced: true) },
+				isActive: facilityDataMgr.isRefreshing,
+				isDisabled: facilityDataMgr.isRefreshing
+			)
 		}
 
 		ToolbarItem(placement: .topBarTrailing) {
@@ -249,32 +250,7 @@ extension ContentView {
 		@Bindable var preferences = preferences
 
 		ToolbarItemGroup(placement: .bottomBar) {
-
-			Toggle(isOn: $preferences.filterIsOn.animation(.snappy)) {
-				Label(
-					"Filter",
-					systemImage: "line.3.horizontal.decrease"
-				)
-				.labelStyle(.iconOnly)
-			}
-			.accessibilityIdentifier("filter-toggle")
-			.sensoryFeedback(.selection, trigger: preferences.filterIsOn)
-
-			if preferences.filterIsOn {
-
-				Picker(selection: $preferences.preferredFilterOption) {
-					ForEach(FilterOption.allCases, id: \.self) { option in
-						Label(
-							option.display.title,
-							systemImage: option.display.systemImage
-						)
-						.tag(option)
-					}
-				} label: {
-					Text("Text")
-				}
-				.pickerStyle(.inline)
-			}
+			FilterMenu(preferences: preferences)
 		}
 
 		ToolbarSpacer(.flexible, placement: .bottomBar)
@@ -284,52 +260,98 @@ extension ContentView {
 		ToolbarSpacer(.flexible, placement: .bottomBar)
 
 		ToolbarItem(id: "Sorting", placement: .bottomBar) {
-
-			Menu {
-				let isAscending: Bool =
-					preferences.preferredSortingOrder == .ascending
-
-				Picker(selection: $preferences.preferredSortingOrder) {
-					ForEach(SortingOrder.allCases, id: \.self) { order in
-						Label(
-							preferences.preferredSortOption.display.subtitle(
-								ascending: order == .ascending
-							),
-							systemImage: order.display.systemImage
-						)
-						.tag(order)
-					}
-				} label: {
-					Label(
-						"Order",
-						systemImage: isAscending
-							? "text.line.first.and.arrowtriangle.forward"
-							: "text.line.last.and.arrowtriangle.forward"
-					)
-					Text(
-						preferences.preferredSortOption.display.subtitle(
-							ascending: isAscending
-						)
-					)
-				}
-				.pickerStyle(.menu)
-
-				Picker(selection: $preferences.preferredSortOption) {
-					ForEach(SortingOption.allCases, id: \.self) { option in
-						Label(
-							option.display.title,
-							systemImage: option.display.systemImage
-						)
-						.tag(option)
-					}
-				} label: {
-					Text("Sort by")
-				}
-			} label: {
-				Label("Sort by", systemImage: "arrow.up.arrow.down")
-			}
+			SortingMenu(preferences: preferences)
 		}
 
+	}
+
+	@ViewBuilder
+	private func FilterMenu(@Bindable preferences: UserPreferences) -> some View
+	{
+		Toggle(isOn: $preferences.filterIsOn.animation(.snappy)) {
+			Label(
+				"Filter",
+				systemImage: "line.3.horizontal.decrease"
+			)
+			.labelStyle(.iconOnly)
+		}
+		.accessibilityIdentifier("filter-toggle")
+		.sensoryFeedback(.selection, trigger: preferences.filterIsOn)
+
+		if preferences.filterIsOn {
+
+			Picker(selection: $preferences.preferredFilterOption) {
+				ForEach(FilterOption.allCases, id: \.self) { option in
+
+					let icon: String =
+						option == preferences.preferredFilterOption
+						? option.display.systemImageAfter
+						: option.display.systemImage
+
+					Label(
+						option.display.title,
+						systemImage: icon
+					)
+					.tag(option)
+				}
+			} label: {
+				Text("Filters")
+			}
+			.sensoryFeedback(
+				.selection,
+				trigger: preferences.preferredFilterOption
+			)
+			.pickerStyle(.inline)
+		}
+	}
+
+	@ViewBuilder
+	private func SortingMenu(@Bindable preferences: UserPreferences)
+		-> some View
+	{
+		Menu {
+			let isAscending: Bool =
+				preferences.preferredSortingOrder == .ascending
+
+			Picker(selection: $preferences.preferredSortingOrder) {
+				ForEach(SortingOrder.allCases, id: \.self) { order in
+					Label(
+						preferences.preferredSortOption.display.subtitle(
+							ascending: order == .ascending
+						),
+						systemImage: order.display.systemImage
+					)
+					.tag(order)
+				}
+			} label: {
+				Label(
+					"Order",
+					systemImage: isAscending
+						? "text.line.first.and.arrowtriangle.forward"
+						: "text.line.last.and.arrowtriangle.forward"
+				)
+				Text(
+					preferences.preferredSortOption.display.subtitle(
+						ascending: isAscending
+					)
+				)
+			}
+			.pickerStyle(.menu)
+
+			Picker(selection: $preferences.preferredSortOption) {
+				ForEach(SortingOption.allCases, id: \.self) { option in
+					Label(
+						option.display.title,
+						systemImage: option.display.systemImage
+					)
+					.tag(option)
+				}
+			} label: {
+				Text("Sort by")
+			}
+		} label: {
+			Label("Sort by", systemImage: "arrow.up.arrow.down")
+		}
 	}
 
 	/// A reusable picker section for options with display properties

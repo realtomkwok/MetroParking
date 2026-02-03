@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>TESTFLIGHT_URL</key>
+	<string>itms-beta://testflight.apple.com/join/yvA1uTxh</string>
+	<key>DEV_EMAIL</key>
+	<string>tom@itsnoice.com</string>
+	<key>DEV_WEBSITE_URL</key>
+	<string>tomkwok.xyz</string>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.tomkwok.MetroParking.refresh</string>

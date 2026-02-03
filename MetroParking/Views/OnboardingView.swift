@@ -53,14 +53,14 @@ struct OnboardingView: View {
 							icon: "gauge.open.with.lines.needle.33percent",
 							title: "Info at a Glance",
 							description:
-								"A glanceable overview of carpark availability, location and more."
+								"A glanceable overview of car park availability, location and more."
 						)
 						FeatureRow(
 							order: 1,
 							icon: "star.square.on.square.fill",
 							title: "Pin Your Favourite",
 							description:
-								"Quick access to frequently used carparks on the top of the list."
+								"Quick access to frequently used car parks on the top of the list."
 						)
 
 						FeatureRow(
@@ -68,10 +68,8 @@ struct OnboardingView: View {
 							icon: "square.grid.2x2.fill",
 							title: "Live Widgets",
 							description:
-								"Quick look on the carpark's availability on your home screen."
+								"Quick look on the car park's availability on your home screen."
 						)
-
-
 					}
 
 					Spacer(minLength: 32)

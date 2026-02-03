@@ -12,13 +12,21 @@ import SwiftUI
 struct SettingsView: View {
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.openURL) private var openUrl
-	
+
 	let version =
 		Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
 		?? "--"
 
 	let build =
 		Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "--"
+
+	let devEmail = Bundle.main.infoDictionary?["DEV_EMAIL"] as? String ?? ""
+
+	let devWebsite =
+		Bundle.main.infoDictionary?["DEV_WEBSITE_URL"] as? String ?? ""
+
+	let testFlightUrl =
+		Bundle.main.infoDictionary?["TESTFLIGHT_URL"] as? String ?? ""
 
 	var body: some View {
 		NavigationStack {
@@ -400,16 +408,6 @@ private func Settings_TipsView() -> some View {
 					"Swipe right to pin a car park",
 					systemImage: "arrow.right.to.line"
 				)
-				.contentTransition(
-					.symbolEffect(
-						.replace.magic(fallback: .downUp.byLayer),
-						options: .repeat(.periodic(delay: 3.0))
-					)
-				)
-				Label(
-					"Swipe left to get direction to a car park",
-					systemImage: "arrow.left.to.line"
-				)
 				Label(
 					"Swipe down to refresh the list",
 					systemImage: "arrow.clockwise"
@@ -420,33 +418,35 @@ private func Settings_TipsView() -> some View {
 	}
 }
 
-@ViewBuilder
-private func Settings_FeedbackView() -> some View {
-	SettingsSubpage("Feedback") {
-		List {
-			Section {
-				SettingsRow(
-					"Report a bug",
-					icon: "ladybug",
-					externalURL: URL(
-						string: "https://testflight.apple.com/join/metroparking"
-					)!
-				)
-				SettingsRow(
-					"Request a feature",
-					icon: "plus.bubble",
-					externalURL: URL(
-						string: "https://testflight.apple.com/join/metroparking"
-					)!
-				)
-			}
-			Section("Issue not listed?") {
-				SettingsRow(
-					"Contact Developer",
-					subtitle: "via Email",
-					icon: "envelope",
-					systemURL: URL(string: "mailto:tom@itsnoice.com")!
-				)
+extension SettingsView {
+	@ViewBuilder
+	private func Settings_FeedbackView() -> some View {
+		SettingsSubpage("Feedback") {
+			List {
+				Section {
+					SettingsRow(
+						"Report a bug",
+						icon: "ladybug",
+						systemURL: URL(
+							string: testFlightUrl
+						)!
+					)
+					SettingsRow(
+						"Request a feature",
+						icon: "plus.bubble",
+						systemURL: URL(
+							string: testFlightUrl
+						)!
+					)
+				}
+				Section("Issue not listed?") {
+					SettingsRow(
+						"Contact Developer",
+						subtitle: "via Email",
+						icon: "envelope",
+						systemURL: URL(string: "mailto:\(devEmail)")!
+					)
+				}
 			}
 		}
 	}

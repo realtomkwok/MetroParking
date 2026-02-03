@@ -47,6 +47,7 @@ final class ParkingFacility {
 	// Display name cache - avoids regex parsing on every access
 	private var _displayTitle: String = ""
 	private var _displaySubtitle: String = ""
+	private var _displayFullName: String = ""
 
 	@Relationship(deleteRule: .cascade, inverse: \ParkingZone.facility)
 	var zones: [ParkingZone] = []
@@ -96,6 +97,8 @@ final class ParkingFacility {
 	/// Called once during initialisation to avoid regex parsing on every access
 	private func _parseAndCacheDisplayName() {
 		let stripped = name.removePrefix("Park&Ride - ").localizedCapitalized
+
+		_displayFullName = stripped
 
 		if let match = stripped.firstMatch(of: Self.displayNamePattern) {
 			_displayTitle = String(match.1).trimmingCharacters(in: .whitespaces)
@@ -297,9 +300,14 @@ final class ParkingFacility {
 	}
 
 	/// Returns the parsed display name (title and subtitle)
-	/// Values are cached during initialization for optimal performance
-	var displayName: (title: String, subtitle: String) {
-		return (title: _displayTitle, subtitle: _displaySubtitle)
+	/// Values are cached during initialisation for optimal performance
+	/// Falls back to re-parsing if cache is empty (e.g., after SwiftData deserialization)
+	var displayName: (title: String, subtitle: String, full: String) {
+		// SwiftData doesn't call init() on deserialization, so cached values may be empty
+		if _displayFullName.isEmpty {
+			_parseAndCacheDisplayName()
+		}
+		return (title: _displayTitle, subtitle: _displaySubtitle, full: _displayFullName)
 	}
 
 	/// Distance for sorting purposes (returns the cached route distance, or Double.infinity if not available)

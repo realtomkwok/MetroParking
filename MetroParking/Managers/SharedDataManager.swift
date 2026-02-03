@@ -29,8 +29,8 @@ final class SharedDataManager {
 	// MARK: - SwiftData Container
 
 	/// Schema version for destructive migration (pre-launch only)
-	/// v5: Added _displayTitle and _displaySubtitle cached properties to ParkingFacility
-	private static let schemaVersion = "v5"
+	/// v7: Add name transformation
+	private static let schemaVersion = "v7"
 	private static let schemaVersionKey = "ModelSchemaVersion"
 
 	/// Shared ModelContainer instance used by both app and widget

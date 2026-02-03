@@ -8,6 +8,7 @@
 import CoreLocationUI
 import Foundation
 import MapKit
+import SwiftData
 import SwiftUI
 import SwiftUIBackports
 
@@ -54,27 +55,25 @@ struct FacilityDetailView: View {
 /// Body
 extension FacilityDetailView {
 
-	private var _navigationTitle: String {
-		facility.displayName.subtitle.isEmpty
-			? facility.displayName.title
-			: "\(facility.displayName.title) (\(facility.displayName.subtitle))"
-	}
-
 	var body: some View {
 		ScrollView(.vertical) {
 			MapHeader
 				.zIndex(0)
-			// Detail Content with background that overlays the map
 
-			DetailSections(facility: facility)
-				.accessibilityIdentifier("detail-sections")
-				.backport.concentricClipShape()
-				.zIndex(1)
+			DetailSections(
+				namespace: namespace,
+				selectedFacility: facility,
+				nearbyFacilities: nearbyFacilities
+			)
+			.scrollTargetLayout()
+			.accessibilityIdentifier("detail-sections")
+			.backport.concentricClipShape()
+			.zIndex(1)
 		}
 		.accessibilityElement(children: .contain)
 		.accessibilityIdentifier("detail-view")
 		.containerShape(.rect(cornerRadius: 48))
-		.background(Color(UIColor.systemGroupedBackground))
+		.backgroundStyle(.background)
 		.scrollTargetBehavior(.paging)
 		.scrollIndicators(.hidden)
 		.scrollBounceBehavior(.basedOnSize)
@@ -95,7 +94,7 @@ extension FacilityDetailView {
 		// Ensure view resets when switching facilities
 		.id(facility.facilityId)
 		.task(id: facility.facilityId) {
-			try? await Task.sleep(for: .milliseconds(0.3))
+			try? await Task.sleep(for: .seconds(0.3))
 
 			withAnimation(.smooth) {
 				showMap = true
@@ -120,10 +119,38 @@ extension FacilityDetailView {
 		)
 	}
 
+	var nearbyFacilities: [ParkingFacility] {
+		let descriptor = FetchDescriptor<ParkingFacility>()
+		let allFacilities = (try? modelContext.fetch(descriptor)) ?? []
+
+		return Array(
+			allFacilities
+				.filter { $0.facilityId != facility.facilityId }
+				.sorted { a, b in
+					DistanceHelper.distance(
+						from: facility.location.coordinate,
+						to:
+							a.location.coordinate
+					)
+						< DistanceHelper.distance(
+							from: facility.location.coordinate,
+							to:
+								b.location.coordinate
+						)
+				}
+				.prefix(3)
+		)
+	}
+
+	private var _navigationTitle: String {
+		facility.displayName.subtitle.isEmpty
+			? facility.displayName.title
+			: "\(facility.displayName.title) (\(facility.displayName.subtitle))"
+	}
+
 	@ViewBuilder
 	private var MapHeader: some View {
-		// Sticky Map Header with fixed camera
-		if showMap {
+			// https://support.revealapp.com/article/34-ios-application-crash-when-inspecting-views-with-mapkit-overlays
 			GeometryReader { geometry in
 				let minY = geometry.frame(in: .scrollView).minY
 				let size = geometry.size
@@ -154,11 +181,8 @@ extension FacilityDetailView {
 				}
 			}
 			.frame(height: 400)
-			.transition(.blurReplace)
-		} else {
-			Color.clear
-				.frame(height: 400)
-		}
+			.opacity(showMap ? 1 : 0)
+			.animation(.snappy, value: showMap)
 	}
 
 	private func performInitialTasks() async {
@@ -205,28 +229,13 @@ extension FacilityDetailView {
 	@ToolbarContentBuilder
 	func TopBarActions() -> some ToolbarContent {
 		ToolbarItem(placement: .topBarTrailing) {
-			Button {
-				Task {
-					await facilityDataMgr.loadFacility(facility)
-				}
-			} label: {
-				ZStack {
-					if facilityDataMgr.isRefreshing {
-						ProgressView()
-							.zIndex(1)
-					}
-
-					Image(systemName: "arrow.clockwise")
-						.zIndex(0)
-
-				}
-				.transition(.blurReplace)
-				.contentTransition(.symbolEffect(.replace.downUp))
-				.animation(.smooth, value: facilityDataMgr.isRefreshing)
-				.disabled(facilityDataMgr.isRefreshing)
-
-			}
-			.accessibilityLabel("Refresh")
+			RefreshButton(
+				action: {
+					await facilityDataMgr.loadFacility(facility, forced: true)
+				},
+				isActive: facilityDataMgr.isRefreshing,
+				isDisabled: facilityDataMgr.isRefreshing
+			)
 		}
 	}
 
@@ -259,7 +268,9 @@ extension FacilityDetailView {
 ///  - Nearby facilities
 
 struct DetailSections: View {
-	var facility: ParkingFacility
+	var namespace: Namespace.ID
+	var selectedFacility: ParkingFacility
+	var nearbyFacilities: [ParkingFacility]
 
 	@Environment(FacilityManager.self) private var facilityDataMgr
 	@Environment(LookAroundManager.self) private var lookAroundMgr
@@ -268,10 +279,18 @@ struct DetailSections: View {
 	@Environment(\.dismiss) private var dismiss
 
 	@State private var showLocationPermissionAlert: Bool = false
+	@State private var nearbyRoutes:
+		[String: (distance: CLLocationDistance, travelTime: TimeInterval)] = [:]
+
+	struct sectionLabel {
+		var heading: String
+		var icon: String
+		var color: Color = .accentColor
+	}
 
 	@ViewBuilder
 	func DetailCard<Content: View, TrailingTopContent: View>(
-		label: (heading: String, icon: String, color: Color),
+		label: sectionLabel,
 		@ViewBuilder content: () -> Content,
 		@ViewBuilder trailingTopContent: () -> TrailingTopContent = {
 			EmptyView()
@@ -299,7 +318,7 @@ struct DetailSections: View {
 		}
 		.padding(.horizontal, 20)
 		.padding(.vertical, 16)
-		.background(.regularMaterial)
+		.background(.thickMaterial)
 		.clipShape(.containerRelative)
 	}
 
@@ -308,7 +327,7 @@ struct DetailSections: View {
 		HStack(alignment: .center) {
 			VStack(alignment: .leading) {
 				HStack(alignment: .firstTextBaseline, spacing: 4) {
-					let vacancy = facility.vacancy
+					let vacancy = selectedFacility.vacancy
 					HStack(
 						alignment: .firstTextBaseline,
 						spacing: 0
@@ -326,9 +345,11 @@ struct DetailSections: View {
 					}
 					.font(.title)
 					.fontWeight(.semibold)
-					.opacity(facility.refreshStatus.staleness.displayOpacity)
+					.opacity(
+						selectedFacility.refreshStatus.staleness.displayOpacity
+					)
 					.breathingAnimation(
-						facility.refreshStatus.staleness == .stale
+						selectedFacility.refreshStatus.staleness == .stale
 							&& facilityDataMgr.isRefreshing
 					)
 
@@ -339,7 +360,7 @@ struct DetailSections: View {
 				}
 
 				HStack(alignment: .firstTextBaseline, spacing: 4) {
-					Text("\(facility.availabilityStatus.text)")
+					Text("\(selectedFacility.availabilityStatus.text)")
 						.font(.headline)
 						.transition(.blurReplace)
 				}
@@ -347,7 +368,7 @@ struct DetailSections: View {
 
 			Spacer()
 
-			let vacancy = facility.vacancy
+			let vacancy = selectedFacility.vacancy
 			Gauge(
 				value: vacancy.occupancy,
 				in:
@@ -361,26 +382,43 @@ struct DetailSections: View {
 			.tint(
 				AvailabilityStatus.gradient
 			)
-			.opacity(facility.refreshStatus.staleness.displayOpacity)
+			.opacity(selectedFacility.refreshStatus.staleness.displayOpacity)
 		}
-		.animation(.smooth, value: facility.refreshStatus.staleness)
+		.animation(.smooth, value: selectedFacility.refreshStatus.staleness)
 	}
 
-	// MARK: - Traffics: ETA, distance to the car park
+	@ViewBuilder
+	func VacancyTrailingView() -> some View {
+		TimelineView(.periodic(from: .now, by: 60)) { context in
+			let timeInterval = context.date.timeIntervalSince(
+				selectedFacility.refreshStatus.lastUpdated
+			)
+
+			if timeInterval < 60 {
+				Text("updated just now")
+			} else {
+				Text(
+					"updated \(selectedFacility.refreshStatus.lastUpdated.formatted(.relative(presentation: .named, unitsStyle: .narrow)))"
+				)
+			}
+		}
+		.monospacedDigit()
+		.font(.footnote)
+	}
 
 	@ViewBuilder
 	func TrafficView() -> some View {
 
 		// Get ETA from facility's cached route data
 		let travelTime: String = {
-			if let travelTime = facility.route?.travelTime {
+			if let travelTime = selectedFacility.route?.travelTime {
 				return etaMgr.formatETA(travelTime)
 			}
 			return ""
 		}()
 
 		let distance: String = {
-			if let distance = facility.route?.distance {
+			if let distance = selectedFacility.route?.distance {
 				return etaMgr.formatDistance(distance)
 			}
 			return ""
@@ -462,11 +500,11 @@ struct DetailSections: View {
 						} else {
 							Text(travelTime)
 								.foregroundStyle(
-									facility.route != nil
+									selectedFacility.route != nil
 										? .primary : .secondary
 								)
 								.font(
-									facility.route != nil
+									selectedFacility.route != nil
 										? .title : .headline
 								)
 								.fontWeight(.semibold)
@@ -486,7 +524,7 @@ struct DetailSections: View {
 									.font(.headline)
 								Text("away")
 									.foregroundStyle(.secondary)
-									.font(.caption)
+									.font(.callout)
 							}
 							.foregroundStyle(.primary)
 						}
@@ -498,17 +536,18 @@ struct DetailSections: View {
 
 					/// Future: Detect installed map apps and provide selection menu
 					Menu {
-						Button("Apple Maps") {
+						Button("Apple Maps", systemImage: "map.fill") {
 							Task {
 								let mapItem =
-									await facility.getMapItem()
+									await selectedFacility.getMapItem()
 								openInMapsWithDirections(mapItem)
 							}
 						}
-						Button("Google Maps") {
+						Button("Google Maps", systemImage: "g.circle.fill") {
 							openInGoogleMaps(
-								coordinate: facility.location.coordinate,
-								destinationName: facility.name
+								coordinate: selectedFacility.location
+									.coordinate,
+								destinationName: selectedFacility.name
 							)
 						}
 					} label: {
@@ -544,20 +583,21 @@ struct DetailSections: View {
 		)
 		.animation(
 			.smooth,
-			value: facility.route?.travelTime
+			value: selectedFacility.route?.travelTime
 		)
 	}
 
 	@ViewBuilder
 	func LookAroundView() -> some View {
-		let label: (heading: String, icon: String, color: Color) = (
-			"Look Around", "binoculars.fill", .accentColor
+		let sectionLabel = sectionLabel(
+			heading: "Look Around",
+			icon: "binoculars.fill"
 		)
 
 		ZStack {
 			// Loading state
 			if lookAroundMgr.isLoading {
-				DetailCard(label: label) {
+				DetailCard(label: sectionLabel) {
 					VStack(spacing: 12) {
 						ProgressView()
 							.controlSize(.large)
@@ -567,7 +607,7 @@ struct DetailSections: View {
 				.transition(.blurReplace)
 				.zIndex(1)
 			} else if let errorMsg = lookAroundMgr.errorMessage {
-				DetailCard(label: label) {
+				DetailCard(label: sectionLabel) {
 					Text(errorMsg)
 						.font(.headline)
 						.foregroundStyle(.secondary)
@@ -596,45 +636,112 @@ struct DetailSections: View {
 		.animation(.smooth, value: lookAroundMgr.isLoading)
 	}
 
-	/// Future (v0.6.0+): Display nearby parking facilities
+	@ViewBuilder
+	func NearbyParkingView() -> some View {
+		VStack(alignment: .leading, spacing: 12) {
+
+			ForEach(
+				nearbyFacilities,
+				id: \.facilityId
+			) { facility in
+				
+				NavigationLink {
+					FacilityDetailView(
+						namespace: namespace,
+						facility: facility
+					)
+				} label: {
+					HStack {
+						ParkingProgressGauge(
+							occupancy: facility.vacancy.occupancy,
+							available: facility.vacancy.available,
+							total: facility.vacancy.total,
+							availabilityStatus: facility.availabilityStatus
+						)
+						.padding(.trailing, 8)
+
+						VStack(alignment: .leading, spacing: 4) {
+							Text(facility.displayName.full)
+								.font(.headline)
+								.lineLimit(1)
+							Text(facility.availabilityStatus.text)
+								.font(.subheadline)
+								.foregroundStyle(.secondary)
+						}
+
+						Spacer()
+
+						if let route = nearbyRoutes[facility.facilityId] {
+							VStack(alignment: .trailing, spacing: 4) {
+								Text(etaMgr.formatDistance(route.distance))
+									.font(.subheadline)
+								Text(etaMgr.formatETA(route.travelTime))
+									.font(.caption)
+									.foregroundStyle(.secondary)
+							}
+						} else {
+							ProgressView()
+								.controlSize(.small)
+						}
+
+						Image(systemName: "chevron.forward")
+							.foregroundStyle(Color(uiColor: .tertiaryLabel))
+					}
+					.padding(.vertical, 4)
+				}
+				.contentShape(.containerRelative)
+				.buttonStyle(.plain)
+
+				if facility.facilityId != nearbyFacilities.last?.facilityId {
+					Divider()
+				}
+			}
+		}
+	}
 
 	var body: some View {
 		VStack {
 			DetailCard(
-				label: (
-					"Vacancy",
-					"parkingsign.circle.fill",
-					.blue
+				label: sectionLabel(
+					heading: "Vacancy",
+					icon: "checkmark.circle.fill",
+
 				),
 				content: VacancyView,
-				trailingTopContent: {
-					TimelineView(.periodic(from: .now, by: 60)) { context in
-						let timeInterval = context.date.timeIntervalSince(
-							facility.refreshStatus.lastUpdated
-						)
-
-						if timeInterval < 60 {
-							Text("updated just now")
-						} else {
-							Text(
-								"updated \(facility.refreshStatus.lastUpdated.formatted(.relative(presentation: .named, unitsStyle: .narrow)))"
-							)
-						}
-					}
-					.monospacedDigit()
-					.font(.footnote)
-				}
+				trailingTopContent: VacancyTrailingView
 			)
 
 			DetailCard(
-				label: ("Travels", "location.north.circle.fill", .accentColor),
+				label: sectionLabel(
+					heading: "Travels",
+					icon: "location.circle.fill",
+
+				),
 				content: TrafficView
 			)
+			DetailCard(
+				label: sectionLabel(
+					heading: "Nearby Parking",
+					icon: "parkingsign.circle.fill",
 
+				),
+				content: NearbyParkingView
+			)
 			LookAroundView()
+
 		}
 		.padding()
-
+		.task(id: selectedFacility.facilityId) {
+			nearbyRoutes = [:]
+			for nearby in nearbyFacilities {
+				if let result = await etaMgr.calculateDistanceBetweenFacilities(
+					from: selectedFacility,
+					to: nearby
+				) {
+					nearbyRoutes[nearby.facilityId] = result
+				}
+			}
+		}
 	}
 }
 

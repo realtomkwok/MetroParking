@@ -128,6 +128,7 @@ struct FocusedFacilityWidgetView: View {
 								.font(.largeTitle)
 								.fontWeight(.semibold)
 								.tracking(-0.8)
+								.monospacedDigit()
 								.foregroundStyle(
 									statusColourFill.mix(
 										with: .primary,
@@ -143,6 +144,7 @@ struct FocusedFacilityWidgetView: View {
 								.font(.subheadline)
 								.opacity(0.7)
 								.foregroundStyle(.secondary)
+								.allowsTightening(true)
 						}
 
 						HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -206,7 +208,7 @@ struct FocusedFacilityWidgetView: View {
 			backgroundView()
 
 			VStack(alignment: .center, spacing: 4) {
-				Image(systemName: "questionmark.circle")
+				Image(systemName: "questionmark.diamond.fill")
 					.font(.largeTitle)
 					.foregroundStyle(.secondary)
 

@@ -126,7 +126,6 @@ final class MapsManager {
 				"❌ PlaceDescriptor MapItem creation failed for \(name): \(error.localizedDescription) (code: \(error.code))"
 			)
 
-			// Try fallback to simpler MKMapItem initialization if available
 			return createSimpleModernMapItem(
 				coordinate: coordinate,
 				name: name,
@@ -136,7 +135,7 @@ final class MapsManager {
 		}
 	}
 
-	/// Creates a simple MapItem using iOS 26.0+ MKMapItem(location:address:) initializer
+	/// Creates a simple MapItem using iOS 26.0+ MKMapItem(location:address:) initialiser
 	@available(iOS 26.0, *)
 	private func createSimpleModernMapItem(
 		coordinate: CLLocationCoordinate2D,

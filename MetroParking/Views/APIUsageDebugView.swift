@@ -203,7 +203,7 @@ struct APIUsageDebugView: View {
 
 			Button("Simulate App Refresh") {
 				Task {
-					await BackgroundTaskManager.shared.performQuickRefresh()
+					await BackgroundTaskManager.shared.performBackgroundRefresh(scope: .quick)
 				}
 			}
 		}

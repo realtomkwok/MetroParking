@@ -14,7 +14,7 @@ final class SearchManager {
 	static let shared = SearchManager()
 
 	var searchText: String = ""
-	var isSearchFieldFocused: Bool = false
+	var isSearching: Bool = false
 
 	private init() {}
 

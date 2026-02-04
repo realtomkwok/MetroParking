@@ -128,7 +128,6 @@ struct FocusedFacilityWidgetView: View {
 								.font(.largeTitle)
 								.fontWeight(.semibold)
 								.tracking(-0.8)
-								.monospacedDigit()
 								.foregroundStyle(
 									statusColourFill.mix(
 										with: .primary,

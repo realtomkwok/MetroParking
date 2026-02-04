@@ -26,7 +26,7 @@ struct ContentView: View {
 	@Environment(UserPreferences.self) private var preferences
 
 	@State private var selectedFacility: ParkingFacility?
-	@State private var isFilterMenuPresented: Bool = false
+	@State private var isFiltered: Bool = false
 	@State private var deepLinkedFacility: ParkingFacility?
 	@State private var isSettingsPresented: Bool = false
 
@@ -95,56 +95,78 @@ struct ContentView: View {
 
 	}
 
+	private var MainView: some View {
+
+		return ZStack {
+			BackgroundGradient(isAnimating: false)
+			FacilityList(
+				nameSpace: navigationNamespace,
+				groupedFacilities: groupedFacilities,
+				selectedFacility: $selectedFacility,
+			)
+
+			.overlay {
+				if groupedFacilities.isEmpty {
+					if !searchMgr.searchText.isEmpty {
+						ContentUnavailableView
+							.search(text: searchMgr.searchText)
+					} else if preferences.filterIsOn && preferences.preferredFilterOption == .pinned {
+						ContentUnavailableView {
+							Label("No Pinned Car Parks", systemImage: "questionmark.diamond.fill")
+						} description: {
+							Text("Swipe right on a car park to pin it.")
+						} actions: {
+							Button {
+								withAnimation(.snappy) {
+									preferences.filterIsOn.toggle()
+								}
+							} label: {
+								Text("Clear Filter")
+							}
+							.buttonStyle(.borderedProminent)
+						}
+					}
+
+				}
+			}
+
+		}
+	}
+
 	var body: some View {
 		@Bindable var onboarding = onboardingMgr
-		@Bindable var search = searchMgr
 		@Bindable var preferences = preferences
+		@Bindable var search = searchMgr
 
 		NavigationStack {
-			ZStack {
-				BackgroundGradient(isAnimating: false)
-				FacilityList(
-					nameSpace: navigationNamespace,
-					groupedFacilities: groupedFacilities,
-					selectedFacility: $selectedFacility,
-					isInteractionDisabled: isFilterMenuPresented
-				)
-				.toolbar {
-					TopBar()
-				}
-				.toolbar {
-					BottomBar()
-
-				}
-				.searchable(
-					text: $search.searchText,
-					isPresented: $search.isSearchFieldFocused,
-					placement: .toolbar,
-					prompt: "Station or suburb"
-				)
-				.overlay {
-					if groupedFacilities.isEmpty {
-						ContentUnavailableView(
-							"No Car Park",
-							systemImage: "questionmark.diamond.fill"
-						)
-					}
-				}
-				.searchToolbarBehavior(
-					preferences.filterIsOn ? .minimize : .automatic
-				)
-			}
+			MainView
 			.navigationTitle("MetroParking")
 			.navigationSubtitle(navigationSubtitle)
 			.toolbarTitleDisplayMode(.inlineLarge)
-			.refreshable {
-				await facilityDataMgr.performLoad(forced: true)
-			}
 			.scrollEdgeEffectStyle(.soft, for: .vertical)
 			.scrollContentBackground(.hidden)
+			.toolbar {
+				TopBar()
+			}
+			.toolbar {
+				BottomBar()
+
+			}
 		}
-		.backport.concentricClipShape()
-		.ignoresSafeArea()
+		.refreshable {
+			await facilityDataMgr.performLoad(forced: true)
+		}
+		// https://developer.apple.com/videos/play/wwdc2021/10176/?time=133
+		.searchable(
+			text: $search.searchText,
+			isPresented: $search.isSearching,
+			placement: .toolbar,
+			prompt: "Station or suburb"
+		)
+		.searchToolbarBehavior(
+			preferences.filterIsOn ? .minimize : .automatic
+		)
+
 		.containerShape(.rect(cornerRadius: 24))
 		.sheet(isPresented: $isSettingsPresented) {
 			SettingsView()
@@ -163,9 +185,11 @@ struct ContentView: View {
 			handleDeepLink(facilityId: facilityId)
 		}
 	}
+
+
 }
 
-// MARK: - Private views
+// MARK: - Deep link
 extension ContentView {
 
 	@ViewBuilder
@@ -186,14 +210,10 @@ extension ContentView {
 			}
 		}
 	}
-}
-
-// MARK: - Helper functions
-extension ContentView {
 
 	private func handleDeepLink(facilityId: String) {
-		// Use SwiftData predicate query for O(1) lookup instead of O(n) array scan
-		// This also avoids creating a dependency on the entire allFacilities array
+			// Use SwiftData predicate query for O(1) lookup instead of O(n) array scan
+			// This also avoids creating a dependency on the entire allFacilities array
 		let descriptor = FetchDescriptor<ParkingFacility>(
 			predicate: #Predicate { $0.facilityId == facilityId }
 		)
@@ -210,15 +230,17 @@ extension ContentView {
 			"✅ Deep link: Navigating to facility '\(facility.displayName.title)'"
 		)
 
-		// Present as sheet with animation
+			// Present as sheet with animation
 		withAnimation(.smooth) {
 			deepLinkedFacility = facility
 		}
 
-		// Clear the deep link handler after navigation is initiated
+			// Clear the deep link handler after navigation is initiated
 		deepLinkMgr.clearSelection()
 	}
+
 }
+
 
 // MARK: - Toolbar
 extension ContentView {
@@ -268,7 +290,7 @@ extension ContentView {
 	@ViewBuilder
 	private func FilterMenu(@Bindable preferences: UserPreferences) -> some View
 	{
-		Toggle(isOn: $preferences.filterIsOn.animation(.snappy)) {
+		Toggle(isOn: $preferences.filterIsOn.animation(.bouncy)) {
 			Label(
 				"Filter",
 				systemImage: "line.3.horizontal.decrease"
@@ -337,6 +359,10 @@ extension ContentView {
 				)
 			}
 			.pickerStyle(.menu)
+			.sensoryFeedback(
+				.selection,
+				trigger: preferences.preferredSortOption
+			)
 
 			Picker(selection: $preferences.preferredSortOption) {
 				ForEach(SortingOption.allCases, id: \.self) { option in
@@ -347,8 +373,16 @@ extension ContentView {
 					.tag(option)
 				}
 			} label: {
-				Text("Sort by")
+				Label("Sort by", systemImage: "arrow.up.arrow.down")
+					.labelStyle(.titleOnly)
 			}
+			.pickerStyle(.inline)
+			.sensoryFeedback(
+				.selection,
+				trigger: preferences.preferredSortOption
+			)
+
+
 		} label: {
 			Label("Sort by", systemImage: "arrow.up.arrow.down")
 		}

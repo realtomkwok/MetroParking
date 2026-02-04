@@ -359,7 +359,7 @@ Copyright (C) 2025-2026 Tom Kwok
 
 **WIP: v1.1.0**
 - [x] Refine refresh mechanism
-- [ ] Add nearby parking recommendation to the detail page
+- [x] Add nearby parking recommendation to the detail page
 - [ ] Add Chinese language support
 - [ ] Audit accessibility issues
 

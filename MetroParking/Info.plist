@@ -2,12 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>TESTFLIGHT_URL</key>
-	<string>itms-beta://testflight.apple.com/join/yvA1uTxh</string>
-	<key>DEV_EMAIL</key>
-	<string>tom@itsnoice.com</string>
-	<key>DEV_WEBSITE_URL</key>
-	<string>tomkwok.xyz</string>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.tomkwok.MetroParking.refresh</string>
@@ -28,6 +22,8 @@
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleGetInfoString</key>
+	<string></string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -41,6 +37,10 @@
 			</array>
 		</dict>
 	</array>
+	<key>DEV_EMAIL</key>
+	<string>tom@itsnoice.com</string>
+	<key>DEV_WEBSITE_URL</key>
+	<string>tomkwok.xyz</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>comgooglemaps</string>
@@ -58,6 +58,8 @@
 	<string>$(SUPABASE_PUBLISHABLE_KEY)</string>
 	<key>SUPABASE_URL</key>
 	<string>$(SUPABASE_URL)</string>
+	<key>TESTFLIGHT_URL</key>
+	<string>itms-beta://testflight.apple.com/join/yvA1uTxh</string>
 	<key>TFNSW_API_KEY</key>
 	<string>$(TFNSW_API_KEY)</string>
 	<key>UIBackgroundModes</key>

@@ -19,6 +19,7 @@ import XCTest
 /// - `UI_TESTING`: Enables UI testing mode
 /// - `SKIP_ONBOARDING`: Skips onboarding for tests that don't need it
 /// - `RESET_STATE`: Resets app state for clean screenshots
+/// - `DISABLE_ANIMATIONS`: Disable animation for faster screenshots
 final class ScreenshotTests: XCTestCase {
 
     var app: XCUIApplication!
@@ -28,7 +29,7 @@ final class ScreenshotTests: XCTestCase {
         continueAfterFailure = false
 
         app = XCUIApplication()
-        app.launchArguments += ["UI_TESTING"]
+		app.launchArguments += ["UI_TESTING", "DISABLE_ANIMATION"]
 
         // Enable Fastlane snapshot support
         setupSnapshot(app)
@@ -56,7 +57,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Captures the onboarding screen shown on first launch
     @MainActor
-    func test01_OnboardingScreen() throws {
+    func screenshot01_OnboardingScreen() throws {
         // Launch with fresh state to show onboarding
         app.launchArguments += ["RESET_STATE"]
         app.launch()
@@ -77,7 +78,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Captures the main facility list screen
     @MainActor
-    func test02_MainScreen() throws {
+    func screenshot02_MainScreen() throws {
         // Skip onboarding for this test
         app.launchArguments += ["SKIP_ONBOARDING"]
         app.launch()
@@ -98,7 +99,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Captures the main screen with a filter applied
     @MainActor
-    func test03_MainScreenWithFilter() throws {
+    func screenshot03_MainScreenWithFilter() throws {
         app.launchArguments += ["SKIP_ONBOARDING"]
         app.launch()
 
@@ -125,7 +126,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Captures the facility detail page
     @MainActor
-    func test04_DetailPage() throws {
+    func screenshot04_DetailPage() throws {
         app.launchArguments += ["SKIP_ONBOARDING"]
         app.launch()
 
@@ -163,7 +164,15 @@ final class ScreenshotTests: XCTestCase {
             // Handle location alert again in case it appeared after delay
             handleLocationPermissionAlert()
 
-            snapshot("04_DetailPage")
+            snapshot("04_DetailPage_Top")
+
+            // Scroll down to capture the bottom of the detail page
+            let scrollView = app.scrollViews.firstMatch
+            if scrollView.exists {
+                scrollView.swipeUp()
+                Thread.sleep(forTimeInterval: 1.0)
+                snapshot("04_DetailPage_Bottom")
+            }
         } else {
             XCTFail("No facility rows found")
         }
@@ -223,7 +232,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Captures the settings screen
     @MainActor
-    func test05_SettingsScreen() throws {
+    func screenshot05_SettingsScreen() throws {
         app.launchArguments += ["SKIP_ONBOARDING"]
         app.launch()
 
@@ -242,6 +251,79 @@ final class ScreenshotTests: XCTestCase {
             snapshot("05_Settings")
         } else {
             XCTFail("Settings button not found")
+        }
+    }
+
+    /// Captures the main screen with the Cherrybrook carpark pinned to the top
+    @MainActor
+    func screenshot06_MainScreenPinned() throws {
+        app.launchArguments += ["SKIP_ONBOARDING", "RESET_SIMULATOR"]
+        app.launch()
+
+        // Wait for the facility list to load
+        let facilityListExists = waitForFacilityList(timeout: 10)
+        XCTAssertTrue(facilityListExists, "Facility list should appear")
+
+        // Wait for data to load
+        Thread.sleep(forTimeInterval: 2.0)
+
+        // Find the Cherrybrook facility row (facility ID 33)
+        let cherrybrookRow = app.buttons["facility-row-33"]
+
+        if cherrybrookRow.waitForExistence(timeout: 5) {
+            // Swipe right to reveal the pin action
+            cherrybrookRow.swipeRight()
+
+            // Wait for swipe action to appear
+            Thread.sleep(forTimeInterval: 0.5)
+
+            // Tap the pin button (star icon)
+            let pinButton = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Pin' OR label CONTAINS 'star'")).firstMatch
+            if pinButton.waitForExistence(timeout: 2) {
+                pinButton.tap()
+            }
+
+            // Wait for animation to complete and list to reorder
+            Thread.sleep(forTimeInterval: 1.5)
+
+            // Scroll to top to show pinned section
+            let list = app.collectionViews["facility-list"]
+            if list.exists {
+                list.swipeDown()
+            }
+
+            Thread.sleep(forTimeInterval: 1.0)
+
+            snapshot("06_MainScreen_Pinned")
+        } else {
+            XCTFail("Cherrybrook facility row not found")
+        }
+    }
+
+    /// Captures the sorting menu opened from the bottom toolbar
+    @MainActor
+    func screenshot07_SortingMenu() throws {
+        app.launchArguments += ["SKIP_ONBOARDING"]
+        app.launch()
+
+        // Wait for the facility list to load
+        let facilityListExists = waitForFacilityList(timeout: 10)
+        XCTAssertTrue(facilityListExists, "Facility list should appear")
+
+        // Wait for data to load
+        Thread.sleep(forTimeInterval: 2.0)
+
+        // Tap the sorting menu button in the bottom toolbar
+        let sortingMenu = app.buttons["sorting-menu"]
+        if sortingMenu.waitForExistence(timeout: 5) {
+            sortingMenu.tap()
+
+            // Wait for menu to appear and animate
+            Thread.sleep(forTimeInterval: 1.0)
+
+            snapshot("07_SortingMenu")
+        } else {
+            XCTFail("Sorting menu button not found")
         }
     }
 }

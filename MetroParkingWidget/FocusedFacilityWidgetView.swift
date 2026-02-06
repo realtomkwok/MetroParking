@@ -105,7 +105,7 @@ struct FocusedFacilityWidgetView: View {
 							.foregroundStyle(.secondary)
 
 						HStack(alignment: .firstTextBaseline, spacing: 4) {
-							Text("Tap to refresh")
+							Text(.tapToRefresh)
 								.font(.headline)
 								.fontWeight(.semibold)
 								.foregroundStyle(
@@ -117,7 +117,7 @@ struct FocusedFacilityWidgetView: View {
 						}
 
 						// Show age below
-						Text("Updated \(facility.timeSinceUpdate)")
+						Text(.updated(facility.timeSinceUpdate))
 							.font(.caption)
 							.foregroundStyle(.secondary)
 							.opacity(0.7)
@@ -139,7 +139,7 @@ struct FocusedFacilityWidgetView: View {
 										value: Double(facility.availableSpaces)
 									)
 								)
-							Text("spaces")
+							Text(.spaces)
 								.font(.subheadline)
 								.opacity(0.7)
 								.foregroundStyle(.secondary)
@@ -211,13 +211,13 @@ struct FocusedFacilityWidgetView: View {
 					.font(.largeTitle)
 					.foregroundStyle(.secondary)
 
-				Text("Car park not selected")
+				Text(.carParkNotSelected)
 					.font(.subheadline)
 					.fontWeight(.semibold)
 					.foregroundStyle(.primary)
 					.multilineTextAlignment(.center)
 
-				Text("Long press to edit")
+				Text(.longPressToEdit)
 					.font(.caption)
 					.foregroundStyle(.secondary)
 					.multilineTextAlignment(.center)

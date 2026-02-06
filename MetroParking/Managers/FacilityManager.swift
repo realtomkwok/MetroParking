@@ -173,12 +173,12 @@ extension FacilityManager {
 		// Fetch facilities using the working context
 		let allFacilities: [ParkingFacility] = await getFacilities(from: workingContext)
 
-		// Apply user's active filter if enabled (to prioritize refreshing what the user sees)
+		// Apply user's active filter if enabled (to prioritise refreshing what the user sees)
 		let preFilteredFacilities: [ParkingFacility]
 		if UserPreferences.shared.filterIsOn {
 			preFilteredFacilities = UserPreferences.shared.preferredFilterOption.apply(to: allFacilities)
 			Logger.facilityRefresh.debug(
-				"📍 Filter active (\(UserPreferences.shared.preferredFilterOption.display.title)): \(preFilteredFacilities.count)/\(allFacilities.count) facilities"
+	"📍 Filter active (\(UserPreferences.shared.preferredFilterOption.rawValue) \(preFilteredFacilities.count)/\(allFacilities.count) facilities"
 			)
 		} else {
 			preFilteredFacilities = allFacilities
@@ -216,7 +216,7 @@ extension FacilityManager {
 
 		Logger.facilityRefresh
 			.debug(
-				"Loading \(toLoad.count) facilities (\(watched.count) watched, \(unwatched.count) unwatched) sorted by \(sortOption.display.title) (\(sortOrder.rawValue))"
+				"Loading \(toLoad.count) facilities (\(watched.count) watched, \(unwatched.count) unwatched) sorted by \(sortOption.rawValue) (\(sortOrder.rawValue))"
 			)
 
 		loadProgress = .loading(0, toLoad.count)

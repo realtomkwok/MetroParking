@@ -32,7 +32,7 @@ struct SettingsView: View {
 		NavigationStack {
 			List {
 
-				Section("Help") {
+				Section(.help) {
 					SettingsRow(
 						"Tips",
 						icon: "sparkles",
@@ -62,11 +62,9 @@ struct SettingsView: View {
 						}
 					)
 				} header: {
-					Text("About")
+					Text(.about)
 				} footer: {
-					Text(
-						"Data provided by [Transport for NSW Open Data](https://opendata.transport.nsw.gov.au/data/dataset/car-park-api)"
-					)
+					Text(.settingsFootnote)
 				}
 
 				#if DEBUG
@@ -89,14 +87,14 @@ struct SettingsView: View {
 					}
 				#endif
 			}
-			.navigationTitle("More")
+			.navigationTitle(.more)
 			.toolbarTitleDisplayMode(.large)
 			.toolbar {
 				ToolbarItem(placement: .topBarTrailing) {
 					Button {
 						dismiss()
 					} label: {
-						Label("Close", systemImage: "xmark")
+						Label(.close, systemImage: "xmark")
 							.labelStyle(.iconOnly)
 					}
 				}
@@ -164,8 +162,8 @@ enum SettingsRowAction {
 /// }
 /// ```
 struct SettingsRow<Destination: View, Accessory: View>: View {
-	let title: String
-	let subtitle: String?
+	let title: LocalizedStringKey
+	let subtitle: LocalizedStringKey?
 	let icon: String
 	let rowAction: SettingsRowAction
 	let destination: Destination?
@@ -178,8 +176,8 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 
 	/// Creates a settings row with navigation to a destination view.
 	init(
-		_ title: String,
-		subtitle: String? = nil,
+		_ title: LocalizedStringKey,
+		subtitle: LocalizedStringKey? = nil,
 		icon: String,
 		@ViewBuilder destination: () -> Destination,
 		@ViewBuilder accessory: () -> Accessory
@@ -196,8 +194,8 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 
 	/// Creates a settings row with an external URL (opens in Safari sheet).
 	init(
-		_ title: String,
-		subtitle: String? = nil,
+		_ title: LocalizedStringKey,
+		subtitle: LocalizedStringKey? = nil,
 		icon: String,
 		externalURL: URL,
 		@ViewBuilder accessory: () -> Accessory
@@ -212,8 +210,8 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 
 	/// Creates a settings row with a system URL (opens via openURL).
 	init(
-		_ title: String,
-		subtitle: String? = nil,
+		_ title: LocalizedStringKey,
+		subtitle: LocalizedStringKey? = nil,
 		icon: String,
 		systemURL: URL,
 		@ViewBuilder accessory: () -> Accessory
@@ -228,8 +226,8 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 
 	/// Creates a settings row with a custom action.
 	init(
-		_ title: String,
-		subtitle: String? = nil,
+		_ title: LocalizedStringKey,
+		subtitle: LocalizedStringKey? = nil,
 		icon: String,
 		action: @escaping () -> Void,
 		@ViewBuilder accessory: () -> Accessory
@@ -244,8 +242,8 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 
 	/// Creates a settings row with no interaction (static content only).
 	init(
-		_ title: String,
-		subtitle: String? = nil,
+		_ title: LocalizedStringKey,
+		subtitle: LocalizedStringKey? = nil,
 		icon: String,
 		@ViewBuilder accessory: () -> Accessory
 	) where Destination == EmptyView {
@@ -312,7 +310,7 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 			} icon: {
 				Image(systemName: icon)
 			}
-			if let subtitle, !subtitle.isEmpty {
+			if let subtitle {
 				Text(subtitle)
 					.font(.caption)
 					.foregroundStyle(Color.secondary)
@@ -326,8 +324,8 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 extension SettingsRow where Accessory == EmptyView {
 	/// Creates a settings row with navigation and no accessory.
 	init(
-		_ title: String,
-		subtitle: String? = nil,
+		_ title: LocalizedStringKey,
+		subtitle: LocalizedStringKey? = nil,
 		icon: String,
 		@ViewBuilder destination: () -> Destination
 	) {
@@ -343,8 +341,8 @@ extension SettingsRow where Accessory == EmptyView {
 
 	/// Creates a settings row with an external URL and no accessory.
 	init(
-		_ title: String,
-		subtitle: String? = nil,
+		_ title: LocalizedStringKey,
+		subtitle: LocalizedStringKey? = nil,
 		icon: String,
 		externalURL: URL
 	) where Destination == EmptyView {
@@ -360,8 +358,8 @@ extension SettingsRow where Accessory == EmptyView {
 
 	/// Creates a settings row with a system URL and no accessory.
 	init(
-		_ title: String,
-		subtitle: String? = nil,
+		_ title: LocalizedStringKey,
+		subtitle: LocalizedStringKey? = nil,
 		icon: String,
 		systemURL: URL
 	) where Destination == EmptyView {
@@ -372,8 +370,8 @@ extension SettingsRow where Accessory == EmptyView {
 
 	/// Creates a settings row with a custom action and no accessory.
 	init(
-		_ title: String,
-		subtitle: String? = nil,
+		_ title: LocalizedStringKey,
+		subtitle: LocalizedStringKey? = nil,
 		icon: String,
 		action: @escaping () -> Void
 	) where Destination == EmptyView {
@@ -384,8 +382,8 @@ extension SettingsRow where Accessory == EmptyView {
 
 	/// Creates a settings row with no interaction and no accessory.
 	init(
-		_ title: String,
-		subtitle: String? = nil,
+		_ title: LocalizedStringKey,
+		subtitle: LocalizedStringKey? = nil,
 		icon: String
 	) where Destination == EmptyView {
 		self.title = title
@@ -403,13 +401,13 @@ extension SettingsRow where Accessory == EmptyView {
 private func Settings_TipsView() -> some View {
 	SettingsSubpage("Tips") {
 		List {
-			Section("Navigation") {
+			Section(.navigation) {
 				Label(
-					"Swipe right to pin a car park",
+					.swipeRightToPinACarPark,
 					systemImage: "arrow.right.to.line"
 				)
 				Label(
-					"Swipe down to refresh the list",
+					.swipeDownToRefreshTheList,
 					systemImage: "arrow.clockwise"
 				)
 			}
@@ -439,7 +437,7 @@ extension SettingsView {
 						)!
 					)
 				}
-				Section("Issue not listed?") {
+				Section(.issueNotListed) {
 					SettingsRow(
 						"Contact Developer",
 						subtitle: "via Email",

@@ -64,7 +64,7 @@ struct APIUsageDebugView: View {
     }
     
     private var refreshStatusSection: some View {
-        Section("Refresh Status") {
+        Section(.refreshStatus) {
             HStack {
                 Text("Is Refreshing")
                 Spacer()
@@ -78,7 +78,7 @@ struct APIUsageDebugView: View {
                     Text(lastRefresh.formatted(.relative(presentation: .numeric)))
                         .foregroundStyle(.secondary)
                 } else {
-                    Text("Never")
+                    Text(.never)
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -90,7 +90,7 @@ struct APIUsageDebugView: View {
                     .foregroundStyle(.secondary)
             }
             
-            Button("Force Refresh Now") {
+            Button(.forceRefreshNow) {
                 Task {
                     await facilityManager.performLoad(forced: true)
                 }
@@ -143,9 +143,9 @@ struct APIUsageDebugView: View {
             Spacer()
             
             VStack(alignment: .trailing, spacing: 2) {
-				Text(facility.vacancy.isCacheValid ? "✅" : "⏰")
+				Text("✅")
 				Text(
-					"\(facility.refreshStatus.lastUpdated.formatted(.relative(presentation: .named, unitsStyle: .abbreviated))))s ago"
+					"\(facility.refreshStatus.lastUpdated.formatted(.relative(presentation: .named, unitsStyle: .abbreviated)))s ago"
 				)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
@@ -154,7 +154,7 @@ struct APIUsageDebugView: View {
     }
     
     private var recentRefreshesSection: some View {
-        Section("Recent Refreshes") {
+        Section(.recentRefreshes) {
             ForEach(sortedFacilities.prefix(10), id: \.facilityId) { facility in
                 recentRefreshRow(for: facility)
             }

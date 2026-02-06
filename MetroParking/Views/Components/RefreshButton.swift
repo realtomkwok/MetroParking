@@ -18,7 +18,7 @@ func RefreshButton(
 			await action()
 		}
 	} label: {
-		Label("Refresh", systemImage: "arrow.clockwise")
+		Label(.refresh, systemImage: "arrow.clockwise")
 			.symbolEffect(
 				.rotate.clockwise.byLayer,
 				options: .repeat(.periodic(delay: 0.3)),
@@ -26,5 +26,5 @@ func RefreshButton(
 			)
 	}
 	.disabled(isDisabled)
-	.accessibilityLabel("Refresh")
+	.accessibilityLabel(.refresh)
 }

@@ -87,7 +87,7 @@ struct BackgroundRefreshDebugView: View {
 						Text(date.formatted(.relative(presentation: .named)))
 							.foregroundStyle(.secondary)
 					} else {
-						Text("Never")
+						Text(.never)
 							.foregroundStyle(.tertiary)
 					}
 				}
@@ -99,7 +99,7 @@ struct BackgroundRefreshDebugView: View {
 						Text(date.formatted(.relative(presentation: .named)))
 							.foregroundStyle(.secondary)
 					} else {
-						Text("Never")
+						Text(.never)
 							.foregroundStyle(.tertiary)
 					}
 				}

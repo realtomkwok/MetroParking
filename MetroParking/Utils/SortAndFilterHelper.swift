@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+import SwiftUI
 
 /// Protocol for types that can be displayed in a labeled picker
 protocol PickerOptionDisplayable {
@@ -16,29 +17,29 @@ protocol PickerOptionDisplayable {
 
 /// Protocol specifically for options with basic display properties (title and systemImage)
 protocol BasicDisplayable {
-	var title: String { get }
+	var title: LocalizedStringResource { get }
 	var systemImage: String { get }
 }
 
 struct SortingOptionDisplay: BasicDisplayable {
-	let title: String
+	let title: LocalizedStringResource
 	let systemImage: String
-	let ascendingSubtitle: String
-	let descendingSubtitle: String
+	let ascendingSubtitle: LocalizedStringResource
+	let descendingSubtitle: LocalizedStringResource
 
 	/// Returns the subtitle for the current sort order
-	func subtitle(ascending: Bool) -> String {
+	func subtitle(ascending: Bool) -> LocalizedStringResource {
 		ascending ? ascendingSubtitle : descendingSubtitle
 	}
 }
 
 struct SortingOrderDisplay: BasicDisplayable {
-	let title: String
+	let title: LocalizedStringResource
 	let systemImage: String
 }
 
 struct FilterOptionDisplay: BasicDisplayable {
-	let title: String
+	let title: LocalizedStringResource
 	let systemImage: String
 	let systemImageAfter: String
 }
@@ -54,25 +55,25 @@ enum SortingOption: String, CaseIterable, Codable, Hashable,
 		switch self {
 		case .name:
 			SortingOptionDisplay(
-				title: "Name",
+				title: LocalizedStringResource.name,
 				systemImage: "textformat",
-				ascendingSubtitle: "A to Z",
-				descendingSubtitle: "Z to A"
+				ascendingSubtitle: LocalizedStringResource.aToZ,
+				descendingSubtitle: LocalizedStringResource.zToA
 			)
 		case .lastUpdated:
 			SortingOptionDisplay(
-				title: "Last Updated",
+				title: LocalizedStringResource.lastUpdated,
 				systemImage:
 					"clock.arrow.trianglehead.2.counterclockwise.rotate.90",
-				ascendingSubtitle: "Oldest First",
-				descendingSubtitle: "Newest First"
+				ascendingSubtitle: LocalizedStringResource.oldestFirst,
+				descendingSubtitle: LocalizedStringResource.newestFirst
 			)
 		case .distance:
 			SortingOptionDisplay(
-				title: "Distance",
+				title: LocalizedStringResource.distance,
 				systemImage:
 					"point.topleft.filled.down.to.point.bottomright.curvepath",
-				ascendingSubtitle: "Nearest First",
+				ascendingSubtitle: LocalizedStringResource.nearestFirst,
 				descendingSubtitle: "Farthest First"
 			)
 		}
@@ -239,7 +240,7 @@ enum FilterOption: String, CaseIterable, Codable, Hashable,
 		case .pinned:
 			return
 				FilterOptionDisplay(
-					title: "Pinned",
+					title: LocalizedStringResource.pinned,
 					systemImage: "star",
 					systemImageAfter: "star.fill"
 				)
@@ -247,7 +248,7 @@ enum FilterOption: String, CaseIterable, Codable, Hashable,
 		case .available:
 			return
 				FilterOptionDisplay(
-					title: "Available",
+					title: LocalizedStringResource.available,
 					systemImage: "checkmark.circle",
 					systemImageAfter: "checkmark.circle.fill"
 				)

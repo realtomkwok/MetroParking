@@ -186,7 +186,7 @@ extension FacilityList {
 			}
 		} label: {
 			Label(
-				facility.isFavourite ? "Unpin" : "Pin",
+				facility.isFavourite ? .unpin : .pin,
 				systemImage: facility.isFavourite ? "star.slash" : "star.fill"
 			)
 			.labelStyle(.iconOnly)

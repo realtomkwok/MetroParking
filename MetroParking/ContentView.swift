@@ -81,9 +81,9 @@ struct ContentView: View {
 		if preferences.filterIsOn {
 			switch preferences.preferredFilterOption {
 			case .pinned:
-				return Text("Showing pinned car parks only")
+				return Text(.showingPinnedCarParksOnly)
 			case .available:
-				return Text("Showing available car parks only")
+				return Text(.filterAvailable)
 			}
 		}
 
@@ -91,7 +91,7 @@ struct ContentView: View {
 			return Text(facilityDataMgr.loadProgress.description)
 		}
 
-		return Text("All updated")
+		return Text(.allUpdated)
 
 	}
 
@@ -112,16 +112,16 @@ struct ContentView: View {
 							.search(text: searchMgr.searchText)
 					} else if preferences.filterIsOn && preferences.preferredFilterOption == .pinned {
 						ContentUnavailableView {
-							Label("No Pinned Car Parks", systemImage: "questionmark.diamond.fill")
+							Label(.noPinnedCarParks, systemImage: "questionmark.diamond.fill")
 						} description: {
-							Text("Swipe right on a car park to pin it.")
+							Text(.swipeRightOnACarParkToPinIt)
 						} actions: {
 							Button {
 								withAnimation(.snappy) {
 									preferences.filterIsOn.toggle()
 								}
 							} label: {
-								Text("Clear Filter")
+								Text(.clearFilter)
 							}
 							.buttonStyle(.borderedProminent)
 						}
@@ -140,7 +140,7 @@ struct ContentView: View {
 
 		NavigationStack {
 			MainView
-			.navigationTitle("MetroParking")
+			.navigationTitle(.metroParking)
 			.navigationSubtitle(navigationSubtitle)
 			.toolbarTitleDisplayMode(.inlineLarge)
 			.scrollEdgeEffectStyle(.soft, for: .vertical)
@@ -161,7 +161,7 @@ struct ContentView: View {
 			text: $search.searchText,
 			isPresented: $search.isSearching,
 			placement: .toolbar,
-			prompt: "Station or suburb"
+			prompt: .stationOrSuburb
 		)
 		.searchToolbarBehavior(
 			preferences.filterIsOn ? .minimize : .automatic
@@ -260,7 +260,7 @@ extension ContentView {
 			Button {
 				isSettingsPresented.toggle()
 			} label: {
-				Label("Settings", systemImage: "ellipsis")
+				Label(.settings, systemImage: "ellipsis")
 					.labelStyle(.iconOnly)
 			}
 			.accessibilityIdentifier("settings-button")
@@ -292,7 +292,7 @@ extension ContentView {
 	{
 		Toggle(isOn: $preferences.filterIsOn.animation(.bouncy)) {
 			Label(
-				"Filter",
+				.filter,
 				systemImage: "line.3.horizontal.decrease"
 			)
 			.labelStyle(.iconOnly)
@@ -317,7 +317,7 @@ extension ContentView {
 					.tag(option)
 				}
 			} label: {
-				Text("Filters")
+				Text(.filters)
 			}
 			.sensoryFeedback(
 				.selection,
@@ -347,7 +347,7 @@ extension ContentView {
 				}
 			} label: {
 				Label(
-					"Order",
+					.order,
 					systemImage: isAscending
 						? "text.line.first.and.arrowtriangle.forward"
 						: "text.line.last.and.arrowtriangle.forward"
@@ -373,7 +373,7 @@ extension ContentView {
 					.tag(option)
 				}
 			} label: {
-				Label("Sort by", systemImage: "arrow.up.arrow.down")
+				Label(.sortBy, systemImage: "arrow.up.arrow.down")
 					.labelStyle(.titleOnly)
 			}
 			.pickerStyle(.inline)
@@ -384,7 +384,7 @@ extension ContentView {
 
 
 		} label: {
-			Label("Sort by", systemImage: "arrow.up.arrow.down")
+			Label(.sortBy, systemImage: "arrow.up.arrow.down")
 		}
 	}
 
@@ -394,7 +394,7 @@ extension ContentView {
 		T: CaseIterable & Hashable & PickerOptionDisplayable,
 		T.DisplayType: BasicDisplayable
 	{
-		let title: String
+		let title: LocalizedStringKey
 		let icon: String
 		@Binding var selection: T
 		let options: [T]

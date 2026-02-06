@@ -32,12 +32,11 @@ struct OnboardingView: View {
 							.accessibilityHidden(true)
 
 
-						Text("Welcome to MetroParking")
+						Text(.welcomeToMetroParking)
 							.font(.largeTitle)
 							.fontWeight(.bold)
 
-						Text(
-							"Find real-time parking availability at Park&Ride carparks in NSW."
+						Text(.onboardingMessageHeadline
 						)
 						.font(.body)
 						.foregroundStyle(.secondary)
@@ -82,7 +81,7 @@ struct OnboardingView: View {
 					onboardingManager.completeOnboarding()
 					dismiss()
 				} label: {
-					Text("Get Started")
+					Text(.getStarted)
 						.font(.headline)
 						.foregroundStyle(.white)
 						.frame(maxWidth: .infinity)

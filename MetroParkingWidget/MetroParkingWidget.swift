@@ -211,7 +211,7 @@ struct FacilityWidget: Widget {
 		}
 		.configurationDisplayName("Car Park Vacancy")
 		.description(
-			"Quick view for the vacancy status and available spaces of a selected car park."
+			LocalizedStringResource.onboardingMessageVacancy
 		)
 		.supportedFamilies([.systemSmall])
 		.contentMarginsDisabled()

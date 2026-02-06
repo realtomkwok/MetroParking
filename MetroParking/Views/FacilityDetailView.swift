@@ -5,7 +5,6 @@
 //  Created by Tom Kwok on 5/12/2025.
 //
 
-import CoreLocationUI
 import Foundation
 import MapKit
 import SwiftData
@@ -93,15 +92,8 @@ extension FacilityDetailView {
 		.toolbarBackgroundVisibility(.visible, for: .navigationBar)
 		// Ensure view resets when switching facilities
 		.id(facility.facilityId)
-		.task(id: facility.facilityId) {
+		.task(id: facility.facilityId, priority: .high) {
 			try? await Task.sleep(for: .seconds(0.3))
-
-			withAnimation(.smooth) {
-				showMap = true
-			}
-
-			// Update Look Around when facility changes
-			lookAroundMgr.coordinate = facility.location.coordinate
 			await performInitialTasks()
 		}
 		.onChange(of: locationMgr.isLocationAvailable) { _, isAvailable in
@@ -150,45 +142,54 @@ extension FacilityDetailView {
 
 	@ViewBuilder
 	private var MapHeader: some View {
-			// https://support.revealapp.com/article/34-ios-application-crash-when-inspecting-views-with-mapkit-overlays
-			GeometryReader { geometry in
-				let minY = geometry.frame(in: .scrollView).minY
-				let size = geometry.size
-				let height = size.height + max(-minY, minY)
+		// https://support.revealapp.com/article/34-ios-application-crash-when-inspecting-views-with-mapkit-overlays
+		GeometryReader { geometry in
+			let minY = geometry.frame(in: .scrollView).minY
+			let size = geometry.size
+			let height = size.height + max(-minY, minY)
 
-				ZStack(alignment: .bottomTrailing) {
-					Map(position: .constant(cameraPosition)) {
-						Marker(
-							facility.displayName.title,
-							systemImage: "parkingsign.circle.fill",
-							coordinate: facility.location.coordinate
-						)
-						.tint(Color.accentColor)
-					}
-					.safeAreaPadding(.leading, 26)
-					.safeAreaPadding(.bottom, 16)
-					.mapStyle(
-						.standard(
-							elevation: .realistic,
-							emphasis: .muted,
-						)
+			Map(position: .constant(cameraPosition)) {
+				if !showMap {
+					EmptyMapContent()
+				} else {
+					Marker(
+						facility.displayName.title,
+						systemImage: "parkingsign.circle.fill",
+						coordinate: facility.location.coordinate
 					)
-					.mapControlVisibility(.hidden)
-					.frame(width: size.width, height: height)
-					.backport.concentricClipShape()
-					.allowsHitTesting(false)
-					.offset(y: minY > 0 ? -minY : minY * -0.2)
+					.tint(Color.accentColor)
 				}
 			}
-			.frame(height: 400)
-			.opacity(showMap ? 1 : 0)
-			.animation(.snappy, value: showMap)
+			.safeAreaPadding(.leading, 26)
+			.safeAreaPadding(.bottom, 16)
+			.mapStyle(
+				.standard(
+					elevation: .realistic,
+					emphasis: .muted,
+				)
+			)
+			.mapControlVisibility(.hidden)
+			.frame(width: size.width, height: height)
+			.backport.concentricClipShape()
+			.allowsHitTesting(false)
+			.offset(y: minY > 0 ? -minY : minY * -0.2)
+
+		}
+		.frame(height: 400)
+		.animation(.snappy, value: showMap)
+
 	}
 
 	private func performInitialTasks() async {
 		// Mark facility as visited for refresh tier tracking
 		facility.markAsVisited()
 		try? modelContext.save()
+
+		lookAroundMgr.coordinate = facility.location.coordinate
+
+		withAnimation(.smooth) {
+			showMap = true
+		}
 
 		// Run tasks concurrently without waiting for all to complete
 		async let lookAroundTask: Void = lookAroundMgr.loadPreview()
@@ -249,7 +250,7 @@ extension FacilityDetailView {
 				}
 			} label: {
 				Label(
-					"Pin",
+					.pin,
 					systemImage: facility.isFavourite
 						? "star.slash.fill" : "star"
 				)
@@ -353,7 +354,7 @@ struct DetailSections: View {
 							&& facilityDataMgr.isRefreshing
 					)
 
-					Text("spaces")
+					Text(.spaces)
 						.font(.callout)
 						.foregroundStyle(.secondary)
 						.contentTransition(.identity)
@@ -395,10 +396,9 @@ struct DetailSections: View {
 			)
 
 			if timeInterval < 60 {
-				Text("updated just now")
+				Text(.updatedJustNow)
 			} else {
-				Text(
-					"updated \(selectedFacility.refreshStatus.lastUpdated.formatted(.relative(presentation: .named, unitsStyle: .narrow)))"
+				Text(.updated(selectedFacility.refreshStatus.lastUpdated.formatted(.relative(presentation: .named, unitsStyle: .narrow)))
 				)
 			}
 		}
@@ -435,7 +435,7 @@ struct DetailSections: View {
 						.zIndex(1)
 				} else {
 					HStack(alignment: .firstTextBaseline) {
-						Text("Location Service is Off")
+						Text(.locationServiceIsOff)
 							.font(.headline)
 							.foregroundStyle(.secondary)
 
@@ -450,7 +450,7 @@ struct DetailSections: View {
 								locationMgr.requestLocationPermission()
 							}
 						} label: {
-							Label("Enable", systemImage: "location")
+							Label(.enable, systemImage: "location")
 								.font(.subheadline)
 								.fontWeight(.semibold)
 						}
@@ -458,10 +458,10 @@ struct DetailSections: View {
 						.buttonBorderShape(.capsule)
 						.controlSize(.regular)
 						.alert(
-							"MetroParking works best with Location Services turned on.",
+							.locationServiceMessageTitle,
 							isPresented: $showLocationPermissionAlert,
 							actions: {
-								Button("Turn on in Settings") {
+								Button(.turnOnInSettings) {
 									Task { @MainActor in
 										if let settingsURL = URL(
 											string: UIApplication
@@ -474,16 +474,14 @@ struct DetailSections: View {
 									}
 								}
 								Button(
-									"Keep Location Services Off",
+									.keepLocationServicesOff,
 									role: .cancel
 								) {
 
 								}
 							},
 							message: {
-								Text(
-									"You'll get distance, estimated travel times to a carpark from your current location, and improved search results when it is turned on for MetroParking."
-								)
+								Text(.locationServiceMessageDescription)
 							}
 						)
 					}
@@ -494,7 +492,7 @@ struct DetailSections: View {
 				HStack(alignment: .center) {
 					VStack(alignment: .leading, spacing: 4) {
 						if travelTime.isEmpty {
-							Text("No data")
+							Text(.noData)
 								.font(.headline)
 								.foregroundStyle(.secondary)
 						} else {
@@ -522,7 +520,7 @@ struct DetailSections: View {
 							) {
 								Text(distance)
 									.font(.headline)
-								Text("away")
+								Text(.away)
 									.foregroundStyle(.secondary)
 									.font(.callout)
 							}
@@ -536,14 +534,14 @@ struct DetailSections: View {
 
 					/// Future: Detect installed map apps and provide selection menu
 					Menu {
-						Button("Apple Maps", systemImage: "map.fill") {
+						Button(.appleMaps, systemImage: "map.fill") {
 							Task {
 								let mapItem =
 									await selectedFacility.getMapItem()
 								openInMapsWithDirections(mapItem)
 							}
 						}
-						Button("Google Maps", systemImage: "g.circle.fill") {
+						Button(.googleMaps, systemImage: "g.circle.fill") {
 							openInGoogleMaps(
 								coordinate: selectedFacility.location
 									.coordinate,
@@ -552,7 +550,7 @@ struct DetailSections: View {
 						}
 					} label: {
 						Label(
-							"GO",
+							.go,
 							systemImage:
 								"arrow.trianglehead.turn.up.right.diamond.fill"
 						)
@@ -644,7 +642,7 @@ struct DetailSections: View {
 				nearbyFacilities,
 				id: \.facilityId
 			) { facility in
-				
+
 				NavigationLink {
 					FacilityDetailView(
 						namespace: namespace,
@@ -703,7 +701,7 @@ struct DetailSections: View {
 		VStack {
 			DetailCard(
 				label: sectionLabel(
-					heading: "Vacancy",
+					heading: String(localized: .vacancy),
 					icon: "checkmark.circle.fill",
 
 				),
@@ -713,7 +711,7 @@ struct DetailSections: View {
 
 			DetailCard(
 				label: sectionLabel(
-					heading: "Travels",
+					heading: String(localized: .travels),
 					icon: "location.circle.fill",
 
 				),
@@ -721,7 +719,7 @@ struct DetailSections: View {
 			)
 			DetailCard(
 				label: sectionLabel(
-					heading: "Nearby Parking",
+					heading: String(localized: .nearbyParking),
 					icon: "parkingsign.circle.fill",
 
 				),
@@ -732,6 +730,8 @@ struct DetailSections: View {
 		}
 		.padding()
 		.task(id: selectedFacility.facilityId) {
+			try? await Task.sleep(for: .seconds(0.3))
+
 			nearbyRoutes = [:]
 			for nearby in nearbyFacilities {
 				if let result = await etaMgr.calculateDistanceBetweenFacilities(
@@ -745,34 +745,49 @@ struct DetailSections: View {
 	}
 }
 
-#Preview("Available Facility") {
-	@Previewable @Namespace var namespace
+/// Preview wrapper that inserts a sample facility into the model context
+private struct FacilityDetailPreviewContainer: View {
+	var status: AvailabilityStatus
+	@Namespace private var namespace
+	@Environment(\.modelContext) private var modelContext
+	@State private var facility: ParkingFacility?
 
-	NavigationStack {
-		FacilityDetailView(
-			namespace: namespace,
-			facility: ParkingFacility.sample(status: .available)
-		)
+	var body: some View {
+		Group {
+			if let facility {
+				NavigationStack {
+					FacilityDetailView(
+						namespace: namespace,
+						facility: facility
+					)
+				}
+			} else {
+				ProgressView("Loading preview...")
+			}
+		}
+		.task {
+			let sample = ParkingFacility.sample(status: status)
+			modelContext.insert(sample)
+			try? modelContext.save()
+			facility = sample
+		}
+	}
+}
+
+#Preview("Available Facility") {
+	FacilityDetailPreviewContainer(status: .available)
 		.environment(FacilityManager.shared)
 		.environment(LookAroundManager.shared)
 		.environment(ETAManager.shared)
 		.environment(LocationManager.shared)
-	}
-	.modelContainer(.preview())
+		.modelContainer(.preview(includeSampleData: true))
 }
 
 #Preview("No Data") {
-	@Previewable @Namespace var namespace
-
-	NavigationStack {
-		FacilityDetailView(
-			namespace: namespace,
-			facility: ParkingFacility.sample(status: .noData)
-		)
+	FacilityDetailPreviewContainer(status: .noData)
 		.environment(FacilityManager.shared)
 		.environment(LookAroundManager.shared)
 		.environment(ETAManager.shared)
 		.environment(LocationManager.shared)
-	}
-	.modelContainer(.preview())
+		.modelContainer(.preview(includeSampleData: true))
 }

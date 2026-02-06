@@ -307,7 +307,10 @@ final class ParkingFacility {
 		if _displayFullName.isEmpty {
 			_parseAndCacheDisplayName()
 		}
-		return (title: _displayTitle, subtitle: _displaySubtitle, full: _displayFullName)
+		return (
+			title: _displayTitle, subtitle: _displaySubtitle,
+			full: _displayFullName
+		)
 	}
 
 	/// Distance for sorting purposes (returns the cached route distance, or Double.infinity if not available)
@@ -494,10 +497,10 @@ enum AvailabilityStatus: CaseIterable {
 
 	var text: String {
 		switch self {
-		case .available: return "Available"
-		case .almostFull: return "Almost Full"
-		case .full: return "Full"
-		case .noData: return "No Data"
+			case .available: return String(localized: .availabilityAvailable)
+			case .almostFull: return String(localized: .availabilityAlmostFull)
+			case .full: return String(localized: .availabilityFull)
+			case .noData: return String(localized: .availabilityNoData)
 		}
 	}
 

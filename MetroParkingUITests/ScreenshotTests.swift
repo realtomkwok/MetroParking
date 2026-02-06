@@ -57,7 +57,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Captures the onboarding screen shown on first launch
     @MainActor
-    func screenshot01_OnboardingScreen() throws {
+    func test01_OnboardingScreen() throws {
         // Launch with fresh state to show onboarding
         app.launchArguments += ["RESET_STATE"]
         app.launch()
@@ -78,7 +78,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Captures the main facility list screen
     @MainActor
-    func screenshot02_MainScreen() throws {
+    func test02_MainScreen() throws {
         // Skip onboarding for this test
         app.launchArguments += ["SKIP_ONBOARDING"]
         app.launch()
@@ -99,7 +99,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Captures the main screen with a filter applied
     @MainActor
-    func screenshot03_MainScreenWithFilter() throws {
+    func test03_MainScreenWithFilter() throws {
         app.launchArguments += ["SKIP_ONBOARDING"]
         app.launch()
 
@@ -126,7 +126,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Captures the facility detail page
     @MainActor
-    func screenshot04_DetailPage() throws {
+    func test04_DetailPage() throws {
         app.launchArguments += ["SKIP_ONBOARDING"]
         app.launch()
 
@@ -232,7 +232,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Captures the settings screen
     @MainActor
-    func screenshot05_SettingsScreen() throws {
+    func test05_SettingsScreen() throws {
         app.launchArguments += ["SKIP_ONBOARDING"]
         app.launch()
 
@@ -256,7 +256,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Captures the main screen with the Cherrybrook carpark pinned to the top
     @MainActor
-    func screenshot06_MainScreenPinned() throws {
+    func test06_MainScreenPinned() throws {
         app.launchArguments += ["SKIP_ONBOARDING", "RESET_SIMULATOR"]
         app.launch()
 
@@ -302,7 +302,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Captures the sorting menu opened from the bottom toolbar
     @MainActor
-    func screenshot07_SortingMenu() throws {
+    func test07_SortingMenu() throws {
         app.launchArguments += ["SKIP_ONBOARDING"]
         app.launch()
 

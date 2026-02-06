@@ -386,6 +386,7 @@ extension ContentView {
 		} label: {
 			Label(.sortBy, systemImage: "arrow.up.arrow.down")
 		}
+		.accessibilityIdentifier("sorting-menu")
 	}
 
 	/// A reusable picker section for options with display properties

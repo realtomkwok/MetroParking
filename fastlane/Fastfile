@@ -20,10 +20,13 @@ platform :ios do
   lane :beta do
     increment_build_number(xcodeproj: "MetroParking.xcodeproj")
     build_app(scheme: "MetroParking")
-    upload_to_testflight
+    snapshot
+#     upload_to_testflight
   end
 
-  lane :screenshot do
-	snapshot
+  lane :screenshots do
+	snapshot(
+		dark_mode: false,
+	)
   end
 end

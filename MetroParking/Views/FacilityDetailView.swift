@@ -250,7 +250,7 @@ extension FacilityDetailView {
 				}
 			} label: {
 				Label(
-					.pin,
+					facility.isFavourite ? .unpin : .pin,
 					systemImage: facility.isFavourite
 						? "star.slash.fill" : "star"
 				)

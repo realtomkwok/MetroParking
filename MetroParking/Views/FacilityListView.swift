@@ -101,7 +101,7 @@ extension FacilityList {
 		.accessibilityIdentifier("facility-row-\(facility.facilityId)")
 		// TODO: add AccessibilityHint and AccessibilityLabel
 		.listRowInsets(
-			EdgeInsets(top: 8, leading: 8, bottom: 4, trailing: 8)
+			EdgeInsets(top: 8, leading: 16, bottom: 4, trailing: 16)
 		)
 		.listRowBackground(Color.clear)
 		.listRowSeparator(.hidden)
@@ -186,7 +186,7 @@ extension FacilityList {
 			}
 		} label: {
 			Label(
-				facility.isFavourite ? .unpin : .pin,
+				facility.isFavourite ? .actionButtonUnpin : .actionButtonPin,
 				systemImage: facility.isFavourite ? "star.slash" : "star.fill"
 			)
 			.labelStyle(.iconOnly)

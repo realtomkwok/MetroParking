@@ -81,9 +81,9 @@ struct ContentView: View {
 		if preferences.filterIsOn {
 			switch preferences.preferredFilterOption {
 			case .pinned:
-				return Text(.showingPinnedCarParksOnly)
+				return Text(.facilityListStatusPinnedOnly)
 			case .available:
-				return Text(.filterAvailable)
+				return Text(.sortFilterStatusAvailableOnly)
 			}
 		}
 
@@ -91,7 +91,7 @@ struct ContentView: View {
 			return Text(facilityDataMgr.loadProgress.description)
 		}
 
-		return Text(.allUpdated)
+		return Text(.facilityListStatusAllUpdated)
 
 	}
 
@@ -112,16 +112,16 @@ struct ContentView: View {
 							.search(text: searchMgr.searchText)
 					} else if preferences.filterIsOn && preferences.preferredFilterOption == .pinned {
 						ContentUnavailableView {
-							Label(.noPinnedCarParks, systemImage: "questionmark.diamond.fill")
+							Label(.facilityListEmptyNoPinnedTitle, systemImage: "questionmark.diamond.fill")
 						} description: {
-							Text(.swipeRightOnACarParkToPinIt)
+							Text(.facilityListEmptyNoPinnedMessage)
 						} actions: {
 							Button {
 								withAnimation(.snappy) {
 									preferences.filterIsOn.toggle()
 								}
 							} label: {
-								Text(.clearFilter)
+								Text(.actionButtonClearFilter)
 							}
 							.buttonStyle(.borderedProminent)
 						}
@@ -161,7 +161,7 @@ struct ContentView: View {
 			text: $search.searchText,
 			isPresented: $search.isSearching,
 			placement: .toolbar,
-			prompt: .stationOrSuburb
+			prompt: .facilityListPlaceholderSearch
 		)
 		.searchToolbarBehavior(
 			preferences.filterIsOn ? .minimize : .automatic
@@ -260,7 +260,7 @@ extension ContentView {
 			Button {
 				isSettingsPresented.toggle()
 			} label: {
-				Label(.settings, systemImage: "ellipsis")
+				Label(.settingsLabelTitle, systemImage: "ellipsis")
 					.labelStyle(.iconOnly)
 			}
 			.accessibilityIdentifier("settings-button")
@@ -292,7 +292,7 @@ extension ContentView {
 	{
 		Toggle(isOn: $preferences.filterIsOn.animation(.bouncy)) {
 			Label(
-				.filter,
+				.sortFilterLabelFilter,
 				systemImage: "line.3.horizontal.decrease"
 			)
 			.labelStyle(.iconOnly)
@@ -317,7 +317,7 @@ extension ContentView {
 					.tag(option)
 				}
 			} label: {
-				Text(.filters)
+				Text(.sortFilterLabelFilters)
 			}
 			.sensoryFeedback(
 				.selection,
@@ -347,7 +347,7 @@ extension ContentView {
 				}
 			} label: {
 				Label(
-					.order,
+					.sortFilterLabelOrder,
 					systemImage: isAscending
 						? "text.line.first.and.arrowtriangle.forward"
 						: "text.line.last.and.arrowtriangle.forward"
@@ -373,7 +373,7 @@ extension ContentView {
 					.tag(option)
 				}
 			} label: {
-				Label(.sortBy, systemImage: "arrow.up.arrow.down")
+				Label(.sortFilterLabelSortBy, systemImage: "arrow.up.arrow.down")
 					.labelStyle(.titleOnly)
 			}
 			.pickerStyle(.inline)
@@ -384,7 +384,7 @@ extension ContentView {
 
 
 		} label: {
-			Label(.sortBy, systemImage: "arrow.up.arrow.down")
+			Label(.sortFilterLabelSortBy, systemImage: "arrow.up.arrow.down")
 		}
 		.accessibilityIdentifier("sorting-menu")
 	}

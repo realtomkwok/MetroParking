@@ -32,7 +32,7 @@ struct OnboardingView: View {
 							.accessibilityHidden(true)
 
 
-						Text(.welcomeToMetroParking)
+						Text(.onboardingTitleWelcome)
 							.font(.largeTitle)
 							.fontWeight(.bold)
 
@@ -81,7 +81,7 @@ struct OnboardingView: View {
 					onboardingManager.completeOnboarding()
 					dismiss()
 				} label: {
-					Text(.getStarted)
+					Text(.onboardingButtonGetStarted)
 						.font(.headline)
 						.foregroundStyle(.white)
 						.frame(maxWidth: .infinity)

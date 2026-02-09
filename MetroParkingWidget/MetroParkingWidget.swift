@@ -209,7 +209,7 @@ struct FacilityWidget: Widget {
 			FocusedFacilityWidgetView(entry: entry)
 				.widgetURL(entry.deepLinkURL)
 		}
-		.configurationDisplayName("Car Park Vacancy")
+		.configurationDisplayName("widget.title.carParkVacancy")
 		.description(
 			LocalizedStringResource.onboardingMessageVacancy
 		)
@@ -220,12 +220,12 @@ struct FacilityWidget: Widget {
 
 struct FocusedFacilityWidgetConfigs: WidgetConfigurationIntent {
 
-	static var title: LocalizedStringResource = "Car Park Vacancy"
+	static var title: LocalizedStringResource = "widget.title.carParkVacancy"
 	static var description = IntentDescription(
-		"Select a car park from the list to display on the widget."
+		"widget.empty.selectPrompt"
 	)
 
-	@Parameter(title: "Car Park")
+	@Parameter(title: "facilityDetail.label.carPark")
 	var facility: FacilityEntity?
 
 	init(facility: FacilityEntity? = nil) {

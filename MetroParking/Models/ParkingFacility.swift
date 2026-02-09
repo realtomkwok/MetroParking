@@ -497,10 +497,10 @@ enum AvailabilityStatus: CaseIterable {
 
 	var text: String {
 		switch self {
-			case .available: return String(localized: .availabilityAvailable)
-			case .almostFull: return String(localized: .availabilityAlmostFull)
-			case .full: return String(localized: .availabilityFull)
-			case .noData: return String(localized: .availabilityNoData)
+			case .available: return String(localized: .availabilityStatusAvailable)
+			case .almostFull: return String(localized: .availabilityStatusAlmostFull)
+			case .full: return String(localized: .availabilityStatusFull)
+			case .noData: return String(localized: .availabilityStatusNoData)
 		}
 	}
 

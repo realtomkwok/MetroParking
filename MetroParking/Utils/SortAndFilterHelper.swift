@@ -55,26 +55,26 @@ enum SortingOption: String, CaseIterable, Codable, Hashable,
 		switch self {
 		case .name:
 			SortingOptionDisplay(
-				title: LocalizedStringResource.name,
+				title: LocalizedStringResource.sortFilterOptionName,
 				systemImage: "textformat",
-				ascendingSubtitle: LocalizedStringResource.aToZ,
-				descendingSubtitle: LocalizedStringResource.zToA
+				ascendingSubtitle: LocalizedStringResource.sortFilterSubtitleAToZ,
+				descendingSubtitle: LocalizedStringResource.sortFilterSubtitleZToA
 			)
 		case .lastUpdated:
 			SortingOptionDisplay(
-				title: LocalizedStringResource.lastUpdated,
+				title: LocalizedStringResource.sortFilterOptionLastUpdated,
 				systemImage:
 					"clock.arrow.trianglehead.2.counterclockwise.rotate.90",
-				ascendingSubtitle: LocalizedStringResource.oldestFirst,
-				descendingSubtitle: LocalizedStringResource.newestFirst
+				ascendingSubtitle: LocalizedStringResource.sortFilterSubtitleOldestFirst,
+				descendingSubtitle: LocalizedStringResource.sortFilterSubtitleNewestFirst
 			)
 		case .distance:
 			SortingOptionDisplay(
-				title: LocalizedStringResource.distance,
+				title: LocalizedStringResource.sortFilterOptionDistance,
 				systemImage:
 					"point.topleft.filled.down.to.point.bottomright.curvepath",
-				ascendingSubtitle: LocalizedStringResource.nearestFirst,
-				descendingSubtitle: "Farthest First"
+				ascendingSubtitle: LocalizedStringResource.sortFilterSubtitleNearestFirst,
+				descendingSubtitle: LocalizedStringResource.sortFilterSubtitleFarthestFirst
 			)
 		}
 	}
@@ -206,12 +206,12 @@ enum SortingOrder: String, CaseIterable, Codable, Hashable,
 		switch self {
 		case .ascending:
 			return SortingOrderDisplay(
-				title: "Ascending",
+				title: LocalizedStringResource.sortFilterOrderAscending,
 				systemImage: "arrow.up"
 			)
 		case .descending:
 			return SortingOrderDisplay(
-				title: "Descending",
+				title: LocalizedStringResource.sortFilterOrderDescending,
 				systemImage: "arrow.down"
 			)
 		}
@@ -240,7 +240,7 @@ enum FilterOption: String, CaseIterable, Codable, Hashable,
 		case .pinned:
 			return
 				FilterOptionDisplay(
-					title: LocalizedStringResource.pinned,
+					title: LocalizedStringResource.sortFilterFilterOptionPinned,
 					systemImage: "star",
 					systemImageAfter: "star.fill"
 				)
@@ -248,7 +248,7 @@ enum FilterOption: String, CaseIterable, Codable, Hashable,
 		case .available:
 			return
 				FilterOptionDisplay(
-					title: LocalizedStringResource.available,
+					title: LocalizedStringResource.sortFilterFilterOptionAvailable,
 					systemImage: "checkmark.circle",
 					systemImageAfter: "checkmark.circle.fill"
 				)

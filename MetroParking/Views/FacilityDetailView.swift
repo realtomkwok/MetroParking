@@ -160,6 +160,7 @@ extension FacilityDetailView {
 					.tint(Color.accentColor)
 				}
 			}
+			.contentTransition(.opacity)
 			.safeAreaPadding(.leading, 26)
 			.safeAreaPadding(.bottom, 16)
 			.mapStyle(
@@ -250,7 +251,7 @@ extension FacilityDetailView {
 				}
 			} label: {
 				Label(
-					facility.isFavourite ? .unpin : .pin,
+					facility.isFavourite ? .actionButtonUnpin : .actionButtonPin,
 					systemImage: facility.isFavourite
 						? "star.slash.fill" : "star"
 				)
@@ -354,7 +355,7 @@ struct DetailSections: View {
 							&& facilityDataMgr.isRefreshing
 					)
 
-					Text(.spaces)
+					Text(.facilityDetailLabelSpaces)
 						.font(.callout)
 						.foregroundStyle(.secondary)
 						.contentTransition(.identity)
@@ -396,9 +397,9 @@ struct DetailSections: View {
 			)
 
 			if timeInterval < 60 {
-				Text(.updatedJustNow)
+				Text(.dateLabelJustNow)
 			} else {
-				Text(.updated(selectedFacility.refreshStatus.lastUpdated.formatted(.relative(presentation: .named, unitsStyle: .narrow)))
+				Text(.dateFormatUpdated(selectedFacility.refreshStatus.lastUpdated.formatted(.relative(presentation: .named, unitsStyle: .narrow)))
 				)
 			}
 		}
@@ -435,7 +436,7 @@ struct DetailSections: View {
 						.zIndex(1)
 				} else {
 					HStack(alignment: .firstTextBaseline) {
-						Text(.locationServiceIsOff)
+						Text(.locationAlertTitle)
 							.font(.headline)
 							.foregroundStyle(.secondary)
 
@@ -450,7 +451,7 @@ struct DetailSections: View {
 								locationMgr.requestLocationPermission()
 							}
 						} label: {
-							Label(.enable, systemImage: "location")
+							Label(.actionButtonEnable, systemImage: "location")
 								.font(.subheadline)
 								.fontWeight(.semibold)
 						}
@@ -458,10 +459,10 @@ struct DetailSections: View {
 						.buttonBorderShape(.capsule)
 						.controlSize(.regular)
 						.alert(
-							.locationServiceMessageTitle,
+							.locationAlertHeadline,
 							isPresented: $showLocationPermissionAlert,
 							actions: {
-								Button(.turnOnInSettings) {
+								Button(.locationButtonTurnOnInSettings) {
 									Task { @MainActor in
 										if let settingsURL = URL(
 											string: UIApplication
@@ -474,14 +475,14 @@ struct DetailSections: View {
 									}
 								}
 								Button(
-									.keepLocationServicesOff,
+									.locationButtonKeepOff,
 									role: .cancel
 								) {
 
 								}
 							},
 							message: {
-								Text(.locationServiceMessageDescription)
+								Text(.locationAlertDescription)
 							}
 						)
 					}
@@ -492,7 +493,7 @@ struct DetailSections: View {
 				HStack(alignment: .center) {
 					VStack(alignment: .leading, spacing: 4) {
 						if travelTime.isEmpty {
-							Text(.noData)
+							Text(.facilityDetailLabelNoData)
 								.font(.headline)
 								.foregroundStyle(.secondary)
 						} else {
@@ -520,7 +521,7 @@ struct DetailSections: View {
 							) {
 								Text(distance)
 									.font(.headline)
-								Text(.away)
+								Text(.facilityDetailLabelAway)
 									.foregroundStyle(.secondary)
 									.font(.callout)
 							}
@@ -534,14 +535,14 @@ struct DetailSections: View {
 
 					/// Future: Detect installed map apps and provide selection menu
 					Menu {
-						Button(.appleMaps, systemImage: "map.fill") {
+						Button(.navigationOptionAppleMaps, systemImage: "map.fill") {
 							Task {
 								let mapItem =
 									await selectedFacility.getMapItem()
 								openInMapsWithDirections(mapItem)
 							}
 						}
-						Button(.googleMaps, systemImage: "g.circle.fill") {
+						Button(.navigationOptionGoogleMaps, systemImage: "g.circle.fill") {
 							openInGoogleMaps(
 								coordinate: selectedFacility.location
 									.coordinate,
@@ -550,7 +551,7 @@ struct DetailSections: View {
 						}
 					} label: {
 						Label(
-							.go,
+							.actionButtonGo,
 							systemImage:
 								"arrow.trianglehead.turn.up.right.diamond.fill"
 						)
@@ -701,7 +702,7 @@ struct DetailSections: View {
 		VStack {
 			DetailCard(
 				label: sectionLabel(
-					heading: String(localized: .vacancy),
+					heading: String(localized: .facilityDetailSectionVacancy),
 					icon: "checkmark.circle.fill",
 
 				),
@@ -711,7 +712,7 @@ struct DetailSections: View {
 
 			DetailCard(
 				label: sectionLabel(
-					heading: String(localized: .travels),
+					heading: String(localized: .facilityDetailSectionTravels),
 					icon: "location.circle.fill",
 
 				),
@@ -719,7 +720,7 @@ struct DetailSections: View {
 			)
 			DetailCard(
 				label: sectionLabel(
-					heading: String(localized: .nearbyParking),
+					heading: String(localized: .facilityDetailSectionNearbyParking),
 					icon: "parkingsign.circle.fill",
 
 				),

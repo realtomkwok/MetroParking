@@ -13,56 +13,72 @@ struct SettingsView: View {
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.openURL) private var openUrl
 
-	let version =
+	let version: String =
 		Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
 		?? "--"
 
-	let build =
+	let build: String =
 		Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "--"
 
-	let devEmail = Bundle.main.infoDictionary?["DEV_EMAIL"] as? String ?? ""
+	let devEmail: URL = URL.safe(
+		Bundle.main.infoDictionary?["DEV_EMAIL"] as? String ?? ""
+	)
 
-	let devWebsite =
-		Bundle.main.infoDictionary?["DEV_WEBSITE_URL"] as? String ?? ""
+	let devWebsite: URL =
+		URL.safe(
+			Bundle.main.infoDictionary?["DEV_WEBSITE_URL"] as? String ?? ""
+		)
 
-	let testFlightUrl =
-		Bundle.main.infoDictionary?["TESTFLIGHT_URL"] as? String ?? ""
+	let testFlightUrl: URL =
+		URL.safe(
+			Bundle.main.infoDictionary?["DEV_WEBSITE_URL"] as? String ?? ""
+		)
 
 	var body: some View {
 		NavigationStack {
 			List {
 
-				Section(.help) {
+				Section(.settingsSectionHelp) {
 					SettingsRow(
-						"Tips",
+						"tips.section.title",
 						icon: "sparkles",
-						destination: { Settings_TipsView() }
+						iconColour: .yellow,
+						destination: { Settings_TipsView("tips.section.title") }
 					)
 					SettingsRow(
-						"Feedback",
-						icon: "bubble.left.and.exclamationmark.bubble.right",
-						destination: { Settings_FeedbackView() }
+						"feedback.row.faq",
+						icon: "questionmark.circle.fill",
+						iconColour: .blue,
+						systemURL: testFlightUrl
+					)
+					SettingsRow(
+						"feedback.section.title",
+						icon: "exclamationmark.bubble.fill",
+						iconColour: .pink,
+						destination: { Settings_FeedbackView("feedback.section.title") }
 					)
 				}
 				Section {
 					SettingsRow(
-						"Developer",
+						"settings.title.developer",
 						icon: "figure.flexibility",
-						externalURL: URL(string: "https://tomkwok.xyz")!
+						iconColour: .orange,
+						externalURL: devWebsite
 					) {
 						Text("Tom Kwok")
 							.foregroundStyle(.primary)
 					}
 					SettingsRow(
-						"Version",
+						"settings.row.version",
 						icon: "info.circle",
+						iconColour: .blue.mix(with: .cyan, by: 0.5),
 						accessory: {
 							Text("\(version) (\(build))")
 								.foregroundStyle(.secondary)
 						}
 					)
 				} header: {
-					Text(.about)
+					Text(.settingsSectionAbout)
 				} footer: {
 					Text(.settingsFootnote)
 				}
@@ -71,7 +87,8 @@ struct SettingsView: View {
 					Section("Debug") {
 						SettingsRow(
 							"API Debug",
-							icon: "hammer",
+							icon: "hammer.fill",
+							iconColour: .gray,
 							destination: {
 								APIUsageDebugView()
 									.environment(FacilityManager.shared)
@@ -79,7 +96,8 @@ struct SettingsView: View {
 						)
 						SettingsRow(
 							"Background Refresh",
-							icon: "arrow.clockwise.circle",
+							icon: "arrow.clockwise.circle.fill",
+							iconColour: .gray,
 							destination: {
 								BackgroundRefreshDebugView()
 							}
@@ -87,14 +105,14 @@ struct SettingsView: View {
 					}
 				#endif
 			}
-			.navigationTitle(.more)
+			.navigationTitle(.settingsLabelMore)
 			.toolbarTitleDisplayMode(.large)
 			.toolbar {
 				ToolbarItem(placement: .topBarTrailing) {
 					Button {
 						dismiss()
 					} label: {
-						Label(.close, systemImage: "xmark")
+						Label(.actionButtonClose, systemImage: "xmark")
 							.labelStyle(.iconOnly)
 					}
 				}
@@ -107,10 +125,13 @@ struct SettingsView: View {
 
 /// A reusable container for settings subpages with consistent styling.
 struct SettingsSubpage<Content: View>: View {
-	let title: String
+	let title: LocalizedStringKey
 	@ViewBuilder let content: Content
 
-	init(_ title: String, @ViewBuilder content: () -> Content) {
+	init(
+		_ title: LocalizedStringKey,
+		@ViewBuilder content: () -> Content
+	) {
 		self.title = title
 		self.content = content()
 	}
@@ -165,12 +186,14 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 	let title: LocalizedStringKey
 	let subtitle: LocalizedStringKey?
 	let icon: String
+	let iconColour: Color
 	let rowAction: SettingsRowAction
 	let destination: Destination?
 	@ViewBuilder let accessory: Accessory
 
 	@Environment(\.openURL) private var openURL
-	@State private var isShowingSafari = false
+	@State private var isShowingSafari: Bool = false
+	@State private var iconWidth: Double = 0
 
 	// MARK: - Navigation Initialiser
 
@@ -179,12 +202,14 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 		_ title: LocalizedStringKey,
 		subtitle: LocalizedStringKey? = nil,
 		icon: String,
+		iconColour: Color,
 		@ViewBuilder destination: () -> Destination,
 		@ViewBuilder accessory: () -> Accessory
 	) {
 		self.title = title
 		self.subtitle = subtitle
 		self.icon = icon
+		self.iconColour = iconColour
 		self.rowAction = .navigation
 		self.destination = destination()
 		self.accessory = accessory()
@@ -197,12 +222,14 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 		_ title: LocalizedStringKey,
 		subtitle: LocalizedStringKey? = nil,
 		icon: String,
+		iconColour: Color,
 		externalURL: URL,
 		@ViewBuilder accessory: () -> Accessory
 	) where Destination == EmptyView {
 		self.title = title
 		self.subtitle = subtitle
 		self.icon = icon
+		self.iconColour = iconColour
 		self.rowAction = .externalURL(externalURL)
 		self.destination = nil
 		self.accessory = accessory()
@@ -213,12 +240,14 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 		_ title: LocalizedStringKey,
 		subtitle: LocalizedStringKey? = nil,
 		icon: String,
+		iconColour: Color,
 		systemURL: URL,
 		@ViewBuilder accessory: () -> Accessory
 	) where Destination == EmptyView {
 		self.title = title
 		self.subtitle = subtitle
 		self.icon = icon
+		self.iconColour = iconColour
 		self.rowAction = .systemURL(systemURL)
 		self.destination = nil
 		self.accessory = accessory()
@@ -229,12 +258,14 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 		_ title: LocalizedStringKey,
 		subtitle: LocalizedStringKey? = nil,
 		icon: String,
+		iconColour: Color,
 		action: @escaping () -> Void,
 		@ViewBuilder accessory: () -> Accessory
 	) where Destination == EmptyView {
 		self.title = title
 		self.subtitle = subtitle
 		self.icon = icon
+		self.iconColour = iconColour
 		self.rowAction = .action(action)
 		self.destination = nil
 		self.accessory = accessory()
@@ -245,11 +276,13 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 		_ title: LocalizedStringKey,
 		subtitle: LocalizedStringKey? = nil,
 		icon: String,
+		iconColour: Color,
 		@ViewBuilder accessory: () -> Accessory
 	) where Destination == EmptyView {
 		self.title = title
 		self.subtitle = subtitle
 		self.icon = icon
+		self.iconColour = iconColour
 		self.rowAction = .none
 		self.destination = nil
 		self.accessory = accessory()
@@ -309,6 +342,9 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 					.foregroundStyle(Color.primary)
 			} icon: {
 				Image(systemName: icon)
+					.foregroundStyle(iconColour)
+					.symbolRenderingMode(.hierarchical)
+					.symbolColorRenderingMode(.gradient)
 			}
 			if let subtitle {
 				Text(subtitle)
@@ -327,12 +363,14 @@ extension SettingsRow where Accessory == EmptyView {
 		_ title: LocalizedStringKey,
 		subtitle: LocalizedStringKey? = nil,
 		icon: String,
+		iconColour: Color,
 		@ViewBuilder destination: () -> Destination
 	) {
 		self.init(
 			title,
 			subtitle: subtitle,
 			icon: icon,
+			iconColour: iconColour,
 			destination: destination
 		) {
 			EmptyView()
@@ -344,12 +382,14 @@ extension SettingsRow where Accessory == EmptyView {
 		_ title: LocalizedStringKey,
 		subtitle: LocalizedStringKey? = nil,
 		icon: String,
+		iconColour: Color,
 		externalURL: URL
 	) where Destination == EmptyView {
 		self.init(
 			title,
 			subtitle: subtitle,
 			icon: icon,
+			iconColour: iconColour,
 			externalURL: externalURL
 		) {
 			EmptyView()
@@ -361,9 +401,16 @@ extension SettingsRow where Accessory == EmptyView {
 		_ title: LocalizedStringKey,
 		subtitle: LocalizedStringKey? = nil,
 		icon: String,
+		iconColour: Color,
 		systemURL: URL
 	) where Destination == EmptyView {
-		self.init(title, subtitle: subtitle, icon: icon, systemURL: systemURL) {
+		self.init(
+			title,
+			subtitle: subtitle,
+			icon: icon,
+			iconColour: iconColour,
+			systemURL: systemURL
+		) {
 			EmptyView()
 		}
 	}
@@ -373,9 +420,16 @@ extension SettingsRow where Accessory == EmptyView {
 		_ title: LocalizedStringKey,
 		subtitle: LocalizedStringKey? = nil,
 		icon: String,
+		iconColour: Color,
 		action: @escaping () -> Void
 	) where Destination == EmptyView {
-		self.init(title, subtitle: subtitle, icon: icon, action: action) {
+		self.init(
+			title,
+			subtitle: subtitle,
+			icon: icon,
+			iconColour: iconColour,
+			action: action
+		) {
 			EmptyView()
 		}
 	}
@@ -384,11 +438,13 @@ extension SettingsRow where Accessory == EmptyView {
 	init(
 		_ title: LocalizedStringKey,
 		subtitle: LocalizedStringKey? = nil,
-		icon: String
+		icon: String,
+		iconColour: Color,
 	) where Destination == EmptyView {
 		self.title = title
 		self.subtitle = subtitle
 		self.icon = icon
+		self.iconColour = iconColour
 		self.rowAction = .none
 		self.destination = nil
 		self.accessory = EmptyView()
@@ -398,16 +454,16 @@ extension SettingsRow where Accessory == EmptyView {
 // MARK: - Tips Subpage
 
 @ViewBuilder
-private func Settings_TipsView() -> some View {
-	SettingsSubpage("Tips") {
+private func Settings_TipsView(_ title: LocalizedStringKey) -> some View {
+	SettingsSubpage(title) {
 		List {
-			Section(.navigation) {
+			Section(.navigationSectionTitle) {
 				Label(
-					.swipeRightToPinACarPark,
+					.tipsTitleSwipeToPin,
 					systemImage: "arrow.right.to.line"
 				)
 				Label(
-					.swipeDownToRefreshTheList,
+					.tipsTitleSwipeToRefresh,
 					systemImage: "arrow.clockwise"
 				)
 			}
@@ -418,32 +474,15 @@ private func Settings_TipsView() -> some View {
 
 extension SettingsView {
 	@ViewBuilder
-	private func Settings_FeedbackView() -> some View {
-		SettingsSubpage("Feedback") {
+	private func Settings_FeedbackView(_ title: LocalizedStringKey) -> some View
+	{
+		SettingsSubpage(title) {
 			List {
 				Section {
-					SettingsRow(
-						"Report a bug",
-						icon: "ladybug",
-						systemURL: URL(
-							string: testFlightUrl
-						)!
-					)
-					SettingsRow(
-						"Request a feature",
-						icon: "plus.bubble",
-						systemURL: URL(
-							string: testFlightUrl
-						)!
-					)
-				}
-				Section(.issueNotListed) {
-					SettingsRow(
-						"Contact Developer",
-						subtitle: "via Email",
-						icon: "envelope",
-						systemURL: URL(string: "mailto:\(devEmail)")!
-					)
+
+					Section(.feedbackLabelIssueNotListed) {
+
+					}
 				}
 			}
 		}
@@ -458,6 +497,6 @@ extension SettingsView {
 
 #Preview("Tips") {
 	NavigationStack {
-		Settings_TipsView()
+		Settings_TipsView("Feedback")
 	}
 }

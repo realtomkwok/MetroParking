@@ -26,7 +26,7 @@ struct ContentView: View {
 	@Environment(UserPreferences.self) private var preferences
 
 	@State private var selectedFacility: ParkingFacility?
-	@State private var isFilterMenuPresented: Bool = false
+	@State private var isFiltered: Bool = false
 	@State private var deepLinkedFacility: ParkingFacility?
 	@State private var isSettingsPresented: Bool = false
 
@@ -81,9 +81,9 @@ struct ContentView: View {
 		if preferences.filterIsOn {
 			switch preferences.preferredFilterOption {
 			case .pinned:
-				return Text("Showing pinned car parks only")
+				return Text(.facilityListStatusPinnedOnly)
 			case .available:
-				return Text("Showing available car parks only")
+				return Text(.sortFilterStatusAvailableOnly)
 			}
 		}
 
@@ -91,50 +91,82 @@ struct ContentView: View {
 			return Text(facilityDataMgr.loadProgress.description)
 		}
 
-		return Text("All updated")
+		return Text(.facilityListStatusAllUpdated)
 
+	}
+
+	private var MainView: some View {
+
+		return ZStack {
+			BackgroundGradient(isAnimating: false)
+			FacilityList(
+				nameSpace: navigationNamespace,
+				groupedFacilities: groupedFacilities,
+				selectedFacility: $selectedFacility,
+			)
+
+			.overlay {
+				if groupedFacilities.isEmpty {
+					if !searchMgr.searchText.isEmpty {
+						ContentUnavailableView
+							.search(text: searchMgr.searchText)
+					} else if preferences.filterIsOn && preferences.preferredFilterOption == .pinned {
+						ContentUnavailableView {
+							Label(.facilityListEmptyNoPinnedTitle, systemImage: "questionmark.diamond.fill")
+						} description: {
+							Text(.facilityListEmptyNoPinnedMessage)
+						} actions: {
+							Button {
+								withAnimation(.snappy) {
+									preferences.filterIsOn.toggle()
+								}
+							} label: {
+								Text(.actionButtonClearFilter)
+							}
+							.buttonStyle(.borderedProminent)
+						}
+					}
+
+				}
+			}
+
+		}
 	}
 
 	var body: some View {
 		@Bindable var onboarding = onboardingMgr
-		@Bindable var search = searchMgr
 		@Bindable var preferences = preferences
+		@Bindable var search = searchMgr
 
 		NavigationStack {
-			ZStack {
-				BackgroundGradient(isAnimating: false)
-				FacilityList(
-					nameSpace: navigationNamespace,
-					groupedFacilities: groupedFacilities,
-					selectedFacility: $selectedFacility,
-					isInteractionDisabled: isFilterMenuPresented
-				)
-				.toolbar {
-					TopBar()
-				}
-				.toolbar {
-					BottomBar()
-
-				}
-				.searchable(
-					text: $search.searchText,
-					isPresented: $search.isSearchFieldFocused,
-					placement: .toolbar,
-					prompt: "Station or suburb"
-				)
-				.searchToolbarBehavior(preferences.filterIsOn ? .minimize : .automatic)
-			}
-			.navigationTitle("MetroParking")
+			MainView
+			.navigationTitle(.metroParking)
 			.navigationSubtitle(navigationSubtitle)
 			.toolbarTitleDisplayMode(.inlineLarge)
-			.refreshable {
-				await facilityDataMgr.performLoad(forced: true)
-			}
 			.scrollEdgeEffectStyle(.soft, for: .vertical)
 			.scrollContentBackground(.hidden)
+			.toolbar {
+				TopBar()
+			}
+			.toolbar {
+				BottomBar()
+
+			}
 		}
-		.backport.concentricClipShape()
-		.ignoresSafeArea()
+		.refreshable {
+			await facilityDataMgr.performLoad(forced: true)
+		}
+		// https://developer.apple.com/videos/play/wwdc2021/10176/?time=133
+		.searchable(
+			text: $search.searchText,
+			isPresented: $search.isSearching,
+			placement: .toolbar,
+			prompt: .facilityListPlaceholderSearch
+		)
+		.searchToolbarBehavior(
+			preferences.filterIsOn ? .minimize : .automatic
+		)
+
 		.containerShape(.rect(cornerRadius: 24))
 		.sheet(isPresented: $isSettingsPresented) {
 			SettingsView()
@@ -153,9 +185,11 @@ struct ContentView: View {
 			handleDeepLink(facilityId: facilityId)
 		}
 	}
+
+
 }
 
-// MARK: - Private views
+// MARK: - Deep link
 extension ContentView {
 
 	@ViewBuilder
@@ -176,14 +210,10 @@ extension ContentView {
 			}
 		}
 	}
-}
-
-// MARK: - Helper functions
-extension ContentView {
 
 	private func handleDeepLink(facilityId: String) {
-		// Use SwiftData predicate query for O(1) lookup instead of O(n) array scan
-		// This also avoids creating a dependency on the entire allFacilities array
+			// Use SwiftData predicate query for O(1) lookup instead of O(n) array scan
+			// This also avoids creating a dependency on the entire allFacilities array
 		let descriptor = FetchDescriptor<ParkingFacility>(
 			predicate: #Predicate { $0.facilityId == facilityId }
 		)
@@ -200,15 +230,17 @@ extension ContentView {
 			"✅ Deep link: Navigating to facility '\(facility.displayName.title)'"
 		)
 
-		// Present as sheet with animation
+			// Present as sheet with animation
 		withAnimation(.smooth) {
 			deepLinkedFacility = facility
 		}
 
-		// Clear the deep link handler after navigation is initiated
+			// Clear the deep link handler after navigation is initiated
 		deepLinkMgr.clearSelection()
 	}
+
 }
+
 
 // MARK: - Toolbar
 extension ContentView {
@@ -217,27 +249,18 @@ extension ContentView {
 	func TopBar() -> some ToolbarContent {
 
 		ToolbarItem(placement: .topBarTrailing) {
-			Button {
-				Task {
-					await facilityDataMgr.performLoad()
-				}
-			} label: {
-				Label("Refresh", systemImage: "arrow.clockwise")
-					.labelStyle(.iconOnly)
-					.symbolEffect(
-						.rotate,
-						isActive: facilityDataMgr.isRefreshing
-					)
-			}
-			.accessibilityLabel("Refresh")
-			.disabled(facilityDataMgr.isRefreshing)
+			RefreshButton(
+				action: { await facilityDataMgr.performLoad(forced: true) },
+				isActive: facilityDataMgr.isRefreshing,
+				isDisabled: facilityDataMgr.isRefreshing
+			)
 		}
 
 		ToolbarItem(placement: .topBarTrailing) {
 			Button {
 				isSettingsPresented.toggle()
 			} label: {
-				Label("Settings", systemImage: "ellipsis")
+				Label(.settingsLabelTitle, systemImage: "ellipsis")
 					.labelStyle(.iconOnly)
 			}
 			.accessibilityIdentifier("settings-button")
@@ -249,32 +272,7 @@ extension ContentView {
 		@Bindable var preferences = preferences
 
 		ToolbarItemGroup(placement: .bottomBar) {
-
-			Toggle(isOn: $preferences.filterIsOn.animation(.snappy)) {
-				Label(
-					"Filter",
-					systemImage: "line.3.horizontal.decrease"
-				)
-				.labelStyle(.iconOnly)
-			}
-			.accessibilityIdentifier("filter-toggle")
-			.sensoryFeedback(.selection, trigger: preferences.filterIsOn)
-
-			if preferences.filterIsOn {
-
-				Picker(selection: $preferences.preferredFilterOption) {
-					ForEach(FilterOption.allCases, id: \.self) { option in
-						Label(
-							option.display.title,
-							systemImage: option.display.systemImage
-						)
-						.tag(option)
-					}
-				} label: {
-					Text("Text")
-				}
-				.pickerStyle(.inline)
-			}
+			FilterMenu(preferences: preferences)
 		}
 
 		ToolbarSpacer(.flexible, placement: .bottomBar)
@@ -284,52 +282,111 @@ extension ContentView {
 		ToolbarSpacer(.flexible, placement: .bottomBar)
 
 		ToolbarItem(id: "Sorting", placement: .bottomBar) {
-
-			Menu {
-				let isAscending: Bool =
-					preferences.preferredSortingOrder == .ascending
-
-				Picker(selection: $preferences.preferredSortingOrder) {
-					ForEach(SortingOrder.allCases, id: \.self) { order in
-						Label(
-							preferences.preferredSortOption.display.subtitle(
-								ascending: order == .ascending
-							),
-							systemImage: order.display.systemImage
-						)
-						.tag(order)
-					}
-				} label: {
-					Label(
-						"Order",
-						systemImage: isAscending
-							? "text.line.first.and.arrowtriangle.forward"
-							: "text.line.last.and.arrowtriangle.forward"
-					)
-					Text(
-						preferences.preferredSortOption.display.subtitle(
-							ascending: isAscending
-						)
-					)
-				}
-				.pickerStyle(.menu)
-
-				Picker(selection: $preferences.preferredSortOption) {
-					ForEach(SortingOption.allCases, id: \.self) { option in
-						Label(
-							option.display.title,
-							systemImage: option.display.systemImage
-						)
-						.tag(option)
-					}
-				} label: {
-					Text("Sort by")
-				}
-			} label: {
-				Label("Sort by", systemImage: "arrow.up.arrow.down")
-			}
+			SortingMenu(preferences: preferences)
 		}
 
+	}
+
+	@ViewBuilder
+	private func FilterMenu(@Bindable preferences: UserPreferences) -> some View
+	{
+		Toggle(isOn: $preferences.filterIsOn.animation(.bouncy)) {
+			Label(
+				.sortFilterLabelFilter,
+				systemImage: "line.3.horizontal.decrease"
+			)
+			.labelStyle(.iconOnly)
+		}
+		.accessibilityIdentifier("filter-toggle")
+		.sensoryFeedback(.selection, trigger: preferences.filterIsOn)
+
+		if preferences.filterIsOn {
+
+			Picker(selection: $preferences.preferredFilterOption) {
+				ForEach(FilterOption.allCases, id: \.self) { option in
+
+					let icon: String =
+						option == preferences.preferredFilterOption
+						? option.display.systemImageAfter
+						: option.display.systemImage
+
+					Label(
+						option.display.title,
+						systemImage: icon
+					)
+					.tag(option)
+				}
+			} label: {
+				Text(.sortFilterLabelFilters)
+			}
+			.sensoryFeedback(
+				.selection,
+				trigger: preferences.preferredFilterOption
+			)
+			.pickerStyle(.inline)
+		}
+	}
+
+	@ViewBuilder
+	private func SortingMenu(@Bindable preferences: UserPreferences)
+		-> some View
+	{
+		Menu {
+			let isAscending: Bool =
+				preferences.preferredSortingOrder == .ascending
+
+			Picker(selection: $preferences.preferredSortingOrder) {
+				ForEach(SortingOrder.allCases, id: \.self) { order in
+					Label(
+						preferences.preferredSortOption.display.subtitle(
+							ascending: order == .ascending
+						),
+						systemImage: order.display.systemImage
+					)
+					.tag(order)
+				}
+			} label: {
+				Label(
+					.sortFilterLabelOrder,
+					systemImage: isAscending
+						? "text.line.first.and.arrowtriangle.forward"
+						: "text.line.last.and.arrowtriangle.forward"
+				)
+				Text(
+					preferences.preferredSortOption.display.subtitle(
+						ascending: isAscending
+					)
+				)
+			}
+			.pickerStyle(.menu)
+			.sensoryFeedback(
+				.selection,
+				trigger: preferences.preferredSortOption
+			)
+
+			Picker(selection: $preferences.preferredSortOption) {
+				ForEach(SortingOption.allCases, id: \.self) { option in
+					Label(
+						option.display.title,
+						systemImage: option.display.systemImage
+					)
+					.tag(option)
+				}
+			} label: {
+				Label(.sortFilterLabelSortBy, systemImage: "arrow.up.arrow.down")
+					.labelStyle(.titleOnly)
+			}
+			.pickerStyle(.inline)
+			.sensoryFeedback(
+				.selection,
+				trigger: preferences.preferredSortOption
+			)
+
+
+		} label: {
+			Label(.sortFilterLabelSortBy, systemImage: "arrow.up.arrow.down")
+		}
+		.accessibilityIdentifier("sorting-menu")
 	}
 
 	/// A reusable picker section for options with display properties
@@ -338,7 +395,7 @@ extension ContentView {
 		T: CaseIterable & Hashable & PickerOptionDisplayable,
 		T.DisplayType: BasicDisplayable
 	{
-		let title: String
+		let title: LocalizedStringKey
 		let icon: String
 		@Binding var selection: T
 		let options: [T]

@@ -4,8 +4,11 @@
 //
 //  Created by Tom Kwok on 19/6/2025.
 //
+//	Separated data model for API from the domain model: https://kylebrowning.com/posts/domain-models-vs-api-models/
 
-struct ParkingAPIResponse: Codable {
+public protocol ApiModel: Codable, Hashable, Sendable, Equatable {}
+
+struct ParkingApiModel: ApiModel {
 	let tsn: String
 	let spots: String
 	let zones: [ParkingZoneAPI]
@@ -17,7 +20,8 @@ struct ParkingAPIResponse: Codable {
 	let facilityId: String
 	let facilityName: String
 	let tfnswFacilityId: String
-	
+
+	/// `Codable` expects JSON keys to exactly match the property names. Since there's inconsistency from the API's response, it is necessary to include this `CodingKeys`enum to tell the decoder which JSON key corresponds to which property
 	enum CodingKeys: String, CodingKey {
 		case facilityId = "facility_id"
 		case facilityName = "facility_name"
@@ -29,13 +33,13 @@ struct ParkingAPIResponse: Codable {
 	}
 }
 
-struct ParkingZoneAPI: Codable {
+struct ParkingZoneAPI: ApiModel {
 	let zoneId: String
 	let zoneName: String
 	let spots: String
 	let occupancy: ParkingOccupancyAPI
 	let parentZoneId: String
-	
+
 	enum CodingKeys: String, CodingKey {
 		case zoneId = "zone_id"
 		case zoneName = "zone_name"
@@ -44,20 +48,20 @@ struct ParkingZoneAPI: Codable {
 	}
 }
 
-struct ParkingLocationAPI: Codable {
+struct ParkingLocationAPI: ApiModel {
 	let suburb: String
 	let address: String
 	let latitude: String
 	let longitude: String
 }
 
-struct ParkingOccupancyAPI: Codable {
+struct ParkingOccupancyAPI: ApiModel {
 	let loop: String?
 	let total: String?
 	let monthlies: String?
 	let openGate: String?
 	let transients: String?
-	
+
 	enum CodingKeys: String, CodingKey {
 		case loop, total, monthlies
 		case openGate = "open_gate"
@@ -65,4 +69,21 @@ struct ParkingOccupancyAPI: Codable {
 	}
 }
 
+extension ParkingApiModel {
+	func toDomain() -> ParkingFacility? {
+		guard let lat = Double(location.latitude),
+			  let lng = Double(location.longitude),
+			  let spaces = Int(spots)
+				else { return nil }
 
+		return ParkingFacility(
+			facilityId: facilityId,
+			name: facilityName,
+			suburb: location.suburb,
+			address: location.address,
+			latitude: lat,
+			longitude: lng,
+			totalSpaces: spaces
+		)
+	}
+}

@@ -7,15 +7,28 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		180F33B22F3547E300540491 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 180F337E2F3547E300540491 /* PrivacyInfo.xcprivacy */; };
+		180F33E42F360F8800540491 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 180F337E2F3547E300540491 /* PrivacyInfo.xcprivacy */; };
+		181F07902EF13C06008F451B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 181F078F2EF13C06008F451B /* WidgetKit.framework */; };
+		181F07922EF13C06008F451B /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 181F07912EF13C06008F451B /* SwiftUI.framework */; };
+		181F079D2EF13C07008F451B /* MetroParkingWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 181F078E2EF13C06008F451B /* MetroParkingWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		1826A71C2EEE5DDD00B13802 /* SwiftUIBackports in Frameworks */ = {isa = PBXBuildFile; productRef = 1826A71B2EEE5DDD00B13802 /* SwiftUIBackports */; };
 		182A3C0E2E03BC3500E64A38 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 182A3C0D2E03BC3100E64A38 /* .gitignore */; };
 		182A3C122E03C14100E64A38 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182A3C112E03C13F00E64A38 /* Configuration.swift */; };
-		1873C89B2E56040100E2B438 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 1873C89A2E56040100E2B438 /* Supabase */; };
 		1873C8A12E568C2000E2B438 /* App Icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 1873C8A02E568C2000E2B438 /* App Icon.icon */; };
 		1873C8A22E568C2000E2B438 /* App Icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 1873C8A02E568C2000E2B438 /* App Icon.icon */; };
 		1873C8A32E568C2000E2B438 /* App Icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 1873C8A02E568C2000E2B438 /* App Icon.icon */; };
+		18WIDGET01 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182A3C112E03C13F00E64A38 /* Configuration.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		181F079B2EF13C07008F451B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 184036EE2DD9F82D009D7FBA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 181F078D2EF13C06008F451B;
+			remoteInfo = MetroParkingWidgetExtension;
+		};
 		184037062DD9F82F009D7FBA /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 184036EE2DD9F82D009D7FBA /* Project object */;
@@ -32,7 +45,45 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		181F07A22EF13C07008F451B /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				181F079D2EF13C07008F451B /* MetroParkingWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		180974D62F3AE67C00E48620 /* ProductionTestPlan.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = ProductionTestPlan.xctestplan; sourceTree = "<group>"; };
+		180F1B5D2EE659EF00A72037 /* SortingFiltering Architecture.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "SortingFiltering Architecture.md"; sourceTree = "<group>"; };
+		180F1B5E2EE659EF00A72037 /* CONFIGURATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONFIGURATION.md; sourceTree = "<group>"; };
+		180F1BC02EE6C21600A72037 /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLAUDE.md; sourceTree = SOURCE_ROOT; };
+		180F1BC42EE794EF00A72037 /* MAPS_MANAGER_MIGRATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MAPS_MANAGER_MIGRATION.md; sourceTree = "<group>"; };
+		180F1BC82EE79CD900A72037 /* TECHNICAL_DEEP_DIVE_MAPS_MANAGER.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TECHNICAL_DEEP_DIVE_MAPS_MANAGER.md; sourceTree = "<group>"; };
+		180F1BCE2EE8EECB00A72037 /* PERMISSION_FLOW_DIAGRAM.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PERMISSION_FLOW_DIAGRAM.md; sourceTree = "<group>"; };
+		180F337E2F3547E300540491 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		181F07142EEEDC18008F451B /* MIGRATION_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MIGRATION_GUIDE.md; sourceTree = "<group>"; };
+		181F077F2EF1235E008F451B /* WIDGET_ARCHITECTURE_PLAN.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_ARCHITECTURE_PLAN.md; sourceTree = "<group>"; };
+		181F07802EF1235E008F451B /* WIDGET_DATA_FLOW.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_DATA_FLOW.md; sourceTree = "<group>"; };
+		181F07812EF1235E008F451B /* WIDGET_QUICK_REFERENCE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_QUICK_REFERENCE.md; sourceTree = "<group>"; };
+		181F07822EF1235E008F451B /* WIDGET_README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_README.md; sourceTree = "<group>"; };
+		181F07832EF1235E008F451B /* WIDGET_VISUAL_MOCKUPS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_VISUAL_MOCKUPS.md; sourceTree = "<group>"; };
+		181F078E2EF13C06008F451B /* MetroParkingWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MetroParkingWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		181F078F2EF13C06008F451B /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		181F07912EF13C06008F451B /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		181F07A42EF14159008F451B /* WIDGET_SETUP_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_SETUP_GUIDE.md; sourceTree = "<group>"; };
+		181F07A62EF1415B008F451B /* WIDGET_IMPLEMENTATION_CHECKLIST.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_IMPLEMENTATION_CHECKLIST.md; sourceTree = "<group>"; };
+		181F07B42EF2D517008F451B /* WIDGET_APPINTENT_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_APPINTENT_GUIDE.md; sourceTree = "<group>"; };
+		181F07B62EF2D52B008F451B /* WIDGET_SETUP_CHECKLIST.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_SETUP_CHECKLIST.md; sourceTree = "<group>"; };
+		181F07CA2EF80426008F451B /* WIDGET_BUDGET_UPDATE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_BUDGET_UPDATE.md; sourceTree = "<group>"; };
+		181F07CF2EF8D9FF008F451B /* CODE_REVIEW_CHECKLIST.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CODE_REVIEW_CHECKLIST.md; sourceTree = "<group>"; };
+		181F07D02EF8D9FF008F451B /* CONCURRENCY_FIXES_SUMMARY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONCURRENCY_FIXES_SUMMARY.md; sourceTree = "<group>"; };
 		182A3C0D2E03BC3100E64A38 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		182A3C112E03C13F00E64A38 /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
 		182A3C282E0833FF00E64A38 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
@@ -42,24 +93,85 @@
 		1840370F2DD9F82F009D7FBA /* MetroParkingUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MetroParkingUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1873C8A02E568C2000E2B438 /* App Icon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = "App Icon.icon"; sourceTree = "<group>"; };
 		1873C8A92E56ACE400E2B438 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		189811DD2EFB56D400B7440D /* NEARBY_FACILITIES_IMPLEMENTATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = NEARBY_FACILITIES_IMPLEMENTATION.md; sourceTree = "<group>"; };
+		18CC02462EE52D5100A8FDC0 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		18D3AACF2F3ABB1700789316 /* DebugTestPlan.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = DebugTestPlan.xctestplan; sourceTree = "<group>"; };
 		378A5FD72E0EE04F006FEBA6 /* MetroParking.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = MetroParking.icon; path = Icon/MetroParking.icon; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		1873C8B52E57FC0F00E2B438 /* Exceptions for "MetroParking" folder in "MetroParking" target */ = {
+		180F1B592EE5B33E00A72037 /* Exceptions for "MetroParking" folder in "MetroParkingTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Utils/NavigationAllowedDismissalGesturesModifier.swift,
+			);
+			target = 184037042DD9F82F009D7FBA /* MetroParkingTests */;
+		};
+		180F1B5A2EE5B33E00A72037 /* Exceptions for "MetroParking" folder in "MetroParkingUITests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Utils/NavigationAllowedDismissalGesturesModifier.swift,
+			);
+			target = 1840370E2DD9F82F009D7FBA /* MetroParkingUITests */;
+		};
+		180F33E12F3592AE00540491 /* Exceptions for "MetroParkingUITests" folder in "MetroParkingUITests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				MetroParkingUITests.swift,
+				MetroParkingUITestsLaunchTests.swift,
+			);
+			target = 1840370E2DD9F82F009D7FBA /* MetroParkingUITests */;
+		};
+		180F33E32F35C36400540491 /* Exceptions for "MetroParking" folder in "MetroParking" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = 184036F52DD9F82D009D7FBA /* MetroParking */;
 		};
+		181F07A12EF13C07008F451B /* Exceptions for "MetroParkingWidget" folder in "MetroParkingWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 181F078D2EF13C06008F451B /* MetroParkingWidgetExtension */;
+		};
+		181F07AB2EF1555B008F451B /* Exceptions for "MetroParking" folder in "MetroParkingWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Localizable.xcstrings,
+				Managers/MapsManager.swift,
+				Managers/SharedDataManager.swift,
+				Models/ParkingAPIModels.swift,
+				Models/ParkingFacility.swift,
+				Models/ParkingZone.swift,
+				RoutingAppCoverage.geojson,
+				Utils/AdaptiveColourHelper.swift,
+				Utils/Logger.swift,
+				Utils/RefreshConfiguration.swift,
+				Utils/RemovePrefixHelper.swift,
+				Utils/WidgetBudgetTracker.swift,
+			);
+			target = 181F078D2EF13C06008F451B /* MetroParkingWidgetExtension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		181F07932EF13C06008F451B /* MetroParkingWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				181F07A12EF13C07008F451B /* Exceptions for "MetroParkingWidget" folder in "MetroParkingWidgetExtension" target */,
+			);
+			path = MetroParkingWidget;
+			sourceTree = "<group>";
+		};
 		182A3C822E0CAE5500E64A38 /* MetroParking */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				1873C8B52E57FC0F00E2B438 /* Exceptions for "MetroParking" folder in "MetroParking" target */,
+				180F33E32F35C36400540491 /* Exceptions for "MetroParking" folder in "MetroParking" target */,
+				180F1B592EE5B33E00A72037 /* Exceptions for "MetroParking" folder in "MetroParkingTests" target */,
+				180F1B5A2EE5B33E00A72037 /* Exceptions for "MetroParking" folder in "MetroParkingUITests" target */,
+				181F07AB2EF1555B008F451B /* Exceptions for "MetroParking" folder in "MetroParkingWidgetExtension" target */,
 			);
 			path = MetroParking;
 			sourceTree = "<group>";
@@ -71,17 +183,29 @@
 		};
 		184037122DD9F82F009D7FBA /* MetroParkingUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				180F33E12F3592AE00540491 /* Exceptions for "MetroParkingUITests" folder in "MetroParkingUITests" target */,
+			);
 			path = MetroParkingUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		181F078B2EF13C06008F451B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				181F07922EF13C06008F451B /* SwiftUI.framework in Frameworks */,
+				181F07902EF13C06008F451B /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		184036F32DD9F82D009D7FBA /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1873C89B2E56040100E2B438 /* Supabase in Frameworks */,
+				1826A71C2EEE5DDD00B13802 /* SwiftUIBackports in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -102,12 +226,65 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		180F1B5F2EE659EF00A72037 /* Docs */ = {
+			isa = PBXGroup;
+			children = (
+				181F07D12EF8D9FF008F451B /* Concurrency */,
+				181F07842EF1235E008F451B /* Widgets */,
+				180F1B622EE65A0000A72037 /* Components */,
+				180F1B5E2EE659EF00A72037 /* CONFIGURATION.md */,
+				180F1BC02EE6C21600A72037 /* CLAUDE.md */,
+				181F07142EEEDC18008F451B /* MIGRATION_GUIDE.md */,
+				189811DD2EFB56D400B7440D /* NEARBY_FACILITIES_IMPLEMENTATION.md */,
+			);
+			path = Docs;
+			sourceTree = "<group>";
+		};
+		180F1B622EE65A0000A72037 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				180F1B5D2EE659EF00A72037 /* SortingFiltering Architecture.md */,
+				180F1BC42EE794EF00A72037 /* MAPS_MANAGER_MIGRATION.md */,
+				180F1BC82EE79CD900A72037 /* TECHNICAL_DEEP_DIVE_MAPS_MANAGER.md */,
+				180F1BCE2EE8EECB00A72037 /* PERMISSION_FLOW_DIAGRAM.md */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		181F07842EF1235E008F451B /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				181F077F2EF1235E008F451B /* WIDGET_ARCHITECTURE_PLAN.md */,
+				181F07B42EF2D517008F451B /* WIDGET_APPINTENT_GUIDE.md */,
+				181F07B62EF2D52B008F451B /* WIDGET_SETUP_CHECKLIST.md */,
+				181F07802EF1235E008F451B /* WIDGET_DATA_FLOW.md */,
+				181F07812EF1235E008F451B /* WIDGET_QUICK_REFERENCE.md */,
+				181F07822EF1235E008F451B /* WIDGET_README.md */,
+				181F07832EF1235E008F451B /* WIDGET_VISUAL_MOCKUPS.md */,
+				181F07A62EF1415B008F451B /* WIDGET_IMPLEMENTATION_CHECKLIST.md */,
+				181F07A42EF14159008F451B /* WIDGET_SETUP_GUIDE.md */,
+				181F07CA2EF80426008F451B /* WIDGET_BUDGET_UPDATE.md */,
+			);
+			path = Widgets;
+			sourceTree = "<group>";
+		};
+		181F07D12EF8D9FF008F451B /* Concurrency */ = {
+			isa = PBXGroup;
+			children = (
+				181F07CF2EF8D9FF008F451B /* CODE_REVIEW_CHECKLIST.md */,
+				181F07D02EF8D9FF008F451B /* CONCURRENCY_FIXES_SUMMARY.md */,
+			);
+			path = Concurrency;
+			sourceTree = "<group>";
+		};
 		182A3C272E0833FE00E64A38 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				378A5FD72E0EE04F006FEBA6 /* MetroParking.icon */,
 				182A3CC82E0EC2E300E64A38 /* MapKit.framework */,
 				182A3C282E0833FF00E64A38 /* CoreLocation.framework */,
+				181F078F2EF13C06008F451B /* WidgetKit.framework */,
+				181F07912EF13C06008F451B /* SwiftUI.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -115,15 +292,21 @@
 		184036ED2DD9F82D009D7FBA = {
 			isa = PBXGroup;
 			children = (
-				1873C8A92E56ACE400E2B438 /* Config.xcconfig */,
+				180974D62F3AE67C00E48620 /* ProductionTestPlan.xctestplan */,
+				18D3AACF2F3ABB1700789316 /* DebugTestPlan.xctestplan */,
 				182A3C822E0CAE5500E64A38 /* MetroParking */,
-				182A3C112E03C13F00E64A38 /* Configuration.swift */,
-				182A3C0D2E03BC3100E64A38 /* .gitignore */,
 				184037082DD9F82F009D7FBA /* MetroParkingTests */,
 				184037122DD9F82F009D7FBA /* MetroParkingUITests */,
+				181F07932EF13C06008F451B /* MetroParkingWidget */,
 				182A3C272E0833FE00E64A38 /* Frameworks */,
 				184036F72DD9F82D009D7FBA /* Products */,
+				180F1B5F2EE659EF00A72037 /* Docs */,
 				1873C8A02E568C2000E2B438 /* App Icon.icon */,
+				18CC02462EE52D5100A8FDC0 /* README.md */,
+				1873C8A92E56ACE400E2B438 /* Config.xcconfig */,
+				182A3C112E03C13F00E64A38 /* Configuration.swift */,
+				182A3C0D2E03BC3100E64A38 /* .gitignore */,
+				180F337E2F3547E300540491 /* PrivacyInfo.xcprivacy */,
 			);
 			sourceTree = "<group>";
 		};
@@ -133,6 +316,7 @@
 				184036F62DD9F82D009D7FBA /* MetroParking.app */,
 				184037052DD9F82F009D7FBA /* MetroParkingTests.xctest */,
 				1840370F2DD9F82F009D7FBA /* MetroParkingUITests.xctest */,
+				181F078E2EF13C06008F451B /* MetroParkingWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -140,6 +324,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		181F078D2EF13C06008F451B /* MetroParkingWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 181F079E2EF13C07008F451B /* Build configuration list for PBXNativeTarget "MetroParkingWidgetExtension" */;
+			buildPhases = (
+				181F078A2EF13C06008F451B /* Sources */,
+				181F078B2EF13C06008F451B /* Frameworks */,
+				181F078C2EF13C06008F451B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				181F07932EF13C06008F451B /* MetroParkingWidget */,
+			);
+			name = MetroParkingWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = MetroParkingWidgetExtension;
+			productReference = 181F078E2EF13C06008F451B /* MetroParkingWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		184036F52DD9F82D009D7FBA /* MetroParking */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 184037192DD9F82F009D7FBA /* Build configuration list for PBXNativeTarget "MetroParking" */;
@@ -147,17 +353,19 @@
 				184036F22DD9F82D009D7FBA /* Sources */,
 				184036F32DD9F82D009D7FBA /* Frameworks */,
 				184036F42DD9F82D009D7FBA /* Resources */,
+				181F07A22EF13C07008F451B /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				181F079C2EF13C07008F451B /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				182A3C822E0CAE5500E64A38 /* MetroParking */,
 			);
 			name = MetroParking;
 			packageProductDependencies = (
-				1873C89A2E56040100E2B438 /* Supabase */,
+				1826A71B2EEE5DDD00B13802 /* SwiftUIBackports */,
 			);
 			productName = MetroParking;
 			productReference = 184036F62DD9F82D009D7FBA /* MetroParking.app */;
@@ -216,9 +424,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1630;
-				LastUpgradeCheck = 2600;
+				LastSwiftUpdateCheck = 2620;
+				LastUpgradeCheck = 2620;
 				TargetAttributes = {
+					181F078D2EF13C06008F451B = {
+						CreatedOnToolsVersion = 26.2;
+					};
 					184036F52DD9F82D009D7FBA = {
 						CreatedOnToolsVersion = 16.3;
 					};
@@ -238,11 +449,16 @@
 			knownRegions = (
 				en,
 				Base,
+				"en-AU",
+				"zh-HK",
+				"zh-Hans",
+				"zh-Hant",
+				"en-GB",
 			);
 			mainGroup = 184036ED2DD9F82D009D7FBA;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				1873C8992E5603F600E2B438 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				1826A71A2EEE5DDD00B13802 /* XCRemoteSwiftPackageReference "iOS-Backports" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 184036F72DD9F82D009D7FBA /* Products */;
@@ -252,17 +468,27 @@
 				184036F52DD9F82D009D7FBA /* MetroParking */,
 				184037042DD9F82F009D7FBA /* MetroParkingTests */,
 				1840370E2DD9F82F009D7FBA /* MetroParkingUITests */,
+				181F078D2EF13C06008F451B /* MetroParkingWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		181F078C2EF13C06008F451B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				180F33E42F360F8800540491 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		184036F42DD9F82D009D7FBA /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				1873C8A32E568C2000E2B438 /* App Icon.icon in Resources */,
 				182A3C0E2E03BC3500E64A38 /* .gitignore in Resources */,
+				180F33B22F3547E300540491 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -285,6 +511,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		181F078A2EF13C06008F451B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				18WIDGET01 /* Configuration.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		184036F22DD9F82D009D7FBA /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -310,6 +544,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		181F079C2EF13C07008F451B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 181F078D2EF13C06008F451B /* MetroParkingWidgetExtension */;
+			targetProxy = 181F079B2EF13C07008F451B /* PBXContainerItemProxy */;
+		};
 		184037072DD9F82F009D7FBA /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 184036F52DD9F82D009D7FBA /* MetroParking */;
@@ -323,6 +562,86 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		181F079F2EF13C07008F451B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = MetroParkingWidget/MetroParkingWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 5;
+				DEVELOPMENT_TEAM = 3M6C8L4M5D;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MetroParkingWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MetroParkingWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We use your location to send you real-time traffic updates of the routes to the parking and show nearby parking on the widget, even when the app is closed.";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "We use your location in the background for updating location-based features, such as retrieving the travel time to the carpark. ";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to send you real-time traffic updates of the routes to the parking and show nearby parking on the widget, even when the app is closed.";
+				INFOPLIST_KEY_WKExtensionDelegateClassName = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tomkwok.MetroParking.MetroParkingWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		181F07A02EF13C07008F451B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = MetroParkingWidget/MetroParkingWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 5;
+				DEVELOPMENT_TEAM = 3M6C8L4M5D;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MetroParkingWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MetroParkingWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We use your location to send you real-time traffic updates of the routes to the parking and show nearby parking on the widget, even when the app is closed.";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "We use your location in the background for updating location-based features, such as retrieving the travel time to the carpark. ";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to send you real-time traffic updates of the routes to the parking and show nearby parking on the widget, even when the app is closed.";
+				INFOPLIST_KEY_WKExtensionDelegateClassName = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tomkwok.MetroParking.MetroParkingWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 		184037172DD9F82F009D7FBA /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 1873C8A92E56ACE400E2B438 /* Config.xcconfig */;
@@ -330,6 +649,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CAR_PARK_API_BASE_URL = "https://api.transport.nsw.gov.au/v1";
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -364,6 +684,7 @@
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				EXCLUDED_ARCHS = "";
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -378,9 +699,13 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We use your location to send you real-time traffic updates of the routes to the parking and show nearby parking on the widget, even when the app is closed.";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "We use your location to send you real-time traffic updates of the routes to the parking and show nearby parking on the widget, even when the app is closed.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to send you real-time traffic updates of the routes to the parking and show nearby parking on the widget, even when the app is closed.";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
 				INFOPLIST_KEY_WKExtensionDelegateClassName = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -388,6 +713,7 @@
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				TFNSW_API_KEY = "$(TFNSW_API_KEY)";
 			};
@@ -400,6 +726,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CAR_PARK_API_BASE_URL = "https://api.transport.nsw.gov.au/v1";
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -435,6 +762,7 @@
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				EXCLUDED_ARCHS = x86_64;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -443,15 +771,20 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We use your location to send you real-time traffic updates of the routes to the parking and show nearby parking on the widget, even when the app is closed.";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "We use your location to send you real-time traffic updates of the routes to the parking and show nearby parking on the widget, even when the app is closed.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to send you real-time traffic updates of the routes to the parking and show nearby parking on the widget, even when the app is closed.";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
 				INFOPLIST_KEY_WKExtensionDelegateClassName = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				TFNSW_API_KEY = "$(TFNSW_API_KEY)";
 				VALIDATE_PRODUCT = YES;
 			};
@@ -465,36 +798,43 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = MetroParking/MetroParking.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = 3M6C8L4M5D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MetroParking/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Metro Parking";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = NO;
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We use your location in the background to send you relevant parking information.";
-				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "We use your location in the background to send you relevant parking information.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to show nearby parking and provide location-based information.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We use your location to send you real-time traffic updates of the routes to the parking and show nearby parking on the widget, even when the app is closed.";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "We use your location in the background for updating location-based features, such as retrieving the travel time to the carpark. ";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to show nearby parking and location-based information, only when the app in use.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
 				INFOPLIST_KEY_WKExtensionDelegateClassName = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
+				OTHER_SWIFT_FLAGS = "-Xfrontend -warn-long-function-bodies=100 -Xfrontend -warn-long-expression-type-checking=100";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tomkwok.MetroParking;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
+				VERSIONING_SYSTEM = "";
 			};
 			name = Debug;
 		};
@@ -506,36 +846,43 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = MetroParking/MetroParking.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = 3M6C8L4M5D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MetroParking/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Metro Parking";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = NO;
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We use your location in the background to send you relevant parking information.";
-				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "We use your location in the background to send you relevant parking information.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to show nearby parking and provide location-based information.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We use your location to send you real-time traffic updates of the routes to the parking and show nearby parking on the widget, even when the app is closed.";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "We use your location in the background for updating location-based features, such as retrieving the travel time to the carpark. ";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to show nearby parking and location-based information, only when the app in use.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
 				INFOPLIST_KEY_WKExtensionDelegateClassName = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
+				OTHER_SWIFT_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tomkwok.MetroParking;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
+				VERSIONING_SYSTEM = "";
 			};
 			name = Release;
 		};
@@ -544,11 +891,11 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 1.1;
 				DEVELOPMENT_TEAM = 3M6C8L4M5D;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
-				MARKETING_VERSION = 1.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = tomkwok.MetroParkingTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -563,11 +910,11 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 1.1;
 				DEVELOPMENT_TEAM = 3M6C8L4M5D;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
-				MARKETING_VERSION = 1.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = tomkwok.MetroParkingTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -581,10 +928,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 1.1;
 				DEVELOPMENT_TEAM = 3M6C8L4M5D;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = tomkwok.MetroParkingUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -598,10 +946,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 1.1;
 				DEVELOPMENT_TEAM = 3M6C8L4M5D;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = tomkwok.MetroParkingUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -614,6 +963,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		181F079E2EF13C07008F451B /* Build configuration list for PBXNativeTarget "MetroParkingWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				181F079F2EF13C07008F451B /* Debug */,
+				181F07A02EF13C07008F451B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		184036F12DD9F82D009D7FBA /* Build configuration list for PBXProject "MetroParking" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -653,21 +1011,21 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		1873C8992E5603F600E2B438 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+		1826A71A2EEE5DDD00B13802 /* XCRemoteSwiftPackageReference "iOS-Backports" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/supabase-community/supabase-swift.git";
+			repositoryURL = "https://github.com/superwall/iOS-Backports";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 2.5.1;
+				minimumVersion = 1.0.5;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		1873C89A2E56040100E2B438 /* Supabase */ = {
+		1826A71B2EEE5DDD00B13802 /* SwiftUIBackports */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 1873C8992E5603F600E2B438 /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Supabase;
+			package = 1826A71A2EEE5DDD00B13802 /* XCRemoteSwiftPackageReference "iOS-Backports" */;
+			productName = SwiftUIBackports;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

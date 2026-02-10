@@ -7,6 +7,7 @@
 //
 
 import XCTest
+import MapKit
 
 /// UI Tests designed for Fastlane snapshot automation.
 /// These tests capture screenshots at key screens for App Store submissions.
@@ -19,6 +20,7 @@ import XCTest
 /// - `UI_TESTING`: Enables UI testing mode
 /// - `SKIP_ONBOARDING`: Skips onboarding for tests that don't need it
 /// - `RESET_STATE`: Resets app state for clean screenshots
+/// - `DISABLE_ANIMATIONS`: Disable animation for faster screenshots
 final class ScreenshotTests: XCTestCase {
 
     var app: XCUIApplication!
@@ -27,8 +29,11 @@ final class ScreenshotTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
 
+		let sydney = CLLocation(latitude: -33.8833, longitude: 151.2056)
+		XCUIDevice.shared.location = XCUILocation(location: sydney)
+
         app = XCUIApplication()
-        app.launchArguments += ["UI_TESTING"]
+		app.launchArguments += ["UI_TESTING", "DISABLE_ANIMATION"]
 
         // Enable Fastlane snapshot support
         setupSnapshot(app)
@@ -163,85 +168,246 @@ final class ScreenshotTests: XCTestCase {
             // Handle location alert again in case it appeared after delay
             handleLocationPermissionAlert()
 
-            snapshot("04_DetailPage")
+            snapshot("04_DetailPage_Top")
+
+            // Scroll down to capture the bottom of the detail page
+            let scrollView = app.scrollViews.firstMatch
+            if scrollView.exists {
+                scrollView.swipeUp()
+                Thread.sleep(forTimeInterval: 1.0)
+                snapshot("04_DetailPage_Bottom")
+            }
         } else {
             XCTFail("No facility rows found")
         }
     }
 
-    // MARK: - Helpers
 
-    /// Waits for the facility list to appear (handles SwiftUI List appearing as different element types)
-    @MainActor
-    private func waitForFacilityList(timeout: TimeInterval) -> Bool {
-        // SwiftUI List can appear as collectionView, table, or other element types depending on iOS version
-        let collectionView = app.collectionViews["facility-list"]
-        let table = app.tables["facility-list"]
-        let otherElement = app.otherElements["facility-list"]
+		/// Captures the settings screen
+	@MainActor
+	func test05_SettingsScreen() throws {
+		app.launchArguments += ["SKIP_ONBOARDING"]
+		app.launch()
 
-        let startTime = Date()
-        while Date().timeIntervalSince(startTime) < timeout {
-            if collectionView.exists || table.exists || otherElement.exists {
-                return true
-            }
-            Thread.sleep(forTimeInterval: 0.5)
-        }
-        return false
-    }
+			// Wait for the main screen to load
+		let facilityListExists = waitForFacilityList(timeout: 10)
+		XCTAssertTrue(facilityListExists, "Facility list should appear")
 
-    /// Handles the system location permission alert by tapping "Allow While Using App"
-    @MainActor
-    private func handleLocationPermissionAlert() {
-        // Use springboard to handle system alerts
-        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+			// Tap the settings button (ellipsis menu)
+		let settingsButton = app.buttons["settings-button"]
+		if settingsButton.waitForExistence(timeout: 5) {
+			settingsButton.tap()
 
-        // Check for location permission alert (may have different button texts)
-        let allowButtons = [
-            "Allow While Using App",
-            "Allow Once",
-            "허용",  // Korean
-            "允许使用App时访问"  // Chinese
-        ]
+				// Wait for settings sheet to appear
+			Thread.sleep(forTimeInterval: 1.0)
 
-        for buttonText in allowButtons {
-            let button = springboard.buttons[buttonText]
-            if button.waitForExistence(timeout: 2) {
-                button.tap()
-                return
-            }
-        }
+			snapshot("05_Settings")
+		} else {
+			XCTFail("Settings button not found")
+		}
+	}
 
-        // Also try the app's own alerts
-        for buttonText in allowButtons {
-            let button = app.buttons[buttonText]
-            if button.exists {
-                button.tap()
-                return
-            }
-        }
-    }
+	/// Captures the main screen with the Cherrybrook carpark pinned to the top
+	@MainActor
+	func test06_MainScreenPinned() throws {
+		app.launchArguments += ["SKIP_ONBOARDING", "RESET_STATE"]
+		app.launch()
 
-    /// Captures the settings screen
-    @MainActor
-    func test05_SettingsScreen() throws {
-        app.launchArguments += ["SKIP_ONBOARDING"]
-        app.launch()
+		// Wait for the facility list to load
+		let facilityListExists = waitForFacilityList(timeout: 10)
+		XCTAssertTrue(facilityListExists, "Facility list should appear")
 
-        // Wait for the main screen to load
-        let facilityListExists = waitForFacilityList(timeout: 10)
-        XCTAssertTrue(facilityListExists, "Facility list should appear")
+		// Wait for data to load
+		Thread.sleep(forTimeInterval: 2.0)
 
-        // Tap the settings button (ellipsis menu)
-        let settingsButton = app.buttons["settings-button"]
-        if settingsButton.waitForExistence(timeout: 5) {
-            settingsButton.tap()
+		// Find the Cherrybrook facility row (facility ID 33)
+		let cherrybrookRow = app.buttons["facility-row-33"]
 
-            // Wait for settings sheet to appear
-            Thread.sleep(forTimeInterval: 1.0)
+		// Scroll until we find Cherrybrook (max 20 attempts to prevent infinite loop)
+		var scrollAttempts = 0
+		let maxScrollAttempts = 20
 
-            snapshot("05_Settings")
-        } else {
-            XCTFail("Settings button not found")
-        }
-    }
+		while !cherrybrookRow.exists && scrollAttempts < maxScrollAttempts {
+			let list = app.collectionViews["facility-list"]
+			if list.exists {
+				list.swipeUp()
+			} else {
+				app.swipeUp()
+			}
+			scrollAttempts += 1
+			Thread.sleep(forTimeInterval: 0.3)
+		}
+
+		guard cherrybrookRow.exists else {
+			XCTFail("Cherrybrook facility row not found after \(scrollAttempts) scroll attempts")
+			return
+		}
+
+		// Swipe right to reveal the pin action
+		cherrybrookRow.tap()
+
+		// Wait for swipe action to appear
+		Thread.sleep(forTimeInterval: 0.5)
+
+		// Tap the pin button only if not already pinned
+		let unpinButton = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Unpin'")).firstMatch
+		if unpinButton.exists {
+				// Already pinned, no action needed
+		} else {
+			let pinButton = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Pin'")).firstMatch
+			if pinButton.waitForExistence(timeout: 2) {
+				pinButton.tap()
+			} else {
+				XCTFail("Pin button not found")
+				return
+			}
+		}
+
+		// Wait for animation to complete and list to reorder
+		Thread.sleep(forTimeInterval: 1.5)
+
+		// Back to the list
+		app.navigationBars.buttons.element(boundBy: 0).tap()
+
+		// Scroll back to top to show pinned section
+		let list = app.collectionViews["facility-list"]
+		for _ in 0..<5 {
+			if list.exists {
+				list.swipeDown()
+			} else {
+				app.swipeDown()
+			}
+		}
+
+		Thread.sleep(forTimeInterval: 1.0)
+
+		snapshot("06_MainScreen_Pinned")
+	}
+
+	/// Captures the sorting menu opened from the bottom toolbar
+	@MainActor
+	func test07_SortingMenu() throws {
+		app.launchArguments += ["SKIP_ONBOARDING"]
+		app.launch()
+
+		// Wait for the facility list to load
+		let facilityListExists = waitForFacilityList(timeout: 10)
+		XCTAssertTrue(facilityListExists, "Facility list should appear")
+
+		// Wait for data to load
+		Thread.sleep(forTimeInterval: 2.0)
+
+		// Tap the sorting menu button in the bottom toolbar
+		let sortingMenu = app.buttons["sorting-menu"]
+		if sortingMenu.waitForExistence(timeout: 5) {
+			sortingMenu.tap()
+
+			// Wait for menu to appear and animate
+			Thread.sleep(forTimeInterval: 1.0)
+
+			snapshot("07_SortingMenu")
+		} else {
+			XCTFail("Sorting menu button not found")
+		}
+	}
+
+	/// Captures the widget on the home screen
+	/// Note: Widget must be manually configured on any home screen page before running this test
+	@MainActor
+	func test08_HomeScreenWidget() throws {
+		// Launch app first to ensure widget data is available
+		app.launchArguments += ["SKIP_ONBOARDING"]
+		app.launch()
+
+		// Wait for data to load so widget has fresh data
+		Thread.sleep(forTimeInterval: 3.0)
+
+		// Access the springboard (home screen)
+		let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+
+		// Press home button to go to home screen and press again to ensure it's on the first page
+		XCUIDevice.shared.press(.home)
+		XCUIDevice.shared.press(.home)
+
+		// Wait for home screen to appear
+		Thread.sleep(forTimeInterval: 1.0)
+
+		// Look for the widget by finding "spaces" text (widget always shows "X spaces")
+		let widgetText = springboard.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'spaces'")).firstMatch
+
+		// Swipe through home screen pages until we find the widget (max 10 pages)
+		var swipeAttempts = 0
+		let maxSwipeAttempts = 10
+
+		while !widgetText.exists && swipeAttempts < maxSwipeAttempts {
+			springboard.swipeLeft()
+			swipeAttempts += 1
+			Thread.sleep(forTimeInterval: 0.5)
+		}
+
+		guard widgetText.exists else {
+			XCTFail("Widget with 'spaces' text not found after \(swipeAttempts) swipes. Make sure the MetroParking widget is added to the home screen.")
+			return
+		}
+
+		// Wait for widget to fully render
+		Thread.sleep(forTimeInterval: 1.0)
+
+		snapshot("08_HomeScreen_Widget")
+	}
+}
+
+extension ScreenshotTests {
+
+		// MARK: - Helpers
+
+		/// Waits for the facility list to appear (handles SwiftUI List appearing as different element types)
+	@MainActor
+	private func waitForFacilityList(timeout: TimeInterval) -> Bool {
+			// SwiftUI List can appear as collectionView, table, or other element types depending on iOS version
+		let collectionView = app.collectionViews["facility-list"]
+		let table = app.tables["facility-list"]
+		let otherElement = app.otherElements["facility-list"]
+
+		let startTime = Date()
+		while Date().timeIntervalSince(startTime) < timeout {
+			if collectionView.exists || table.exists || otherElement.exists {
+				return true
+			}
+			Thread.sleep(forTimeInterval: 0.5)
+		}
+		return false
+	}
+
+		/// Handles the system location permission alert by tapping "Allow While Using App"
+	@MainActor
+	private func handleLocationPermissionAlert() {
+			// Use springboard to handle system alerts
+		let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+
+			// Check for location permission alert (may have different button texts)
+		let allowButtons = [
+			"Allow While Using App",
+			"Allow Once",
+			"허용",  // Korean
+			"允许使用App时访问"  // Chinese
+		]
+
+		for buttonText in allowButtons {
+			let button = springboard.buttons[buttonText]
+			if button.waitForExistence(timeout: 2) {
+				button.tap()
+				return
+			}
+		}
+
+			// Also try the app's own alerts
+		for buttonText in allowButtons {
+			let button = app.buttons[buttonText]
+			if button.exists {
+				button.tap()
+				return
+			}
+		}
+	}
 }

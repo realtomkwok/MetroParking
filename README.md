@@ -1,7 +1,5 @@
 # MetroParking
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-
 <img width="1920" height="1080" alt="Cover" src="https://github.com/user-attachments/assets/f2096119-f72c-4883-915f-ee2406b360d9" />
 
 A native iOS app for finding and
@@ -13,25 +11,24 @@ the [TfNSW Car Park API](https://data.nsw.gov.au/data/dataset/2-car-park-api).
 
 - **Real-time Availability**: Live parking space data for 37 Park&Ride facilities across NSW
 - **Interactive Map**: Facility locations with availability status indicators
-- **Smart Sorting**: Sort by distance, availability, name, suburb, or capacity
+- **Global Search**: Find facilities quickly by name or suburb
+- **Smart Sorting**: Sort by distance, availability, name, suburb, or capacity with persistent preferences
 - **Pinned Facilities**: Save frequently used locations for quick access
 - **ETA Calculations**: Driving time estimates using MapKit
+- **Navigation Options**: Open directions in Apple Maps or Google Maps
 - **Street View**: Look Around integration for facility reconnaissance
 - **Location Services**: Distance calculations and nearby facility discovery
-- **Home/Lock Screen Widgets**: Quick glance at your selected facility with configurable AppIntent
+- **Home/Lock Screen Widgets**: Quick glance at your selected facility with deep linking to detail view
 - **Background Refresh**: Automatic data updates using BGTaskScheduler
 - **App Groups Integration**: Seamless data sharing between app and widgets
 - **Onboarding Experience**: Welcome screen on first launch with feature highlights
 - **Settings Menu**: Comprehensive settings including notifications, widgets, and app preferences
 
-### Coming Soon (v0.5.0+)
-- **Live Activities**: Real-time parking monitoring on Lock Screen and Dynamic Island
-- **Push Notifications**: Vacancy alerts and threshold-based notifications
 
 ## Requirements
 
 - iOS 26.0+
-- Xcode 16.3+
+- Xcode 26.0+
 - TfNSW API Key ([Get one here](https://opendata.transport.nsw.gov.au/))
 
 ## Setup
@@ -108,19 +105,20 @@ Read more about configuration: [Configuration](Docs/CONFIGURATION.md)
     - `AppStateManager`: App lifecycle state management
     - `WidgetBudgetTracker`: Widget reload budget management (60/day limit)
     - `OnboardingManager`: Onboarding flow state and navigation
+    - `SearchManager`: Global facility search by name and suburb
     - `MapStateManager`: Map camera and selection state
     - `SheetStateManager`: Sheet presentation logic
 
 - **Utilities**:
     - `RefreshConfiguration`: Unified refresh timing constants and cache validity tiers
-    - `UserPreferences`: Centralized user preferences using @AppStorage
-    - `Logger`: Centralized logging system
+    - `UserPreferences`: Centralised user preferences using @AppStorage
+    - `Logger`: Centralised logging system
 
 ### Data Flow
 
 1. **Initial Load**: Static facility metadata → SwiftData (shared via App Groups)
 2. **Priority Tiers**:
-   - Critical (widgets + favorites): 1 min cache (foreground) / 10 min (background)
+   - Critical (widgets + favourites): 1 min cache (foreground) / 10 min (background)
    - Standard (recently visited): 5 min cache (foreground) / 30 min (background)
    - Background tier: 10 min cache (foreground) / 1 hour (background)
 3. **Foreground Updates**: 60s refresh cycle with tiered cache validation
@@ -137,7 +135,6 @@ The app consumes the [TfNSW Car Park API](https://opendata.transport.nsw.gov.au/
 - **Occupancy Endpoint**: `/v1/carpark?facility={id}` - Real-time data
 - **Rate Limiting**: Managed by `RefreshConfiguration` with tiered intervals
 - **Error Handling**: Exponential backoff for failed requests
-- **Concurrency Control**: Single operation lock prevents overlapping refreshes
 
 ## Project Structure
 
@@ -160,8 +157,6 @@ MetroParking/
 ├── MetroParkingWidget/     # Widget extension with AppIntent support
 ├── LiveActivityExtension/  # (Coming soon) Live Activity extension
 ├── Docs/                   # Documentation (widgets, concurrency, setup)
-│   ├── LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md  # Live Activity implementation guide
-│   └── NOTIFICATION_FEATURES_PLAN.md         # Push notification implementation guide
 └── Config.xcconfig         # Environment configuration (gitignored)
 ```
 
@@ -172,6 +167,7 @@ MetroParking/
 - `FacilityManager.swift`: Handles facility data loading with concurrency control
 - `BackgroundTaskManager.swift`: Manages background refresh tasks (BGTaskScheduler)
 - `SharedDataManager.swift`: App Groups container for app ↔ widget data sharing
+- `SearchManager.swift`: Global facility search with name/suburb matching
 - `WidgetBudgetTracker.swift`: Widget reload budget management
 - `RefreshConfiguration.swift`: Unified timing constants and cache validity tiers
 - `ParkingAPIService.swift`: TfNSW API client implementation
@@ -184,7 +180,7 @@ MetroParking/
 The app uses a tiered cache validity system with concurrency control:
 
 1. **Foreground Refresh**: 60s cycle interval with tiered cache validation
-   - Critical tier (widgets + favorites): 1 min cache validity
+   - Critical tier (widgets + favourites): 1 min cache validity
    - Standard tier (recently visited): 5 min cache validity
    - Background tier (others): 10 min cache validity
 
@@ -194,9 +190,7 @@ The app uses a tiered cache validity system with concurrency control:
 
 3. **Widget Budget**: 60 reloads per day, 15s minimum throttle between reloads
 
-4. **Concurrency Control**: Operation lock prevents overlapping refreshes
-
-### Performance Optimizations
+### Performance Optimisations
 
 - **Tiered Cache Validity**: 1-60 min depending on facility priority and app state
 - **Widget Budget Management**: Prevents budget exhaustion with smart throttling
@@ -230,9 +224,6 @@ For detailed API specifications, refer to
 the [TfNSW Car Park API Documentation](https://opendata.transport.nsw.gov.au/dataset/car-park-api) included in this
 repository.
 
-## License
-
-This project is licensed under the GNU General Public License v3.0 - see the LICENSE file for details.
 
 ## Commercial Use
 
@@ -241,13 +232,37 @@ create derivative works, they must also be distributed under GPL v3.
 
 ## Copyright
 
-Copyright (C) 2025 Tom Kwok
-
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
-License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
-version.
+Copyright (C) 2025-2026 Tom Kwok
 
 ## Changelog
+
+### v1.0.0 (January 2026) - First Public Release 🎉
+
+**New Features**
+- **Global Search**: Search facilities by name or suburb with `SearchManager`
+- **Google Maps Navigation**: Open directions in Google Maps as an alternative to Apple Maps
+- **Widget Deep Linking**: Tap widget to open specific facility detail view
+- **Preserved Preferences**: Filter and sorting preferences persist across app launches
+- **Progressive Refresh**: Data updates incrementally rather than in batches for smoother UX
+- **Two-Tier Refresh System**: Simplified to "watched" (pinned/widget/visited) and "unwatched" tiers
+
+**Performance & Stability**
+- Fixed UI hangs and main thread blocking issues
+- Resolved Swift concurrency issues for thread safety
+- Improved widget-app communication reliability
+- Optimized refresh intervals for reduced computation load
+- Fixed breathing animation timing and state transitions
+
+**UI/UX Improvements**
+- Breathing animation while data is refreshing
+- Better error messages displayed in UI
+- Fixed bottom bar button transition bugs
+- Enhanced visual feedback throughout the app
+
+**TestFlight & Distribution**
+- Added fastlane snapshot automation for App Store screenshots
+- Added privacy report for App Store compliance
+- Updated Info.plist to comply with Apple's agreements
 
 ### v0.4.0 (December 2025)
 
@@ -263,7 +278,7 @@ version.
 - New app icon with dark mode variant
 - Improved `FacilityDetailView` with better navigation and layout
 - Enhanced `FacilityListView` with refined animations and transitions
-- Updated `BackgroundGradient` with smoother color transitions
+- Updated `BackgroundGradient` with smoother colour transitions
 - Better permission request flow in `PermissionView`
 
 **Documentation**
@@ -285,7 +300,7 @@ version.
 - Added operation lock to prevent duplicate refreshes
 - Fixed background task scheduling to prevent exponential task growth
 - Implemented tiered cache validity (1 min - 1 hour) based on facility priority
-- Optimized foreground refresh cycle from aggressive polling to 60s intervals
+- Optimised foreground refresh cycle from aggressive polling to 60s intervals
 
 **Architecture Improvements**
 - Refactored `FacilityManager` with proper concurrency control
@@ -319,83 +334,59 @@ version.
 - Added `TrailingIconLabelStyle` for consistent label styling
 - Improved navigation with `matchedTransitionSource` and zoom transitions
 
-### v0.1.0 (Initial Release)
-
-- Real-time parking availability for 37 NSW Park&Ride facilities
-- Interactive map with facility markers
-- Smart sorting by distance, availability, name, and capacity
-- Pinned facilities for quick access
-- ETA calculations using MapKit
-- SwiftData persistence
-
 ---
 
 ## Roadmap
 
-### Data Model & MapKit Improvements
+**Current: v1.0.0 - First Public Release**
+- [x] Available on TestFlight for beta testing
+- [x] Core parking monitoring features complete
+- [x] Widgets, background refresh, and search ready
+- [x] Performance optimisations and stability fixes
 - [x] Review and remove obsolete/redundant properties in `ParkingFacility` model
 - [x] Rewrite MapKit implementation using `MKMapItem` and `MKAddress` from coordinates
 - [x] Improve Apple Maps integration for better directions and place information
 - [x] Add proper `CLPlacemark` reverse geocoding for facility addresses
-
-### API & Scaling Optimisation
 - [x] Fix refresh logic to reduce API call frequency (fixed with tiered caching)
 - [x] Add request coalescing and smarter refresh scheduling (operation locks)
 - [x] Implement concurrency control to prevent overlapping refreshes
+- [x] Add home screen widgets with AppIntent configuration
+- [x] Implement widget budget tracking (60 reloads/day limit)
+- [x] Add App Groups for app ↔ widget data sharing
+- [x] Review and improve `LocationManager` implementation
+- [x] Add "Always Allow" location permission flow for background features
+- [x] Show traffic-aware ETA estimates
+
+**WIP: v1.1.0**
+- [x] Refine refresh mechanism
+- [x] Add nearby parking recommendation to the detail page
+- [ ] Add Chinese language support
+- [ ] Audit accessibility issues
+
+**Next: v1.2.0**
+- [ ] Refine the search functionality so user can search a Sydney suburb for the nearest car park.
+- [ ] Add lock screen widgets for quick vacancy checks
+- [ ] Migrate to Swift 6 for strict concurrency
+
+**On the roadmap**
+- [ ] Add Chinese (zh-cn, zh-hk, zh-tw) and French language support
 - [ ] Implement server-side caching strategy for scaling to thousands of users
 - [ ] Review Supabase edge functions for batch processing efficiency
-
-### Real-Time Transit Integration
+- [ ] Add historical patterns from Supabase insights
 - [ ] Integrate [TfNSW GTFS Realtime Trip Updates API](https://opendata.transport.nsw.gov.au/data/dataset/public-transport-realtime-trip-update-v2)
 - [ ] Show real-time train/metro arrivals for each Park&Ride facility
 - [ ] Display service alerts and delays affecting nearby stations
 - [ ] Add trip planning suggestions combining parking and transit
-
-### Traffic & Navigation
-- [x] Add live traffic information from user location to selected facility
-~~- [ ] Display traffic status indicators (light, moderate, heavy)~~
-- [x] Show traffic-aware ETA estimates
 - [ ] Implement route alternatives based on current conditions
-
-### Smart Parking Suggestions
-- [ ] Build alternative parking recommendation engine
-- [ ] Factor in vacancy rates, traffic conditions, and distance
-- [ ] Consider historical patterns from Supabase insights
-- [ ] Add "best time to arrive" suggestions based on trend data
-
-### Widgets
-- [x] Add home screen widgets with AppIntent configuration
-- [x] Implement widget budget tracking (60 reloads/day limit)
-- [x] Add App Groups for app ↔ widget data sharing
-- [ ] Create additional widget sizes (medium, large)
-- [ ] Add lock screen widgets for quick vacancy checks
-
-### Live Activities & Notifications (v0.5.0+)
 - [ ] Implement Live Activities for tracking selected facility availability
   - See `Docs/LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md` for detailed implementation guide
 - [ ] Add push notification support for vacancy alerts
 - [ ] Implement threshold-based notifications ("Alert when under X spaces")
-  - See `Docs/NOTIFICATION_FEATURES_PLAN.md` for detailed implementation guide
-
-### Location Services
-- [x] Review and improve `LocationManager` implementation
-- [ ] Add background location updates for proximity alerts
-- [ ] Implement geofencing for automatic facility detection
-- [x] Add "Always Allow" location permission flow for background features
 
 ---
 
-## Next Steps
+## Versions log
 
-**Current: v0.4.0 Beta**
-- Public beta release for user feedback
-- Core parking monitoring features complete
-- Widgets and background refresh ready
-
-**v0.5.0+ (Next Major Version)**:
-- Live Activities for Lock Screen/Dynamic Island
-- Push notifications for vacancy alerts
-- See documentation in `Docs/` for implementation guides
 
 ## Acknowledgments
 

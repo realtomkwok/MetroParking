@@ -82,6 +82,9 @@ final class ETAManager {
 	/// Cache of route info per facility
 	private var routeCache: [String: RouteInfo] = [:]
 
+	/// Cache of facility-to-facility driving distances
+	private var facilityToFacilityCache: [String: (distance: CLLocationDistance, travelTime: TimeInterval)] = [:]
+
 	static let shared = ETAManager()
 
 	private init() {}
@@ -377,6 +380,28 @@ final class ETAManager {
 		}
 
 		activeTasks[facility.facilityId] = task
+	}
+
+	// MARK: - Facility-to-Facility Distance
+
+	/// Calculate driving distance and travel time between two facilities
+	func calculateDistanceBetweenFacilities(
+		from origin: ParkingFacility,
+		to destination: ParkingFacility
+	) async -> (distance: CLLocationDistance, travelTime: TimeInterval)? {
+		let cacheKey = "\(origin.facilityId)-\(destination.facilityId)"
+		if let cached = facilityToFacilityCache[cacheKey] { return cached }
+
+		let request = MKDirections.Request()
+		request.source = origin.getOrCreateMapItem()
+		request.destination = destination.getOrCreateMapItem()
+		request.transportType = .automobile
+
+		let directions = MKDirections(request: request)
+		guard let response = try? await directions.calculateETA() else { return nil }
+		let result = (distance: response.distance, travelTime: response.expectedTravelTime)
+		facilityToFacilityCache[cacheKey] = result
+		return result
 	}
 
 	// MARK: - Batch ETA Calculation

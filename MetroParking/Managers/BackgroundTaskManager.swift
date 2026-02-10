@@ -191,7 +191,7 @@ extension BackgroundTaskManager {
 		// when the app next enters background. No need to schedule here.
 
 		let workTask = Task {
-			await performQuickRefresh()
+			await performBackgroundRefresh(scope: .quick)
 		}
 
 		task.expirationHandler = {
@@ -215,7 +215,7 @@ extension BackgroundTaskManager {
 		// This prevents wasted scheduling if the task is cancelled/expires
 
 		let workTask = Task {
-			await performFullRefresh()
+			await performBackgroundRefresh(scope: .full)
 		}
 
 		task.expirationHandler = {
@@ -236,149 +236,97 @@ extension BackgroundTaskManager {
 	}
 }
 
+// MARK: - Background Refresh Scope
+
+/// Determines which facilities to refresh and the time budget for background tasks
+enum BackgroundRefreshScope {
+	/// Watched facilities only (favourites + widgets) — used by BGAppRefreshTask
+	case quick
+	/// All facilities — used by BGProcessingTask
+	case full
+
+	var timeout: TimeInterval {
+		switch self {
+		case .quick: return RefreshConfiguration.API.quickRefreshTimeout
+		case .full: return RefreshConfiguration.API.fullRefreshTimeout
+		}
+	}
+
+	var maxFacilities: Int? {
+		switch self {
+		case .quick: return RefreshConfiguration.API.quickRefreshLimit
+		case .full: return nil
+		}
+	}
+
+	var label: String {
+		switch self {
+		case .quick: return "Quick"
+		case .full: return "Full"
+		}
+	}
+}
+
 // MARK: - Refresh Operations
 extension BackgroundTaskManager {
 
-	/// Quick refresh for watched facilities only (favourites + widgets)
-	/// Used by BGAppRefreshTask with ~30 second time limit
+	/// Refresh facilities in the background with the given scope.
+	///
+	/// - `.quick`: Only watched facilities (favourites + widgets), short timeout.
+	///   Used by `BGAppRefreshTask`.
+	/// - `.full`: All facilities, longer timeout. Used by `BGProcessingTask`.
 	@MainActor
-	func performQuickRefresh() async {
+	func performBackgroundRefresh(scope: BackgroundRefreshScope) async {
 		let startTime = Date()
 
 		let container = SharedDataManager.sharedContainer
 		let context = ModelContext(container)
 
-		// Fetch only watched facilities (favourites + widgets)
 		let descriptor = FetchDescriptor<ParkingFacility>(
 			sortBy: [SortDescriptor(\.name)]
 		)
 
 		do {
 			let allFacilities: [ParkingFacility] = try context.fetch(descriptor)
-			let watchedFacilities = allFacilities.filter {
-				$0.refreshTier == .watched
+
+			// Filter by scope
+			let candidates: [ParkingFacility]
+			switch scope {
+			case .quick:
+				candidates = allFacilities.filter { $0.refreshTier == .watched }
+			case .full:
+				candidates = allFacilities
 			}
 
-			guard !watchedFacilities.isEmpty else {
-				Logger.facilityRefresh.info("No watched facilities to refresh")
+			guard !candidates.isEmpty else {
+				Logger.facilityRefresh.info("No facilities to refresh (\(scope.label))")
 				return
 			}
 
-			var dataChanged = false
-			let maxFacilities = min(
-				watchedFacilities.count,
-				RefreshConfiguration.API.quickRefreshLimit
-			)
-
-			// Get all widget facility IDs for checking updates
-			let widgetFacilityIds = Set(SharedDataManager.shared.getWidgetFacilityIDs())
-
-			for facility in watchedFacilities.prefix(maxFacilities) {
-				guard !Task.isCancelled else { break }
-
-				// Rate limit at dispatch level
-				await APIDispatcher.shared.requestSlot()
-
-				guard APIUsageMonitor.canMakeCall else { break }
-
-				// Check timeout
-				if Date().timeIntervalSince(startTime)
-					> RefreshConfiguration.API.quickRefreshTimeout
-				{
-					break
-				}
-
-				// Skip if cache still valid for background operations
-				guard facility.shouldRefresh(appState: .background) else {
-					Logger.facilityRefresh.debug(
-						"⏭️ \(facility.displayName.title) - cache valid"
-					)
-					continue
-				}
-
-				let spacesBefore = facility.vacancy.available
-
-				do {
-					let response = try await ParkingAPIService.shared.fetchFacility(
-						id: facility.facilityId
-					)
-
-					facility.updateFromAPI(response)
-
-					// Update widget cache if this facility is displayed in a widget
-					// Note: Widget reload happens once at end via WidgetBudgetTracker
-					if widgetFacilityIds.contains(facility.facilityId) {
-						SharedDataManager.shared.cacheWidgetDataIfSelected(facility)
-					}
-
-					// Check if change is significant enough for widget update
-					let change = abs(spacesBefore - facility.vacancy.available)
-					if change >= RefreshConfiguration.Widget.backgroundChangeThreshold {
-						dataChanged = true
-					}
-				} catch {
-					facility.markRefreshFailed()
-					Logger.facilityRefresh.error("❌ Failed: \(facility.facilityId)")
-				}
+			// Apply facility limit for quick scope
+			let toRefresh: ArraySlice<ParkingFacility>
+			if let max = scope.maxFacilities {
+				toRefresh = candidates.prefix(max)
+			} else {
+				toRefresh = candidates[...]
 			}
 
-			if context.hasChanges {
-				try context.save()
-			}
-
-			// Use centralised widget reload
-			if dataChanged {
-				WidgetBudgetTracker.shared.requestReload()
-			}
-
-			Logger.facilityRefresh.notice(
-				"✅ Quick refresh completed in \(String(format: "%.1f", Date().timeIntervalSince(startTime)))s"
-			)
-		} catch {
-			Logger.facilityRefresh.error("❌ Quick refresh failed: \(error)")
-		}
-	}
-
-	/// Full refresh for all facilities
-	/// Used by BGProcessingTask with ~10 minute time limit
-	@MainActor
-	func performFullRefresh() async {
-		let startTime = Date()
-
-		let container = SharedDataManager.sharedContainer
-		let context = ModelContext(container)
-
-		// Fetch all facilities, prioritising favourites
-		let descriptor = FetchDescriptor<ParkingFacility>(
-			sortBy: [
-				SortDescriptor(\.name),
-			]
-		)
-
-		do {
-			let facilities: [ParkingFacility] = try context.fetch(descriptor)
 			var successCount = 0
 			var dataChanged = false
 
-			// Get all widget facility IDs for checking updates
 			let widgetFacilityIds = Set(SharedDataManager.shared.getWidgetFacilityIDs())
 
-			for facility in facilities {
+			for facility in toRefresh {
 				guard !Task.isCancelled else { break }
 
-				// Rate limit at dispatch level
 				await APIDispatcher.shared.requestSlot()
-
 				guard APIUsageMonitor.canMakeCall else { break }
 
-				// Check timeout
-				if Date().timeIntervalSince(startTime)
-					> RefreshConfiguration.API.fullRefreshTimeout
-				{
+				if Date().timeIntervalSince(startTime) > scope.timeout {
+					Logger.facilityRefresh.warning("⏰ \(scope.label) refresh timed out")
 					break
 				}
 
-				// Skip if cache still valid for background operations
 				guard facility.shouldRefresh(appState: .background) else { continue }
 
 				let spacesBefore = facility.vacancy.available
@@ -388,16 +336,17 @@ extension BackgroundTaskManager {
 						id: facility.facilityId
 					)
 
-					facility.updateFromAPI(response)
+					facility.updateOccupancy(
+						occupied: Int(response.occupancy.total ?? "0") ?? 0,
+						totalSpaces: Int(response.spots) ?? facility.totalSpaces
+					)
+
 					successCount += 1
 
-					// Update widget cache if this facility is displayed in a widget
-					// Note: Widget reload happens once at end via WidgetBudgetTracker
 					if widgetFacilityIds.contains(facility.facilityId) {
 						SharedDataManager.shared.cacheWidgetDataIfSelected(facility)
 					}
 
-					// More lenient threshold for background
 					let change = abs(spacesBefore - facility.vacancy.available)
 					if change >= RefreshConfiguration.Widget.backgroundChangeThreshold {
 						dataChanged = true
@@ -412,18 +361,15 @@ extension BackgroundTaskManager {
 				try context.save()
 			}
 
-			// Use centralised widget reload
 			if dataChanged {
 				WidgetBudgetTracker.shared.requestReload()
 			}
 
 			Logger.facilityRefresh.notice(
-				"✅ Full refresh: \(successCount) facilities in \(String(format: "%.1f", Date().timeIntervalSince(startTime)))s"
+				"✅ \(scope.label) refresh: \(successCount) facilities in \(String(format: "%.1f", Date().timeIntervalSince(startTime)))s"
 			)
 		} catch {
-			Logger.facilityData.error(
-				"❌ Failed to perform full refresh: \(error)"
-			)
+			Logger.facilityRefresh.error("❌ \(scope.label) refresh failed: \(error)")
 		}
 	}
 }

@@ -105,7 +105,7 @@ struct WidgetAPIService {
 
     // MARK: - Private Methods
 
-    private func fetchFacility(id: String) async throws -> ParkingAPIResponse {
+	private func fetchFacility(id: String) async throws -> ParkingApiModel {
         let url = try buildURL(for: id)
         let request = buildRequest(for: url)
 
@@ -144,14 +144,14 @@ struct WidgetAPIService {
         }
     }
 
-    private func decode(_ data: Data, facilityId: String) throws -> ParkingAPIResponse {
+    private func decode(_ data: Data, facilityId: String) throws -> ParkingApiModel {
         // Try direct decode first
-        if let response = try? decoder.decode(ParkingAPIResponse.self, from: data) {
+        if let response = try? decoder.decode(ParkingApiModel.self, from: data) {
             return response
         }
 
         // Fallback to dictionary format
-        let dict = try decoder.decode([String: ParkingAPIResponse].self, from: data)
+        let dict = try decoder.decode([String: ParkingApiModel].self, from: data)
 
         if let response = dict[facilityId] ?? dict.values.first {
             return response

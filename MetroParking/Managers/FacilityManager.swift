@@ -160,7 +160,7 @@ extension FacilityManager {
 
 		// Use provided context or fall back to stored context
 		let workingContext = context ?? self.modelContext
-		guard workingContext != nil else {
+		guard let workingContext else {
 			Logger.facilityRefresh
 				.error("Model Context not found, not refreshing")
 			return
@@ -171,14 +171,14 @@ extension FacilityManager {
 		loadProgress = .loading(0, 0)
 
 		// Fetch facilities using the working context
-		let allFacilities: [ParkingFacility] = await getFacilities(from: workingContext!)
+		let allFacilities: [ParkingFacility] = await getFacilities(from: workingContext)
 
-		// Apply user's active filter if enabled (to prioritize refreshing what the user sees)
+		// Apply user's active filter if enabled (to prioritise refreshing what the user sees)
 		let preFilteredFacilities: [ParkingFacility]
 		if UserPreferences.shared.filterIsOn {
 			preFilteredFacilities = UserPreferences.shared.preferredFilterOption.apply(to: allFacilities)
 			Logger.facilityRefresh.debug(
-				"📍 Filter active (\(UserPreferences.shared.preferredFilterOption.display.title)): \(preFilteredFacilities.count)/\(allFacilities.count) facilities"
+	"📍 Filter active (\(UserPreferences.shared.preferredFilterOption.rawValue) \(preFilteredFacilities.count)/\(allFacilities.count) facilities"
 			)
 		} else {
 			preFilteredFacilities = allFacilities
@@ -216,48 +216,25 @@ extension FacilityManager {
 
 		Logger.facilityRefresh
 			.debug(
-				"Loading \(toLoad.count) facilities (\(watched.count) watched, \(unwatched.count) unwatched) sorted by \(sortOption.display.title) (\(sortOrder.rawValue))"
+				"Loading \(toLoad.count) facilities (\(watched.count) watched, \(unwatched.count) unwatched) sorted by \(sortOption.rawValue) (\(sortOrder.rawValue))"
 			)
 
 		loadProgress = .loading(0, toLoad.count)
 
 		// Process facilities sequentially with rate-limited API calls
-		// This ensures UI updates happen immediately after each successful fetch
 		var processedCount = 0
 
 		for facility in toLoad {
-			// Rate limit before each API call
-			await APIDispatcher.shared.requestSlot()
+			guard !Task.isCancelled else { break }
 
-			guard facility.shouldRefresh(appState: .active, forced: forced) else {
-				continue
+			if processedCount > 0 {
+				try? await Task.sleep(nanoseconds: UInt64(RefreshConfiguration.API.uiStaggerDelay * 1_000_000_000))
 			}
 
-			guard APIUsageMonitor.canMakeCall else {
-				break
-			}
-
-			do {
-				let response = try await ParkingAPIService.shared.fetchFacility(
-					id: facility.facilityId
-				)
-
-				// Update UI immediately with animation (cascade effect)
-				if processedCount > 0 {
-					try? await Task.sleep(nanoseconds: UInt64(RefreshConfiguration.API.uiStaggerDelay * 1_000_000_000))
-				}
-
-				withAnimation(.snappy) {
-					facility.updateFromAPI(response)
-				}
-				SharedDataManager.shared.cacheWidgetDataIfSelected(facility)
-
+			let updated = await refreshFacility(facility, forced: forced)
+			if updated {
 				processedCount += 1
 				loadProgress = .loading(processedCount, toLoad.count)
-			} catch {
-				Logger.facilityRefresh.error(
-					"❌ Failed to fetch \(facility.displayName.title): \(error.localizedDescription)"
-				)
 			}
 		}
 
@@ -265,8 +242,7 @@ extension FacilityManager {
 		loadProgress = .completed
 		lastRefreshTime = Date()
 
-		// Save the working context (could be different from stored context in background operations)
-		await saveContext(workingContext!)
+		await saveContext(workingContext)
 
 		Logger.facilityRefresh.notice(
 			"✅ \(processedCount) facilities updated"
@@ -283,28 +259,66 @@ extension FacilityManager {
 		}
 	}
 
-	/// Fetch a single facility's data from the API.
-	/// Note: This method does NOT apply rate limiting - caller should use APIDispatcher.
-	/// - Returns: The API response if successful, nil otherwise.
-	func loadFacility(_ facility: ParkingFacility) async -> ParkingAPIResponse? {
-		guard facility.shouldRefresh(appState: .active) else {
+	/// Refresh a single facility: fetch from API, update model, cache widget data.
+	/// This is the shared core used by both `performLoad()` and `loadFacility(_:)`.
+	/// - Parameters:
+	///   - facility: The facility to refresh
+	///   - forced: Skip cache validation
+	///   - rateLimit: Whether to wait for an API dispatcher slot (true for bulk, false for single)
+	/// - Returns: `true` if the facility was updated, `false` otherwise.
+	@discardableResult
+	private func refreshFacility(_ facility: ParkingFacility, forced: Bool = false, rateLimit: Bool = true) async -> Bool {
+		guard forced || facility.shouldRefresh(appState: .active) else {
 			Logger.facilityRefresh
 				.info("⏭️ Cache still valid for \(facility.displayName.title)")
-			return nil
+			return false
 		}
 
 		guard APIUsageMonitor.canMakeCall else {
 			Logger.facilityRefresh.warning("⚠️ API limit reached")
-			return nil
+			return false
+		}
+
+		if rateLimit {
+			await APIDispatcher.shared.requestSlot()
 		}
 
 		do {
-			return try await ParkingAPIService.shared.fetchFacility(id: facility.facilityId)
+			let rawResponse = try await ParkingAPIService.shared.fetchFacility(id: facility.facilityId)
+
+			let occupied = Int(rawResponse.occupancy.total ?? "0") ?? 0
+			let totalSpaces = Int(rawResponse.spots) ?? facility.totalSpaces
+
+			withAnimation(.snappy) {
+				facility.updateOccupancy(
+					occupied: occupied,
+					totalSpaces: totalSpaces
+				)
+			}
+
+			SharedDataManager.shared.cacheWidgetDataIfSelected(facility)
+			return true
 		} catch {
+			facility.markRefreshFailed()
 			Logger.facilityRefresh.error(
 				"❌ Failed to fetch \(facility.displayName.title): \(error.localizedDescription)"
 			)
-			return nil
+			return false
+		}
+	}
+
+	/// Load a single facility's live data (for detail view refresh).
+	/// Handles rate limiting, model update, context save, and widget reload.
+	func loadFacility(_ facility: ParkingFacility, forced: Bool = false) async {
+		isRefreshing = true
+		defer { isRefreshing = false }
+
+		let updated = await refreshFacility(facility, forced: forced, rateLimit: false)
+
+		if updated {
+			await saveContext()
+			WidgetBudgetTracker.shared.requestReload()
+			Logger.facilityRefresh.notice("✅ \(facility.displayName.title) updated")
 		}
 	}
 
@@ -486,4 +500,5 @@ enum LoadProgress {
 // Note: Widget updates are now handled directly via SharedDataManager.cacheWidgetDataIfSelected()
 // Widget reload throttling is managed by WidgetBudgetTracker (15s minimum, 60/day budget)
 // The previous WidgetUpdateCoordinator actor has been removed as SharedDataManager is already thread-safe
+
 

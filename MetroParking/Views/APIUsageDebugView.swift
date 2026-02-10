@@ -17,7 +17,10 @@ struct APIUsageDebugView: View {
     
     // Computed property to sort facilities by last refreshed time
     private var sortedFacilities: [ParkingFacility] {
-        facilities.sorted { $0.refreshStatus.lastRefreshed > $1.refreshStatus.lastRefreshed }
+		facilities
+			.sorted {
+				$0.refreshStatus.lastUpdated > $1.refreshStatus.lastUpdated
+			}
     }
     
     var body: some View {
@@ -61,7 +64,7 @@ struct APIUsageDebugView: View {
     }
     
     private var refreshStatusSection: some View {
-        Section("Refresh Status") {
+        Section(.tipsSectionRefreshStatus) {
             HStack {
                 Text("Is Refreshing")
                 Spacer()
@@ -75,7 +78,7 @@ struct APIUsageDebugView: View {
                     Text(lastRefresh.formatted(.relative(presentation: .numeric)))
                         .foregroundStyle(.secondary)
                 } else {
-                    Text("Never")
+                    Text(.dateLabelNever)
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -87,7 +90,7 @@ struct APIUsageDebugView: View {
                     .foregroundStyle(.secondary)
             }
             
-            Button("Force Refresh Now") {
+            Button(.actionButtonForceRefresh) {
                 Task {
                     await facilityManager.performLoad(forced: true)
                 }
@@ -140,9 +143,9 @@ struct APIUsageDebugView: View {
             Spacer()
             
             VStack(alignment: .trailing, spacing: 2) {
-				Text(facility.vacancy.isCacheValid ? "✅" : "⏰")
+				Text("✅")
 				Text(
-					"\(facility.refreshStatus.lastRefreshed.formatted(.relative(presentation: .named, unitsStyle: .abbreviated))))s ago"
+					"date.format.ago"
 				)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
@@ -151,7 +154,7 @@ struct APIUsageDebugView: View {
     }
     
     private var recentRefreshesSection: some View {
-        Section("Recent Refreshes") {
+        Section(.tipsSectionRecentRefreshes) {
             ForEach(sortedFacilities.prefix(10), id: \.facilityId) { facility in
                 recentRefreshRow(for: facility)
             }
@@ -173,7 +176,7 @@ struct APIUsageDebugView: View {
             VStack(alignment: .trailing, spacing: 2) {
 				Text(
 					facility.refreshStatus
-						.lastRefreshed
+						.lastUpdated
 						.formatted(.relative(presentation: .numeric))
 				)
                     .font(.caption)
@@ -200,7 +203,7 @@ struct APIUsageDebugView: View {
 
 			Button("Simulate App Refresh") {
 				Task {
-					await BackgroundTaskManager.shared.performQuickRefresh()
+					await BackgroundTaskManager.shared.performBackgroundRefresh(scope: .quick)
 				}
 			}
 		}

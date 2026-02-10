@@ -50,8 +50,8 @@ struct DistanceHelper {
 		}
 
 		let facilityCoordinates = CLLocationCoordinate2D(
-			latitude: facility.latitude,
-			longitude: facility.longitude
+			latitude: facility.location.latitude,
+			longitude: facility.location.longitude
 		)
 		let newDistance = self.distance(
 			from: userLocation,

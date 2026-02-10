@@ -1,0 +1,58 @@
+{
+  "configurations" : [
+    {
+      "id" : "E0E64265-75CB-4C50-973F-DB05644F3207",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "areLocalizationScreenshotsEnabled" : true,
+    "locationScenario" : {
+      "identifier" : "Sydney, Australia",
+      "referenceType" : "built-in"
+    },
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:MetroParking.xcodeproj",
+      "identifier" : "184036F52DD9F82D009D7FBA",
+      "name" : "MetroParking"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "skippedTests" : {
+        "suites" : [
+          {
+            "name" : "MetroParkingTests"
+          }
+        ],
+        "xctestClasses" : [
+          {
+            "name" : "MetroParkingTests"
+          }
+        ]
+      },
+      "target" : {
+        "containerPath" : "container:MetroParking.xcodeproj",
+        "identifier" : "184037042DD9F82F009D7FBA",
+        "name" : "MetroParkingTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "skippedTests" : [
+        "ScreenshotTests"
+      ],
+      "target" : {
+        "containerPath" : "container:MetroParking.xcodeproj",
+        "identifier" : "1840370E2DD9F82F009D7FBA",
+        "name" : "MetroParkingUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

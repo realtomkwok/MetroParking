@@ -15,16 +15,18 @@ the [TfNSW Car Park API](https://data.nsw.gov.au/data/dataset/2-car-park-api).
 - **Interactive Map**: Facility locations with availability status indicators
 - **Smart Sorting**: Sort by distance, availability, name, suburb, or capacity
 - **Pinned Facilities**: Save frequently used locations for quick access
-- **ETA Calculations**: Driving time estimates using MapKit
+- **ETA Calculations**: Traffic-aware driving time estimates using MapKit
 - **Street View**: Look Around integration for facility reconnaissance
 - **Location Services**: Distance calculations and nearby facility discovery
+- **Search**: Find facilities by name or suburb
 - **Home/Lock Screen Widgets**: Quick glance at your selected facility with configurable AppIntent
 - **Background Refresh**: Automatic data updates using BGTaskScheduler
 - **App Groups Integration**: Seamless data sharing between app and widgets
 - **Onboarding Experience**: Welcome screen on first launch with feature highlights
 - **Settings Menu**: Comprehensive settings including notifications, widgets, and app preferences
+- **Navigation**: Open directions in Apple Maps or Google Maps
 
-### Coming Soon (v0.5.0+)
+### Coming Soon
 - **Live Activities**: Real-time parking monitoring on Lock Screen and Dynamic Island
 - **Push Notifications**: Vacancy alerts and threshold-based notifications
 
@@ -38,55 +40,32 @@ the [TfNSW Car Park API](https://data.nsw.gov.au/data/dataset/2-car-park-api).
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/realtomkwok/MetroParking.git
    cd MetroParking
    ```
 
 2. **Configure environment**
+   ```bash
+   cp Config.xcconfig.template Config.xcconfig
+   ```
 
-   ### 1. Clone and Configure
+   Open `Config.xcconfig` and fill in your values:
+   ```bash
+   // TfNSW API Configuration (REQUIRED)
+   TFNSW_API_KEY=your_actual_tfnsw_api_key_here
+   CAR_PARK_BASE_URL=https://api.transport.nsw.gov.au/v1
 
-```bash
-git clone <repository-url>
-cd MetroParking
+   // Development Configuration (REQUIRED)
+   DEVELOPMENT_TEAM=your_apple_developer_team_id
+   ```
 
-# Copy the configuration template
-cp Config.xcconfig.template Config.xcconfig
-```
+   See [Configuration Guide](Docs/CONFIGURATION.md) for details.
 
-### 2. Edit Your Configuration
-
-Open `Config.xcconfig` in any text editor and fill in your values:
-
-```bash
-// TfNSW API Configuration (REQUIRED)
-TFNSW_API_KEY=your_actual_tfnsw_api_key_here
-CAR_PARK_BASE_URL=https://api.transport.nsw.gov.au/v1
-
-// Supabase Configuration (OPTIONAL - for analytics features)
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
-
-// Development Configuration (REQUIRED)
-DEVELOPMENT_TEAM=your_apple_developer_team_id
-```
-
-### 3. Build and Run
-
-```bash
-open MetroParking.xcodeproj
-```
-
-Hit ⌘+R. Done.
-
-Read more about configuration: [Configuration](Docs/CONFIGURATION.md)
-
-3. **Open in Xcode**
+3. **Build and run**
    ```bash
    open MetroParking.xcodeproj
    ```
-
-4. **Build and run** (⌘+R)
+   Hit ⌘+R.
 
 ## Architecture
 
@@ -98,23 +77,26 @@ Read more about configuration: [Configuration](Docs/CONFIGURATION.md)
 
 - **Services**:
     - `ParkingAPIService`: TfNSW API integration
-    - `ETAManager`: MapKit-based route calculations
-    - `LocationManager`: Core Location wrapper
 
-- **State Management**:
+- **Managers**:
     - `FacilityManager`: Facility data loading with concurrency control
     - `SharedDataManager`: App Groups data sharing (app ↔ widget)
     - `BackgroundTaskManager`: BGTaskScheduler integration for background refresh
     - `AppStateManager`: App lifecycle state management
-    - `WidgetBudgetTracker`: Widget reload budget management (60/day limit)
+    - `ETAManager`: MapKit-based route calculations
+    - `LocationManager`: Core Location wrapper
+    - `MapsManager`: Map interaction and navigation
+    - `LookAroundManager`: Street View integration
+    - `SearchManager`: Facility search
+    - `DeepLinkManager`: URL scheme handling
     - `OnboardingManager`: Onboarding flow state and navigation
-    - `MapStateManager`: Map camera and selection state
-    - `SheetStateManager`: Sheet presentation logic
+    - `UserPreferences`: Centralized user preferences using @AppStorage
 
 - **Utilities**:
     - `RefreshConfiguration`: Unified refresh timing constants and cache validity tiers
-    - `UserPreferences`: Centralized user preferences using @AppStorage
-    - `Logger`: Centralized logging system
+    - `WidgetBudgetTracker`: Widget reload budget management (60/day limit)
+    - `SortAndFilterHelper`: Sorting and filtering logic
+    - `Logger`: Centralized logging system (shared target)
 
 ### Data Flow
 
@@ -146,36 +128,34 @@ MetroParking/
 ├── MetroParking/
 │   ├── Models/             # SwiftData models and API responses
 │   ├── Views/              # SwiftUI views and components
-│   │   ├── OnboardingView.swift    # First-launch onboarding
-│   │   ├── SettingsView.swift      # Settings menu
-│   │   └── ... (other views)
-│   ├── Services/           # API and external service integrations
+│   │   ├── Components/     # Reusable UI components (e.g., ParkingProgressGauge)
+│   │   └── ...
+│   ├── Services/           # API client (ParkingAPIService)
 │   ├── Managers/           # State management and business logic
-│   │   ├── OnboardingManager.swift # Onboarding state management
-│   │   └── ... (other managers)
 │   ├── Utils/              # Helpers, extensions, and configuration
-│   │   ├── UserPreferences.swift   # User settings persistence
-│   │   └── ... (other utilities)
+│   ├── Tips/               # TipKit definitions
 │   └── MetroParkingApp.swift
 ├── MetroParkingWidget/     # Widget extension with AppIntent support
-├── LiveActivityExtension/  # (Coming soon) Live Activity extension
+├── Shared/                 # Shared code between targets (Logger)
 ├── Docs/                   # Documentation (widgets, concurrency, setup)
-│   ├── LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md  # Live Activity implementation guide
-│   └── NOTIFICATION_FEATURES_PLAN.md         # Push notification implementation guide
+│   ├── Widgets/            # Widget implementation guides
+│   ├── Concurrency/        # Concurrency fixes and review checklists
+│   └── Components/         # Architecture and migration docs
 └── Config.xcconfig         # Environment configuration (gitignored)
 ```
 
 ## Key Files
 
-- `ContentView.swift`: Main app interface with map and sheet
-- `ParkingFacility.swift`: Core facility model with occupancy logic
-- `FacilityManager.swift`: Handles facility data loading with concurrency control
-- `BackgroundTaskManager.swift`: Manages background refresh tasks (BGTaskScheduler)
+- `ContentView.swift`: Main app interface with map and facility list
+- `ParkingFacility.swift`: Core SwiftData model with occupancy logic
+- `FacilityManager.swift`: Facility data loading with concurrency control
+- `BackgroundTaskManager.swift`: BGTaskScheduler integration for background refresh
 - `SharedDataManager.swift`: App Groups container for app ↔ widget data sharing
-- `WidgetBudgetTracker.swift`: Widget reload budget management
-- `RefreshConfiguration.swift`: Unified timing constants and cache validity tiers
 - `ParkingAPIService.swift`: TfNSW API client implementation
+- `RefreshConfiguration.swift`: Unified timing constants and cache validity tiers
+- `WidgetBudgetTracker.swift`: Widget reload budget management
 - `MetroParkingWidget.swift`: Widget entry point with AppIntent configuration
+- `WidgetAPIService.swift`: Dedicated API service for widget data fetching
 
 ## Development Notes
 
@@ -241,7 +221,7 @@ create derivative works, they must also be distributed under GPL v3.
 
 ## Copyright
 
-Copyright (C) 2025 Tom Kwok
+Copyright (C) 2025-2026 Tom Kwok
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
@@ -249,7 +229,18 @@ version.
 
 ## Changelog
 
-### v0.4.0 (December 2025)
+### v1.0 (February 2026)
+
+**App Store Release**
+- First public release on the App Store
+- Preserved user filter and sorting preferences across sessions
+- Refined refresh mechanism to respect user preferences
+- Fixed UI hangs and performance issues
+- Resolved Swift concurrency issues
+- Added global search with `SearchManager`
+- Privacy report and compliance updates
+
+### v0.4.0 (January 2026)
 
 **User Experience Enhancements**
 - Added onboarding screen for first-time users with feature highlights
@@ -258,6 +249,8 @@ version.
 - Added `UserPreferences` for centralized settings persistence using @AppStorage
 - Removed Supabase dependency for simplified architecture
 - Enhanced widget display with improved visual feedback
+- Added Google Maps navigation support
+- Added stale data UX with breathing animation while refreshing
 
 **UI/UX Improvements**
 - New app icon with dark mode variant
@@ -332,37 +325,6 @@ version.
 
 ## Roadmap
 
-### Data Model & MapKit Improvements
-- [x] Review and remove obsolete/redundant properties in `ParkingFacility` model
-- [x] Rewrite MapKit implementation using `MKMapItem` and `MKAddress` from coordinates
-- [x] Improve Apple Maps integration for better directions and place information
-- [x] Add proper `CLPlacemark` reverse geocoding for facility addresses
-
-### API & Scaling Optimisation
-- [x] Fix refresh logic to reduce API call frequency (fixed with tiered caching)
-- [x] Add request coalescing and smarter refresh scheduling (operation locks)
-- [x] Implement concurrency control to prevent overlapping refreshes
-- [ ] Implement server-side caching strategy for scaling to thousands of users
-- [ ] Review Supabase edge functions for batch processing efficiency
-
-### Real-Time Transit Integration
-- [ ] Integrate [TfNSW GTFS Realtime Trip Updates API](https://opendata.transport.nsw.gov.au/data/dataset/public-transport-realtime-trip-update-v2)
-- [ ] Show real-time train/metro arrivals for each Park&Ride facility
-- [ ] Display service alerts and delays affecting nearby stations
-- [ ] Add trip planning suggestions combining parking and transit
-
-### Traffic & Navigation
-- [x] Add live traffic information from user location to selected facility
-~~- [ ] Display traffic status indicators (light, moderate, heavy)~~
-- [x] Show traffic-aware ETA estimates
-- [ ] Implement route alternatives based on current conditions
-
-### Smart Parking Suggestions
-- [ ] Build alternative parking recommendation engine
-- [ ] Factor in vacancy rates, traffic conditions, and distance
-- [ ] Consider historical patterns from Supabase insights
-- [ ] Add "best time to arrive" suggestions based on trend data
-
 ### Widgets
 - [x] Add home screen widgets with AppIntent configuration
 - [x] Implement widget budget tracking (60 reloads/day limit)
@@ -370,32 +332,27 @@ version.
 - [ ] Create additional widget sizes (medium, large)
 - [ ] Add lock screen widgets for quick vacancy checks
 
-### Live Activities & Notifications (v0.5.0+)
+### Live Activities & Notifications
 - [ ] Implement Live Activities for tracking selected facility availability
-  - See `Docs/LIVE_ACTIVITY_IMPLEMENTATION_PLAN.md` for detailed implementation guide
+  - See `Docs/IMPLEMENTATION_DECISION_LIVE_ACTIVITIES.md` for implementation guide
 - [ ] Add push notification support for vacancy alerts
 - [ ] Implement threshold-based notifications ("Alert when under X spaces")
-  - See `Docs/NOTIFICATION_FEATURES_PLAN.md` for detailed implementation guide
+  - See `Docs/NOTIFICATION_FEATURES_PLAN.md` for implementation guide
+
+### Real-Time Transit Integration
+- [ ] Integrate [TfNSW GTFS Realtime Trip Updates API](https://opendata.transport.nsw.gov.au/data/dataset/public-transport-realtime-trip-update-v2)
+- [ ] Show real-time train/metro arrivals for each Park&Ride facility
+- [ ] Display service alerts and delays affecting nearby stations
+- [ ] Add trip planning suggestions combining parking and transit
+
+### Smart Parking Suggestions
+- [ ] Build alternative parking recommendation engine
+- [ ] Factor in vacancy rates, traffic conditions, and distance
+- [ ] Add "best time to arrive" suggestions based on trend data
 
 ### Location Services
-- [x] Review and improve `LocationManager` implementation
 - [ ] Add background location updates for proximity alerts
 - [ ] Implement geofencing for automatic facility detection
-- [x] Add "Always Allow" location permission flow for background features
-
----
-
-## Next Steps
-
-**Current: v0.4.0 Beta**
-- Public beta release for user feedback
-- Core parking monitoring features complete
-- Widgets and background refresh ready
-
-**v0.5.0+ (Next Major Version)**:
-- Live Activities for Lock Screen/Dynamic Island
-- Push notifications for vacancy alerts
-- See documentation in `Docs/` for implementation guides
 
 ## Acknowledgments
 

@@ -9,10 +9,10 @@
 /* Begin PBXBuildFile section */
 		182A3C0E2E03BC3500E64A38 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 182A3C0D2E03BC3100E64A38 /* .gitignore */; };
 		182A3C122E03C14100E64A38 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182A3C112E03C13F00E64A38 /* Configuration.swift */; };
-		1873C89B2E56040100E2B438 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 1873C89A2E56040100E2B438 /* Supabase */; };
 		1873C8A12E568C2000E2B438 /* App Icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 1873C8A02E568C2000E2B438 /* App Icon.icon */; };
 		1873C8A22E568C2000E2B438 /* App Icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 1873C8A02E568C2000E2B438 /* App Icon.icon */; };
 		1873C8A32E568C2000E2B438 /* App Icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 1873C8A02E568C2000E2B438 /* App Icon.icon */; };
+		18E3831D2F3B1020001C2971 /* SwiftUIBackports in Frameworks */ = {isa = PBXBuildFile; productRef = 18E3831C2F3B1020001C2971 /* SwiftUIBackports */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -81,7 +81,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1873C89B2E56040100E2B438 /* Supabase in Frameworks */,
+				18E3831D2F3B1020001C2971 /* SwiftUIBackports in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -157,7 +157,7 @@
 			);
 			name = MetroParking;
 			packageProductDependencies = (
-				1873C89A2E56040100E2B438 /* Supabase */,
+				18E3831C2F3B1020001C2971 /* SwiftUIBackports */,
 			);
 			productName = MetroParking;
 			productReference = 184036F62DD9F82D009D7FBA /* MetroParking.app */;
@@ -242,7 +242,7 @@
 			mainGroup = 184036ED2DD9F82D009D7FBA;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				1873C8992E5603F600E2B438 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				18E3831B2F3B1020001C2971 /* XCRemoteSwiftPackageReference "iOS-Backports" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 184036F72DD9F82D009D7FBA /* Products */;
@@ -653,21 +653,21 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		1873C8992E5603F600E2B438 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+		18E3831B2F3B1020001C2971 /* XCRemoteSwiftPackageReference "iOS-Backports" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/supabase-community/supabase-swift.git";
+			repositoryURL = "https://github.com/superwall/iOS-Backports";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 2.5.1;
+				minimumVersion = 1.0.5;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		1873C89A2E56040100E2B438 /* Supabase */ = {
+		18E3831C2F3B1020001C2971 /* SwiftUIBackports */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 1873C8992E5603F600E2B438 /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Supabase;
+			package = 18E3831B2F3B1020001C2971 /* XCRemoteSwiftPackageReference "iOS-Backports" */;
+			productName = SwiftUIBackports;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

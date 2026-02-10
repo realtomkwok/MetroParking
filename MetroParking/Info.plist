@@ -22,6 +22,8 @@
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleGetInfoString</key>
+	<string></string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -35,6 +37,10 @@
 			</array>
 		</dict>
 	</array>
+	<key>DEV_EMAIL</key>
+	<string>tom@itsnoice.com</string>
+	<key>DEV_WEBSITE_URL</key>
+	<string>http://tomkwok.xyz</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>comgooglemaps</string>
@@ -52,6 +58,10 @@
 	<string>$(SUPABASE_PUBLISHABLE_KEY)</string>
 	<key>SUPABASE_URL</key>
 	<string>$(SUPABASE_URL)</string>
+	<key>TESTFLIGHT_URL</key>
+	<string>itms-beta://testflight.apple.com/join/yvA1uTxh</string>
+	<key>FEEDBACK_PAGE_URL</key>
+	<string></string>
 	<key>TFNSW_API_KEY</key>
 	<string>$(TFNSW_API_KEY)</string>
 	<key>UIBackgroundModes</key>

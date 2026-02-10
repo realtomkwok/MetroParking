@@ -16,7 +16,6 @@ struct FacilityList: View {
 	let groupedFacilities: [(title: String?, facilities: [ParkingFacility])]
 
 	@Binding var selectedFacility: ParkingFacility?
-	var isInteractionDisabled: Bool = false
 
 	@Environment(\.modelContext) private var modelContext
 	@Environment(FacilityManager.self) private var facilityDataMgr
@@ -98,15 +97,15 @@ extension FacilityList {
 					.isRefreshing
 			)
 		}
+		.buttonStyle(.glass)
 		.accessibilityIdentifier("facility-row-\(facility.facilityId)")
-		.disabled(isInteractionDisabled)
+		// TODO: add AccessibilityHint and AccessibilityLabel
 		.listRowInsets(
-			EdgeInsets(top: 8, leading: 8, bottom: 4, trailing: 8)
+			EdgeInsets(top: 8, leading: 16, bottom: 4, trailing: 16)
 		)
 		.listRowBackground(Color.clear)
 		.listRowSeparator(.hidden)
 		.matchedTransitionSource(id: facility.facilityId, in: nameSpace)
-		.buttonStyle(.glass)
 		.swipeActions(edge: .leading) {
 			leadingSwipeAction(for: facility)
 		}
@@ -170,7 +169,7 @@ extension FacilityList {
 			Spacer()
 		}
 		.padding(.vertical, 4)
-		.opacity(facility.refreshStatus.staleness.opacity)
+		.opacity(facility.refreshStatus.staleness.displayOpacity)
 		.animation(.smooth, value: facility.isFavourite)
 		.animation(.smooth, value: staleness)
 	}
@@ -187,7 +186,7 @@ extension FacilityList {
 			}
 		} label: {
 			Label(
-				facility.isFavourite ? "Unpin" : "Pin",
+				facility.isFavourite ? .actionButtonUnpin : .actionButtonPin,
 				systemImage: facility.isFavourite ? "star.slash" : "star.fill"
 			)
 			.labelStyle(.iconOnly)
@@ -204,4 +203,62 @@ extension FacilityList {
 				.transition(.blurReplace.combined(with: .move(edge: .top)))
 		}
 	}
+}
+
+// MARK: - Previews
+
+#Preview("Grouped Facilities") {
+	@Previewable @Namespace var namespace
+	@Previewable @State var selectedFacility: ParkingFacility?
+
+	let favourites = ParkingFacility.sampleFavorites()
+	let others = ParkingFacility.samples(count: 5)
+
+	NavigationStack {
+		FacilityList(
+			nameSpace: namespace,
+			groupedFacilities: [
+				(title: "Pinned", facilities: favourites),
+				(title: "Nearby", facilities: others)
+			],
+			selectedFacility: $selectedFacility
+		)
+		.navigationTitle("Facilities")
+	}
+	.environment(FacilityManager.shared)
+	.modelContainer(.preview())
+}
+
+#Preview("Single Section") {
+	@Previewable @Namespace var namespace
+	@Previewable @State var selectedFacility: ParkingFacility?
+
+	NavigationStack {
+		FacilityList(
+			nameSpace: namespace,
+			groupedFacilities: [
+				(title: nil, facilities: ParkingFacility.samples(count: 8))
+			],
+			selectedFacility: $selectedFacility
+		)
+		.navigationTitle("All Facilities")
+	}
+	.environment(FacilityManager.shared)
+	.modelContainer(.preview())
+}
+
+#Preview("Empty State") {
+	@Previewable @Namespace var namespace
+	@Previewable @State var selectedFacility: ParkingFacility?
+
+	NavigationStack {
+		FacilityList(
+			nameSpace: namespace,
+			groupedFacilities: [],
+			selectedFacility: $selectedFacility
+		)
+		.navigationTitle("No Facilities")
+	}
+	.environment(FacilityManager.shared)
+	.modelContainer(.emptyPreview())
 }

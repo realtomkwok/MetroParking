@@ -69,6 +69,10 @@ struct MetroParkingApp: App {
 			UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
 			UserDefaults.standard.synchronize()
 		}
+
+		if arguments.contains("DISABLE_ANIMATIONS") {
+			UIView.setAnimationsEnabled(false)
+		}
 	}
 
 	var body: some Scene {

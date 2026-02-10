@@ -50,8 +50,8 @@ extension MapCameraManager {
 
 		let coordinates = facilities.map { facility in
 			CLLocationCoordinate2D(
-				latitude: facility.latitude,
-				longitude: facility.longitude
+				latitude: facility.location.latitude,
+				longitude: facility.location.longitude
 			)
 		}
 
@@ -224,8 +224,8 @@ extension MapCameraManager {
 	func focusOnFacility(_ facility: ParkingFacility) {
 		updateCameraPosition(
 			trueCentre: CLLocationCoordinate2D(
-				latitude: facility.latitude,
-				longitude: facility.longitude
+				latitude: facility.location.latitude,
+				longitude: facility.location.longitude
 			),
 			context: .single
 		)
@@ -234,8 +234,8 @@ extension MapCameraManager {
 	func zoomToFacilities(_ facilities: [ParkingFacility]) {
 		let coordinates = facilities.map { facility in
 			CLLocationCoordinate2D(
-				latitude: facility.latitude,
-				longitude: facility.longitude
+				latitude: facility.location.latitude,
+				longitude: facility.location.longitude
 			)
 		}
 		updateCameraPosition(

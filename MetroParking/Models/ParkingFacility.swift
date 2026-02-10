@@ -28,8 +28,6 @@ final class ParkingFacility {
 
 	// User preferences
 	var isFavourite: Bool
-	/// Future (v0.5.0+): Threshold for vacancy notifications
-	var notificationThreshold: Int?
 	var lastVisited: Date?
 
 	// Occupancy cache - stored properties
@@ -37,7 +35,6 @@ final class ParkingFacility {
 	private var _cacheTimestamp: Date = Date.distantPast
 
 	// Refresh tracking - stored properties
-	private var _lastRefreshed: Date = Date.distantPast
 	private var _lastUpdated: Date = Date.distantPast
 	private var _retrievalFailures: Int = 0
 	private var _lastFailureDate: Date?
@@ -50,6 +47,7 @@ final class ParkingFacility {
 	// Display name cache - avoids regex parsing on every access
 	private var _displayTitle: String = ""
 	private var _displaySubtitle: String = ""
+	private var _displayFullName: String = ""
 
 	@Relationship(deleteRule: .cascade, inverse: \ParkingZone.facility)
 	var zones: [ParkingZone] = []
@@ -68,28 +66,7 @@ final class ParkingFacility {
 	/// Cached MapItem - not persisted to SwiftData
 	@Transient private var _cachedMapItem: MKMapItem?
 
-	// MARK: - Initialisers
-
-	// From API
-	init(from apiResponse: ParkingAPIResponse) {
-		self.facilityId = apiResponse.facilityId
-		self.name = apiResponse.facilityName
-		self._suburb = apiResponse.location.suburb
-		self._address = apiResponse.location.address
-		self._latitude = Double(apiResponse.location.latitude) ?? 0
-		self._longitude = Double(apiResponse.location.longitude) ?? 0
-		self.totalSpaces = Int(apiResponse.spots) ?? 0
-
-		self._lastUpdated =
-			Self.iso8601Formatter.date(from: apiResponse.messageDate) ?? Date()
-		self.lastVisited = nil
-
-		self.isFavourite = false
-		self.notificationThreshold = nil
-
-		// Parse display name once during initialization
-		self._parseAndCacheDisplayName()
-	}
+	// MARK: - Initialiser
 
 	// Direct init for static facilities (initial load)
 	init(
@@ -111,20 +88,23 @@ final class ParkingFacility {
 		self._lastUpdated = Date.distantPast
 		self.lastVisited = nil
 		self.isFavourite = false
-		self.notificationThreshold = nil
 
-		// Parse display name once during initialization
+		/// Parse display name once during initialisation
 		self._parseAndCacheDisplayName()
 	}
 
 	/// Parses the facility name and caches the display title/subtitle
-	/// Called once during initialization to avoid regex parsing on every access
+	/// Called once during initialisation to avoid regex parsing on every access
 	private func _parseAndCacheDisplayName() {
 		let stripped = name.removePrefix("Park&Ride - ").localizedCapitalized
 
+		_displayFullName = stripped
+
 		if let match = stripped.firstMatch(of: Self.displayNamePattern) {
 			_displayTitle = String(match.1).trimmingCharacters(in: .whitespaces)
-			_displaySubtitle = String(match.2).trimmingCharacters(in: .whitespaces)
+			_displaySubtitle = String(match.2).trimmingCharacters(
+				in: .whitespaces
+			)
 		} else {
 			_displayTitle = stripped
 			_displaySubtitle = ""
@@ -134,7 +114,7 @@ final class ParkingFacility {
 	// MARK: - Nested Types
 
 	/// Location information for a parking facility
-	struct Location {
+	struct LocationInfo {
 		let coordinate: CLLocationCoordinate2D
 		let suburb: String
 		let address: String
@@ -176,7 +156,7 @@ final class ParkingFacility {
 		case stale  // Beyond cache validity, needs refresh
 
 		/// Visual opacity for displaying stale data
-		var opacity: Double {
+		var displayOpacity: Double {
 			switch self {
 			case .fresh: return 1.0
 			case .stale: return 0.6
@@ -194,15 +174,14 @@ final class ParkingFacility {
 
 	/// Refresh and update tracking information
 	struct RefreshStatus {
-		let lastRefreshed: Date
 		let lastUpdated: Date
 		let failures: Int
 		let lastFailureDate: Date?
 		let cacheTimestamp: Date
 		let tier: RefreshTier
 
-		var timeSinceRefresh: TimeInterval {
-			Date().timeIntervalSince(lastRefreshed)
+		var timeSinceLastUpdate: TimeInterval {
+			Date().timeIntervalSince(lastUpdated)
 		}
 
 		var hasRecentFailures: Bool {
@@ -271,8 +250,8 @@ final class ParkingFacility {
 	// MARK: - Computed Properties
 
 	/// Consolidated location information
-	var location: Location {
-		Location(
+	var location: LocationInfo {
+		LocationInfo(
 			coordinate: CLLocationCoordinate2D(
 				latitude: _latitude,
 				longitude: _longitude
@@ -312,7 +291,6 @@ final class ParkingFacility {
 	/// Refresh status information
 	var refreshStatus: RefreshStatus {
 		RefreshStatus(
-			lastRefreshed: _lastRefreshed,
 			lastUpdated: _lastUpdated,
 			failures: _retrievalFailures,
 			lastFailureDate: _lastFailureDate,
@@ -322,17 +300,18 @@ final class ParkingFacility {
 	}
 
 	/// Returns the parsed display name (title and subtitle)
-	/// Values are cached during initialization for optimal performance
-	var displayName: (title: String, subtitle: String) {
-		return (title: _displayTitle, subtitle: _displaySubtitle)
+	/// Values are cached during initialisation for optimal performance
+	/// Falls back to re-parsing if cache is empty (e.g., after SwiftData deserialization)
+	var displayName: (title: String, subtitle: String, full: String) {
+		// SwiftData doesn't call init() on deserialization, so cached values may be empty
+		if _displayFullName.isEmpty {
+			_parseAndCacheDisplayName()
+		}
+		return (
+			title: _displayTitle, subtitle: _displaySubtitle,
+			full: _displayFullName
+		)
 	}
-
-	// Convenience accessors for backward compatibility and cleaner access
-	var coordinate: CLLocationCoordinate2D { location.coordinate }
-	var suburb: String { _suburb }
-	var address: String { _address }
-	var latitude: Double { _latitude }
-	var longitude: Double { _longitude }
 
 	/// Distance for sorting purposes (returns the cached route distance, or Double.infinity if not available)
 	/// This allows sorting by distance with nil values appearing at the end
@@ -389,6 +368,19 @@ final class ParkingFacility {
 // MARK: - Data Refresh
 extension ParkingFacility {
 
+	// TODO: Should remove the totalSpaces parameter?
+	func updateOccupancy(occupied: Int, totalSpaces: Int) {
+		_cachedOccupied = occupied
+		_cacheTimestamp = Date()
+		_lastUpdated = Date()
+		_retrievalFailures = 0
+		_lastFailureDate = nil
+
+		if totalSpaces != self.totalSpaces {
+			self.totalSpaces = totalSpaces
+		}
+	}
+
 	/// Returns a cached or newly created MKMapItem using local data only.
 	/// This method is SYNCHRONOUS and does not make network requests.
 	/// Use this for navigation and directions to avoid UI hangs.
@@ -400,7 +392,10 @@ extension ParkingFacility {
 		let mapItem: MKMapItem
 		let location = CLLocation(latitude: _latitude, longitude: _longitude)
 		let fullAddress = "\(_address), \(_suburb)"
-		let mkAddress = MKAddress(fullAddress: fullAddress, shortAddress: _address)
+		let mkAddress = MKAddress(
+			fullAddress: fullAddress,
+			shortAddress: _address
+		)
 		mapItem = MKMapItem(location: location, address: mkAddress)
 		mapItem.name = displayName.title
 
@@ -416,7 +411,7 @@ extension ParkingFacility {
 	}
 
 	/// Determines if this facility should be refreshed based on app state and cache validity
-	/// Centralizes the refresh decision logic used across FacilityManager and BackgroundTaskManager
+	/// Centralises the refresh decision logic used across FacilityManager and BackgroundTaskManager
 	/// - Parameters:
 	///   - appState: Current app lifecycle state (active uses foreground cache validity, background uses background cache validity)
 	///   - forced: Whether to force refresh regardless of cache (applies only to watched facilities)
@@ -429,25 +424,6 @@ extension ParkingFacility {
 
 		// Otherwise check cache validity for current app state
 		return !vacancy.isCacheValid(for: appState)
-	}
-
-	func updateFromAPI(_ apiResponse: ParkingAPIResponse) {
-		// Update occupancy (single source of truth)
-		let newOccupied = Int(apiResponse.occupancy.total ?? "0") ?? 0
-		_cachedOccupied = newOccupied
-		_cacheTimestamp = Date()
-
-		// Update persistent data
-		_lastUpdated = Date()
-		_lastRefreshed = Date()
-		_retrievalFailures = 0
-		_lastFailureDate = nil
-
-		// Update total spaces if it changed
-		let newTotalSpaces = Int(apiResponse.spots) ?? self.totalSpaces
-		if newTotalSpaces != self.totalSpaces {
-			self.totalSpaces = newTotalSpaces
-		}
 	}
 
 	func markRefreshFailed() {
@@ -522,14 +498,16 @@ enum AvailabilityStatus: CaseIterable {
 
 	var text: String {
 		switch self {
-		case .available: return "Available"
-		case .almostFull: return "Almost Full"
-		case .full: return "Full"
-		case .noData: return "No Data"
+			case .available: return String(localized: .availabilityStatusAvailable)
+			case .almostFull: return String(localized: .availabilityStatusAlmostFull)
+			case .full: return String(localized: .availabilityStatusFull)
+			case .noData: return String(localized: .availabilityStatusNoData)
 		}
 	}
 
-	static let gradient = Gradient(colors: [available.fill, almostFull.fill, full.fill])
+	static let gradient = Gradient(colors: [
+		available.fill, almostFull.fill, full.fill,
+	])
 
 	/// Returns all status colours including noData
 	static var allColors: [Color] {

@@ -4,13 +4,10 @@
 <dict>
 	<key>NSPrivacyTracking</key>
 	<false/>
-
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
-
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
-		<!-- UserDefaults API for App Groups shared data -->
 		<dict>
 			<key>NSPrivacyAccessedAPIType</key>
 			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
@@ -20,8 +17,20 @@
 			</array>
 		</dict>
 	</array>
-
 	<key>NSPrivacyCollectedDataTypes</key>
-	<array/>
+	<array>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePreciseLocation</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

@@ -13,9 +13,6 @@ import OSLog
 /// **Note:** Core API logic is duplicated in `WidgetAPIService` (widget extension).
 /// This is necessary because widget extensions can't import main app code.
 /// Keep both implementations synchronised when making changes to API calls.
-///
-/// **Future:** Consider moving shared API logic to a framework target (v0.6.0+)
-/// to eliminate duplication while maintaining proper separation of concerns.
 class ParkingAPIService {
 	static let shared = ParkingAPIService()
 
@@ -27,7 +24,7 @@ class ParkingAPIService {
 
 	// MARK: - API Methods
 
-	func fetchFacility(id: String) async throws -> ParkingAPIResponse {
+	func fetchFacility(id: String) async throws -> ParkingApiModel {
 		// Rate limiting is now handled by APIDispatcher at orchestration level
 
 		// Record API usage
@@ -88,10 +85,10 @@ class ParkingAPIService {
 		}
 	}
 
-	func decode(_ data: Data, facilityId: String) throws -> ParkingAPIResponse {
+	func decode(_ data: Data, facilityId: String) throws -> ParkingApiModel {
 
 		if let response = try? decoder.decode(
-			ParkingAPIResponse.self,
+			ParkingApiModel.self,
 			from: data
 		) {
 			return response
@@ -100,7 +97,7 @@ class ParkingAPIService {
 		// Fallback to dictionary format decoder
 		do {
 			let dict = try decoder.decode(
-				[String: ParkingAPIResponse] .self,
+				[String: ParkingApiModel] .self,
 				from: data
 			)
 

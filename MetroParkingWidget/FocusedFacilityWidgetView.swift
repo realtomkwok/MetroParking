@@ -46,7 +46,7 @@ struct FocusedFacilityWidgetView: View {
 	@ViewBuilder
 	private func backgroundView() -> some View {
 		VStack {
-			Image("WidgetBackground/Signs")
+			Image("WidgetBackground_Signs")
 				.resizable()
 				.widgetAccentedRenderingMode(.accentedDesaturated)
 				.scaleEffect(1.2, anchor: .bottomTrailing)
@@ -105,7 +105,7 @@ struct FocusedFacilityWidgetView: View {
 							.foregroundStyle(.secondary)
 
 						HStack(alignment: .firstTextBaseline, spacing: 4) {
-							Text("Tap to refresh")
+							Text(.widgetHintTapToRefresh)
 								.font(.headline)
 								.fontWeight(.semibold)
 								.foregroundStyle(
@@ -117,7 +117,7 @@ struct FocusedFacilityWidgetView: View {
 						}
 
 						// Show age below
-						Text("Updated \(facility.timeSinceUpdate)")
+						Text(.dateFormatUpdated(facility.timeSinceUpdate))
 							.font(.caption)
 							.foregroundStyle(.secondary)
 							.opacity(0.7)
@@ -139,15 +139,11 @@ struct FocusedFacilityWidgetView: View {
 										value: Double(facility.availableSpaces)
 									)
 								)
-							Text("/\(facility.totalSpaces)")
+							Text(.facilityDetailLabelSpaces)
 								.font(.subheadline)
 								.opacity(0.7)
-								.contentTransition(
-									.numericText(
-										value: Double(facility.totalSpaces)
-									)
-								)
 								.foregroundStyle(.secondary)
+								.allowsTightening(true)
 						}
 
 						HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -211,16 +207,17 @@ struct FocusedFacilityWidgetView: View {
 			backgroundView()
 
 			VStack(alignment: .center, spacing: 4) {
-								Image(systemName: "questionmark.circle")
-									.font(.largeTitle)
-									.foregroundStyle(.secondary)
+				Image(systemName: "questionmark.diamond.fill")
+					.font(.largeTitle)
+					.foregroundStyle(.secondary)
 
-				Text("No carpark selected")
+				Text(.widgetEmptyNotSelected)
 					.font(.subheadline)
 					.fontWeight(.semibold)
 					.foregroundStyle(.primary)
+					.multilineTextAlignment(.center)
 
-				Text("Long press to select")
+				Text(.widgetHintLongPressToEdit)
 					.font(.caption)
 					.foregroundStyle(.secondary)
 					.multilineTextAlignment(.center)

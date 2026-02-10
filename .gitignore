@@ -146,3 +146,4 @@ Temporary Items
 # Uncomment specific config files you want to ignore:
 # Config.xcconfig
 # *.xcconfig
+MetroParking.xcodeproj/project.pbxproj

@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+import SwiftUI
 
 /// Protocol for types that can be displayed in a labeled picker
 protocol PickerOptionDisplayable {
@@ -16,30 +17,31 @@ protocol PickerOptionDisplayable {
 
 /// Protocol specifically for options with basic display properties (title and systemImage)
 protocol BasicDisplayable {
-	var title: String { get }
+	var title: LocalizedStringResource { get }
 	var systemImage: String { get }
 }
 
 struct SortingOptionDisplay: BasicDisplayable {
-	let title: String
+	let title: LocalizedStringResource
 	let systemImage: String
-	let ascendingSubtitle: String
-	let descendingSubtitle: String
+	let ascendingSubtitle: LocalizedStringResource
+	let descendingSubtitle: LocalizedStringResource
 
 	/// Returns the subtitle for the current sort order
-	func subtitle(ascending: Bool) -> String {
+	func subtitle(ascending: Bool) -> LocalizedStringResource {
 		ascending ? ascendingSubtitle : descendingSubtitle
 	}
 }
 
 struct SortingOrderDisplay: BasicDisplayable {
-	let title: String
+	let title: LocalizedStringResource
 	let systemImage: String
 }
 
 struct FilterOptionDisplay: BasicDisplayable {
-	let title: String
+	let title: LocalizedStringResource
 	let systemImage: String
+	let systemImageAfter: String
 }
 
 enum SortingOption: String, CaseIterable, Codable, Hashable,
@@ -53,26 +55,26 @@ enum SortingOption: String, CaseIterable, Codable, Hashable,
 		switch self {
 		case .name:
 			SortingOptionDisplay(
-				title: "Name",
+				title: LocalizedStringResource.sortFilterOptionName,
 				systemImage: "textformat",
-				ascendingSubtitle: "A to Z",
-				descendingSubtitle: "Z to A"
+				ascendingSubtitle: LocalizedStringResource.sortFilterSubtitleAToZ,
+				descendingSubtitle: LocalizedStringResource.sortFilterSubtitleZToA
 			)
 		case .lastUpdated:
 			SortingOptionDisplay(
-				title: "Last Updated",
+				title: LocalizedStringResource.sortFilterOptionLastUpdated,
 				systemImage:
 					"clock.arrow.trianglehead.2.counterclockwise.rotate.90",
-				ascendingSubtitle: "Oldest First",
-				descendingSubtitle: "Newest First"
+				ascendingSubtitle: LocalizedStringResource.sortFilterSubtitleOldestFirst,
+				descendingSubtitle: LocalizedStringResource.sortFilterSubtitleNewestFirst
 			)
 		case .distance:
 			SortingOptionDisplay(
-				title: "Distance",
+				title: LocalizedStringResource.sortFilterOptionDistance,
 				systemImage:
 					"point.topleft.filled.down.to.point.bottomright.curvepath",
-				ascendingSubtitle: "Nearest First",
-				descendingSubtitle: "Farthest First"
+				ascendingSubtitle: LocalizedStringResource.sortFilterSubtitleNearestFirst,
+				descendingSubtitle: LocalizedStringResource.sortFilterSubtitleFarthestFirst
 			)
 		}
 	}
@@ -204,12 +206,12 @@ enum SortingOrder: String, CaseIterable, Codable, Hashable,
 		switch self {
 		case .ascending:
 			return SortingOrderDisplay(
-				title: "Ascending",
+				title: LocalizedStringResource.sortFilterOrderAscending,
 				systemImage: "arrow.up"
 			)
 		case .descending:
 			return SortingOrderDisplay(
-				title: "Descending",
+				title: LocalizedStringResource.sortFilterOrderDescending,
 				systemImage: "arrow.down"
 			)
 		}
@@ -237,13 +239,18 @@ enum FilterOption: String, CaseIterable, Codable, Hashable,
 
 		case .pinned:
 			return
-				FilterOptionDisplay(title: "Pinned", systemImage: "star")
+				FilterOptionDisplay(
+					title: LocalizedStringResource.sortFilterFilterOptionPinned,
+					systemImage: "star",
+					systemImageAfter: "star.fill"
+				)
 
 		case .available:
 			return
 				FilterOptionDisplay(
-					title: "Available",
-					systemImage: "checkmark.circle.fill"
+					title: LocalizedStringResource.sortFilterFilterOptionAvailable,
+					systemImage: "checkmark.circle",
+					systemImageAfter: "checkmark.circle.fill"
 				)
 
 		}
@@ -318,7 +325,7 @@ extension Array where Element == ParkingFacility {
 			)
 				|| facility.displayName.subtitle
 					.localizedCaseInsensitiveContains(searchText)
-				|| facility.suburb.localizedCaseInsensitiveContains(searchText)
+			|| facility.location.suburb.localizedCaseInsensitiveContains(searchText)
 		}
 	}
 

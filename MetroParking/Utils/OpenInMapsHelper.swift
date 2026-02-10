@@ -12,10 +12,14 @@ import UIKit
 /// Opens Apple Maps with the specified map item
 /// - Parameter mapItem: The map item to display in Apple Maps
 func openInMaps(_ mapItem: MKMapItem) {
-	mapItem.openInMaps(launchOptions: [
-		MKLaunchOptionsMapCenterKey: NSValue(mkCoordinate: mapItem.placemark.coordinate),
+	mapItem.openInMaps(
+launchOptions: [
+	MKLaunchOptionsMapCenterKey: NSValue(
+		mkCoordinate: mapItem.location.coordinate
+	),
 		MKLaunchOptionsMapSpanKey: NSValue(mkCoordinateSpan: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01))
-	])
+	]
+)
 }
 
 /// Opens Apple Maps with directions from the current location to the specified map item

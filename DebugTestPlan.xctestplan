@@ -9,7 +9,6 @@
     }
   ],
   "defaultOptions" : {
-    "areLocalizationScreenshotsEnabled" : true,
     "locationScenario" : {
       "identifier" : "Sydney, Australia",
       "referenceType" : "built-in"
@@ -43,10 +42,8 @@
       }
     },
     {
+      "enabled" : false,
       "parallelizable" : true,
-      "skippedTests" : [
-        "ScreenshotTests"
-      ],
       "target" : {
         "containerPath" : "container:MetroParking.xcodeproj",
         "identifier" : "1840370E2DD9F82F009D7FBA",

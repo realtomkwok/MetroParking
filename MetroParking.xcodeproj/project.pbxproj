@@ -60,6 +60,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		180974D62F3AE67C00E48620 /* ProductionTestPlan.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = ProductionTestPlan.xctestplan; sourceTree = "<group>"; };
 		180F1B5D2EE659EF00A72037 /* SortingFiltering Architecture.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "SortingFiltering Architecture.md"; sourceTree = "<group>"; };
 		180F1B5E2EE659EF00A72037 /* CONFIGURATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONFIGURATION.md; sourceTree = "<group>"; };
 		180F1BC02EE6C21600A72037 /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLAUDE.md; sourceTree = SOURCE_ROOT; };
@@ -94,7 +95,7 @@
 		1873C8A92E56ACE400E2B438 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		189811DD2EFB56D400B7440D /* NEARBY_FACILITIES_IMPLEMENTATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = NEARBY_FACILITIES_IMPLEMENTATION.md; sourceTree = "<group>"; };
 		18CC02462EE52D5100A8FDC0 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		18D3AACF2F3ABB1700789316 /* MetroParking.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = MetroParking.xctestplan; sourceTree = "<group>"; };
+		18D3AACF2F3ABB1700789316 /* DebugTestPlan.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = DebugTestPlan.xctestplan; sourceTree = "<group>"; };
 		378A5FD72E0EE04F006FEBA6 /* MetroParking.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = MetroParking.icon; path = Icon/MetroParking.icon; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -291,7 +292,8 @@
 		184036ED2DD9F82D009D7FBA = {
 			isa = PBXGroup;
 			children = (
-				18D3AACF2F3ABB1700789316 /* MetroParking.xctestplan */,
+				180974D62F3AE67C00E48620 /* ProductionTestPlan.xctestplan */,
+				18D3AACF2F3ABB1700789316 /* DebugTestPlan.xctestplan */,
 				182A3C822E0CAE5500E64A38 /* MetroParking */,
 				184037082DD9F82F009D7FBA /* MetroParkingTests */,
 				184037122DD9F82F009D7FBA /* MetroParkingUITests */,

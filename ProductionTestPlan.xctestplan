@@ -1,0 +1,32 @@
+{
+  "configurations" : [
+    {
+      "id" : "970EDB88-9817-4158-A6C9-633C6A690E89",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "skippedTests" : {
+        "suites" : [
+          {
+            "name" : "MetroParkingTests"
+          }
+        ]
+      },
+      "target" : {
+        "containerPath" : "container:MetroParking.xcodeproj",
+        "identifier" : "184037042DD9F82F009D7FBA",
+        "name" : "MetroParkingTests"
+      }
+    }
+  ],
+  "version" : 2
+}

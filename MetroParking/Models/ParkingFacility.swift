@@ -368,6 +368,7 @@ final class ParkingFacility {
 // MARK: - Data Refresh
 extension ParkingFacility {
 
+	// TODO: Should remove the totalSpaces parameter?
 	func updateOccupancy(occupied: Int, totalSpaces: Int) {
 		_cachedOccupied = occupied
 		_cacheTimestamp = Date()

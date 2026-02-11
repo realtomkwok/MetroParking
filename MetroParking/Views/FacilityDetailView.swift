@@ -64,7 +64,7 @@ extension FacilityDetailView {
 				selectedFacility: facility,
 				nearbyFacilities: nearbyFacilities
 			)
-			.scrollTargetLayout()
+			//			.scrollTargetLayout()
 			.accessibilityIdentifier("detail-sections")
 			.backport.concentricClipShape()
 			.zIndex(1)
@@ -251,7 +251,8 @@ extension FacilityDetailView {
 				}
 			} label: {
 				Label(
-					facility.isFavourite ? .actionButtonUnpin : .actionButtonPin,
+					facility.isFavourite
+						? .actionButtonUnpin : .actionButtonPin,
 					systemImage: facility.isFavourite
 						? "star.slash.fill" : "star"
 				)
@@ -399,7 +400,12 @@ struct DetailSections: View {
 			if timeInterval < 60 {
 				Text(.dateLabelJustNow)
 			} else {
-				Text(.dateFormatUpdated(selectedFacility.refreshStatus.lastUpdated.formatted(.relative(presentation: .named, unitsStyle: .narrow)))
+				Text(
+					.dateFormatUpdated(
+						selectedFacility.refreshStatus.lastUpdated.formatted(
+							.relative(presentation: .named, unitsStyle: .narrow)
+						)
+					)
 				)
 			}
 		}
@@ -535,14 +541,20 @@ struct DetailSections: View {
 
 					/// Future: Detect installed map apps and provide selection menu
 					Menu {
-						Button(.navigationOptionAppleMaps, systemImage: "map.fill") {
+						Button(
+							.navigationOptionAppleMaps,
+							systemImage: "map.fill"
+						) {
 							Task {
 								let mapItem =
 									await selectedFacility.getMapItem()
 								openInMapsWithDirections(mapItem)
 							}
 						}
-						Button(.navigationOptionGoogleMaps, systemImage: "g.circle.fill") {
+						Button(
+							.navigationOptionGoogleMaps,
+							systemImage: "g.circle.fill"
+						) {
 							openInGoogleMaps(
 								coordinate: selectedFacility.location
 									.coordinate,
@@ -684,12 +696,14 @@ struct DetailSections: View {
 						}
 
 						Image(systemName: "chevron.forward")
-							.foregroundStyle(Color(uiColor: .tertiaryLabel))
+							.foregroundStyle(.tertiary)
 					}
 					.padding(.vertical, 4)
+					.contentShape(.rect)
 				}
-				.contentShape(.containerRelative)
 				.buttonStyle(.plain)
+				.foregroundStyle(.primary)
+
 
 				if facility.facilityId != nearbyFacilities.last?.facilityId {
 					Divider()
@@ -720,7 +734,9 @@ struct DetailSections: View {
 			)
 			DetailCard(
 				label: sectionLabel(
-					heading: String(localized: .facilityDetailSectionNearbyParking),
+					heading: String(
+						localized: .facilityDetailSectionNearbyParking
+					),
 					icon: "parkingsign.circle.fill",
 
 				),

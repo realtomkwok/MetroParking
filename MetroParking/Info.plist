@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>PRIVACY_TERMS_PAGE_URL</key>
+	<string>https://tomkwok.notion.site/metro-parking-privacy-policy</string>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.tomkwok.MetroParking.refresh</string>
@@ -40,7 +42,9 @@
 	<key>DEV_EMAIL</key>
 	<string>tom@itsnoice.com</string>
 	<key>DEV_WEBSITE_URL</key>
-	<string>http://tomkwok.xyz</string>
+	<string>https://tomkwok.xyz</string>
+	<key>FEEDBACK_FORM_URL</key>
+	<string>https://tomkwok.notion.site/2ff063c90271801ab7f6ef7f18d6f206</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>comgooglemaps</string>
@@ -60,8 +64,8 @@
 	<string>$(SUPABASE_URL)</string>
 	<key>TESTFLIGHT_URL</key>
 	<string>itms-beta://testflight.apple.com/join/yvA1uTxh</string>
-	<key>FEEDBACK_PAGE_URL</key>
-	<string></string>
+	<key>MKT_PAGE_URL</key>
+	<string>https://tomkwok.notion.site/metro-parking</string>
 	<key>TFNSW_API_KEY</key>
 	<string>$(TFNSW_API_KEY)</string>
 	<key>UIBackgroundModes</key>

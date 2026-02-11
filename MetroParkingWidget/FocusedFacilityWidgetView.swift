@@ -134,6 +134,7 @@ struct FocusedFacilityWidgetView: View {
 										by: 0.4
 									)
 								)
+								.allowsTightening(true)
 								.contentTransition(
 									.numericText(
 										value: Double(facility.availableSpaces)

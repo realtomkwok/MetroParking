@@ -12,12 +12,10 @@ import SwiftUIBackports
 
 /// Future features: Live Activity/notification swipe actions (v0.5.0+)
 struct FacilityList: View {
-	var nameSpace: Namespace.ID
+	var namespace: Namespace.ID
 	let groupedFacilities: [(title: String?, facilities: [ParkingFacility])]
 
 	@Binding var selectedFacility: ParkingFacility?
-
-	@Environment(\.modelContext) private var modelContext
 	@Environment(FacilityManager.self) private var facilityDataMgr
 
 	// MARK: - Identifiable Section
@@ -60,12 +58,19 @@ struct FacilityList: View {
 				Section {
 					ForEach(section.facilities, id: \.persistentModelID) {
 						facility in
-						ListRow(for: facility)
+						ListRow(
+							facility: facility,
+							namespace: namespace,
+							selectedFacility: $selectedFacility
+						)
 					}
 				} header: {
 					SectionHeader(title: section.title)
 				}
 			}
+		}
+		.refreshable {
+			await facilityDataMgr.performLoad(forced: true)
 		}
 		.accessibilityIdentifier("facility-list")
 		.listStyle(.plain)
@@ -75,9 +80,9 @@ struct FacilityList: View {
 			value: sectionStructureHash
 		)
 		.navigationDestination(item: $selectedFacility) { facility in
-			FacilityDetailView(namespace: nameSpace, facility: facility)
+			FacilityDetailView(namespace: namespace, facility: facility)
 				.navigationTransition(
-					.zoom(sourceID: facility.facilityId, in: nameSpace)
+					.zoom(sourceID: facility.facilityId, in: namespace)
 				)
 		}
 	}
@@ -86,112 +91,123 @@ struct FacilityList: View {
 // MARK: - View Components
 extension FacilityList {
 
-	@ViewBuilder
-	private func ListRow(for facility: ParkingFacility) -> some View {
-		Button {
-			selectedFacility = facility
-		} label: {
-			FacilityRowView(
-				facility: facility,
-				isRefreshing: facilityDataMgr
-					.isRefreshing
-			)
-		}
-		.buttonStyle(.glass)
-		.accessibilityIdentifier("facility-row-\(facility.facilityId)")
-		// TODO: add AccessibilityHint and AccessibilityLabel
-		.listRowInsets(
-			EdgeInsets(top: 8, leading: 16, bottom: 4, trailing: 16)
-		)
-		.listRowBackground(Color.clear)
-		.listRowSeparator(.hidden)
-		.matchedTransitionSource(id: facility.facilityId, in: nameSpace)
-		.swipeActions(edge: .leading) {
-			leadingSwipeAction(for: facility)
-		}
-	}
+	struct ListRow: View {
+		let facility: ParkingFacility
+		let namespace: Namespace.ID
 
-	@ViewBuilder
-	func FacilityRowView(facility: ParkingFacility, isRefreshing: Bool)
+		@Environment(\.modelContext) private var modelContext
+		@Environment(FacilityManager.self) private var facilityDataMgr
+
+		@Binding var selectedFacility: ParkingFacility?
+
+		@ViewBuilder
+		private func leadingSwipeAction(for facility: ParkingFacility)
 		-> some View
-	{
+		{
+			Button(role: facility.isFavourite ? .destructive : nil) {
+				withAnimation(.smooth) {
+					facility.isFavourite.toggle()
+						// Save the context to persist the change
+					try? modelContext.save()
+				}
+			} label: {
+				Label(
+					facility.isFavourite ? .actionButtonUnpin : .actionButtonPin,
+					systemImage: facility.isFavourite ? "star.slash" : "star.fill"
+				)
+				.labelStyle(.iconOnly)
+			}
+			.tint(facility.isFavourite ? .red : .yellow)
+		}
 
-		let staleness = facility.refreshStatus.staleness
-
-		HStack(alignment: .center, spacing: 12) {
-			VStack(alignment: .center) {
-				ParkingProgressGauge(
-					occupancy: facility.vacancy.occupancy,
-					available: facility.vacancy.available,
-					total: facility.totalSpaces,
-					availabilityStatus: facility.availabilityStatus,
-					isRefreshing: isRefreshing
-					&& staleness == .stale
+		var body: some View {
+			Button {
+				selectedFacility = facility
+			} label: {
+				rowContent(
+					facility: facility,
+					isRefreshing: facilityDataMgr.isRefreshing,
+					staleness: facility.refreshStatus.staleness
 				)
 			}
-			.padding(8)
-			.background(
-				.ultraThinMaterial,
-				in: .circle
+			.buttonStyle(.glass)
+			.accessibilityIdentifier("facility-row-\(facility.facilityId)")
+				// TODO: add AccessibilityHint and AccessibilityLabel
+			.listRowInsets(
+				EdgeInsets(top: 8, leading: 16, bottom: 4, trailing: 16)
 			)
-
-			VStack(alignment: .leading) {
-				HStack(alignment: .center, spacing: 4) {
-					Text(facility.displayName.title)
-						.multilineTextAlignment(.leading)
-						.font(.headline)
-						.fontWeight(.bold)
-						.contentTransition(.identity)
-
-					if facility.isFavourite {
-						Image(systemName: "star.fill")
-							.font(.caption2)
-							.foregroundStyle(.tertiary)
-							.transition(.scale.combined(with: .opacity))
-					}
-					Spacer()
-				}
-				Text(facility.displayName.subtitle)
-					.font(.subheadline)
-					.contentTransition(.identity)
-
-				Spacer()
-
-				HStack(alignment: .firstTextBaseline, spacing: 4) {
-					Text(facility.availabilityStatus.text)
-						.font(.subheadline)
-						.fontWeight(.semibold)
-						.foregroundStyle(.secondary)
-				}
+			.listRowBackground(Color.clear)
+			.listRowSeparator(.hidden)
+			.matchedTransitionSource(id: facility.facilityId, in: namespace)
+			.swipeActions(edge: .leading) {
+				leadingSwipeAction(for: facility)
 			}
-			.padding(.vertical, 4)
-
-			Spacer()
 		}
-		.padding(.vertical, 4)
-		.opacity(facility.refreshStatus.staleness.displayOpacity)
-		.animation(.smooth, value: facility.isFavourite)
-		.animation(.smooth, value: staleness)
 	}
 
-	@ViewBuilder
-	private func leadingSwipeAction(for facility: ParkingFacility)
-		-> some View
-	{
-		Button(role: facility.isFavourite ? .destructive : nil) {
-			withAnimation(.smooth) {
-				facility.isFavourite.toggle()
-				// Save the context to persist the change
-				try? modelContext.save()
+	struct rowContent: View {
+		let facility: ParkingFacility
+		let isRefreshing: Bool
+		let staleness: ParkingFacility.DataStaleness
+
+
+
+		var body: some View {
+			HStack(alignment: .center, spacing: 12) {
+				VStack(alignment: .center) {
+					ParkingProgressGauge(
+						occupancy: facility.vacancy.occupancy,
+						available: facility.vacancy.available,
+						total: facility.totalSpaces,
+						availabilityStatus: facility.availabilityStatus,
+						isRefreshing: isRefreshing
+						&& staleness == .stale
+					)
+				}
+				.padding(8)
+				.background(
+					.ultraThinMaterial,
+					in: .circle
+				)
+
+				VStack(alignment: .leading) {
+					HStack(alignment: .center, spacing: 4) {
+						Text(facility.displayName.title)
+							.multilineTextAlignment(.leading)
+							.font(.headline)
+							.fontWeight(.bold)
+							.contentTransition(.identity)
+
+						if facility.isFavourite {
+							Image(systemName: "star.fill")
+								.font(.caption2)
+								.foregroundStyle(.tertiary)
+								.transition(.scale.combined(with: .opacity))
+						}
+						Spacer()
+					}
+					Text(facility.displayName.subtitle)
+						.font(.subheadline)
+						.contentTransition(.identity)
+
+					Spacer()
+
+					HStack(alignment: .firstTextBaseline, spacing: 4) {
+						Text(facility.availabilityStatus.text)
+							.font(.subheadline)
+							.fontWeight(.semibold)
+							.foregroundStyle(.secondary)
+					}
+				}
+				.padding(.vertical, 4)
+
+				Spacer()
 			}
-		} label: {
-			Label(
-				facility.isFavourite ? .actionButtonUnpin : .actionButtonPin,
-				systemImage: facility.isFavourite ? "star.slash" : "star.fill"
-			)
-			.labelStyle(.iconOnly)
+			.padding(.vertical, 4)
+			.opacity(facility.refreshStatus.staleness.displayOpacity)
+			.animation(.smooth, value: facility.isFavourite)
+			.animation(.smooth, value: staleness)
 		}
-		.tint(facility.isFavourite ? .red : .yellow)
 	}
 
 	@ViewBuilder
@@ -216,7 +232,7 @@ extension FacilityList {
 
 	NavigationStack {
 		FacilityList(
-			nameSpace: namespace,
+			namespace: namespace,
 			groupedFacilities: [
 				(title: "Pinned", facilities: favourites),
 				(title: "Nearby", facilities: others)
@@ -235,7 +251,7 @@ extension FacilityList {
 
 	NavigationStack {
 		FacilityList(
-			nameSpace: namespace,
+			namespace: namespace,
 			groupedFacilities: [
 				(title: nil, facilities: ParkingFacility.samples(count: 8))
 			],
@@ -253,7 +269,7 @@ extension FacilityList {
 
 	NavigationStack {
 		FacilityList(
-			nameSpace: namespace,
+			namespace: namespace,
 			groupedFacilities: [],
 			selectedFacility: $selectedFacility
 		)

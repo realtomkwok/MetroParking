@@ -281,6 +281,7 @@ final class ETAManager {
 				"🚗 Using cached ETA for '\(facility.displayName.title)': \(self.formatETA(travelTime))/\(self.formatDistance(distance))"
 			)
 
+			return
 		}
 
 		Logger.eta.debug("  → Starting ETA calculation")
@@ -336,7 +337,9 @@ final class ETAManager {
 						route: MKRoute(),  // Empty route since ETA doesn't provide full route
 						travelTime: travelTime,
 						distance: distance,
-						expectedArrivalDate: Date().addingTimeInterval(travelTime),
+						expectedArrivalDate: Date().addingTimeInterval(
+							travelTime
+						),
 						calculatedAt: Date(),
 						transportType: transportType
 					)

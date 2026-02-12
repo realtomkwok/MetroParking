@@ -42,16 +42,12 @@ struct RefreshButton: View {
 				}
 			}
 		} label: {
-			Label {
-				Text("action.button.refresh")
-			} icon: {
-				Image(systemName: "arrow.clockwise")
-					.symbolEffect(
-						.rotate.clockwise.byLayer,
-						options: .repeat(.periodic(delay: 0.3)),
-						isActive: isActive
-					)
-			}
+			Image(systemName: "arrow.clockwise")
+				.symbolEffect(
+					.rotate.clockwise.byLayer,
+					options: .repeat(.periodic(delay: 0.3)),
+					isActive: isActive
+				)
 		}
 		.disabled(isActive)
 		.accessibilityLabel(.actionButtonRefresh)

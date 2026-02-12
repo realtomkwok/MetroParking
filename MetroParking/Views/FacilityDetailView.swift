@@ -202,20 +202,14 @@ extension FacilityDetailView {
 					try? modelContext.save()
 				}
 			} label: {
-				Label {
-					Text(
-						facility.isFavourite
-							? .actionButtonUnpin : .actionButtonPin
-					)
-				} icon: {
-					Image(
-						systemName: facility.isFavourite
-							? "star.slash.fill" : "star"
-					)
-					.contentTransition(
-						.symbolEffect(.replace.magic(fallback: .downUp))
-					)
-				}
+				Image(
+					systemName: facility.isFavourite
+					? "star.slash.fill" : "star"
+				)
+				.contentTransition(
+					.symbolEffect(.replace.magic(fallback: .replace))
+				)
+				.accessibilityLabel(Text(facility.isFavourite ? "action.button.pin" : "action.button.unpin"))
 			}
 			.sensoryFeedback(.success, trigger: facility.isFavourite)
 		}

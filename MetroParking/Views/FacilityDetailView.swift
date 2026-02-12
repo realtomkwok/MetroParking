@@ -316,12 +316,22 @@ struct DetailSections: View {
 			try? await Task.sleep(for: .seconds(0.3))
 
 			nearbyRoutes = [:]
-			for nearby in nearbyFacilities {
-				if let result = await etaMgr.calculateDistanceBetweenFacilities(
-					from: selectedFacility,
-					to: nearby
-				) {
-					nearbyRoutes[nearby.facilityId] = result
+
+			await withTaskGroup(
+				of: (String, (CLLocationDistance, TimeInterval)?).self
+			) { group in
+				for nearby in nearbyFacilities {
+					group.addTask { @MainActor in
+						let result = await etaMgr.calculateDistanceBetweenFacilities(
+							from: selectedFacility,
+							to: nearby
+						)
+						return (nearby.facilityId, result)
+					}
+				}
+
+				for await (id, result) in group {
+					if let result { nearbyRoutes[id] = result }
 				}
 			}
 		}
@@ -810,6 +820,14 @@ extension DetailSections {
 		@Binding var nearbyRoutes:
 			[String: (distance: CLLocationDistance, travelTime: TimeInterval)]
 
+		var sortedNearbyFacilities: [ParkingFacility] {
+			nearbyFacilities.sorted { a, b in
+				let distA = nearbyRoutes[a.facilityId]?.distance ?? .infinity
+				let distB = nearbyRoutes[b.facilityId]?.distance ?? .infinity
+				return distA < distB
+			}
+		}
+
 		struct rowContent: View {
 			@Environment(ETAManager.self) private var etaMgr
 
@@ -867,7 +885,7 @@ extension DetailSections {
 			VStack(alignment: .leading, spacing: 12) {
 
 				ForEach(
-					nearbyFacilities,
+					sortedNearbyFacilities,
 					id: \.facilityId
 				) { facility in
 

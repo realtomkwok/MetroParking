@@ -25,4 +25,5 @@ enum InfoPlistStrings {
 	static let privacyTermsUrl: URL = URL.safe(Self["PRIVACY_TERMS_PAGE_URL"])
 	static let marketingPageUrl: URL = URL.safe(Self["MKT_PAGE_URL"])
 	static let learnMoreUrl: URL = URL.safe("https://transportnsw.info/travel-info/ways-to-get-around/drive/parking/transport-parkride-car-parks")
+	static let appStoreReviewUrl: URL = URL.safe(Self["AS_REVIEW_URL"])
 }

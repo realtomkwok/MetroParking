@@ -20,6 +20,7 @@ struct SettingsView: View {
 	let testFlightUrl = InfoPlistStrings.testFlightUrl
 	let feedbackForm = InfoPlistStrings.feedbackFormUrl
 	let privacyPolicyUrl = InfoPlistStrings.privacyTermsUrl
+	let reviewUrl = InfoPlistStrings.appStoreReviewUrl
 
 	var body: some View {
 		NavigationStack {
@@ -40,9 +41,17 @@ struct SettingsView: View {
 					) {
 						ExternalAccessory()
 					}
+					SettingsRow(
+						"review.section.title",
+						icon: "star.bubble.fill",
+						iconColour: .orange,
+						systemURL: reviewUrl
+					) {
+					}
 				}
 
 				Section {
+
 					SettingsRow(
 						"testflight.section.title",
 						subtitle: "testflight.section.subtitle",
@@ -50,7 +59,6 @@ struct SettingsView: View {
 						iconColour: .blue,
 						systemURL: testFlightUrl
 					) {
-						ExternalAccessory()
 					}
 				}
 
@@ -61,8 +69,14 @@ struct SettingsView: View {
 						iconColour: .pink,
 						externalURL: devWebsite
 					) {
-						Text(.developerName)
+						Text(verbatim: "Tom Kwok")
 					}
+					SettingsRow(
+						"settings.row.privacy",
+						icon: "checkmark.seal.text.page.fill",
+						iconColour: .brown,
+						externalURL: privacyPolicyUrl
+					)
 					SettingsRow(
 						"settings.row.version",
 						icon: "info.circle.fill",
@@ -465,7 +479,7 @@ struct Settings_TipsView: View {
 	var body: some View {
 		SettingsSubpage(title) {
 			List {
-				Section("faq.carpark.section.title") {
+				Section(.faqCarparkSectionTitle) {
 					FAQBody(
 						"faq.carpark.hours.title",
 						"faq.carpark.hours.body",
@@ -484,7 +498,7 @@ struct Settings_TipsView: View {
 						"faq.1.title",
 						"faq.1.body",
 						systemIcon: "arrow.clockwise.circle.fill",
-						iconColour: .cyan
+						iconColour: .green
 					)
 					FAQBody(
 						"faq.2.title",

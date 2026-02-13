@@ -45,6 +45,8 @@
 	<string>https://tomkwok.xyz</string>
 	<key>FEEDBACK_FORM_URL</key>
 	<string>https://tomkwok.notion.site/2ff063c90271801ab7f6ef7f18d6f206</string>
+	<key>AS_REVIEW_URL</key>
+	<string>https://apps.apple.com/us/app/metroparking/id6758097346?action=write-review</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>comgooglemaps</string>

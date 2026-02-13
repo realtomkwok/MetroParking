@@ -13,7 +13,8 @@ import SwiftUIBackports
 /// Future features: Live Activity/notification swipe actions (v0.5.0+)
 struct FacilityList: View {
 	var namespace: Namespace.ID
-	let groupedFacilities: [(title: String?, facilities: [ParkingFacility])]
+	let groupedFacilities:
+		[(title: LocalizedStringResource?, facilities: [ParkingFacility])]
 
 	@Binding var selectedFacility: ParkingFacility?
 	@Environment(FacilityManager.self) private var facilityDataMgr
@@ -22,26 +23,33 @@ struct FacilityList: View {
 
 	private struct FacilitySection: Identifiable {
 		let id: String
-		let title: String?
+		let title: LocalizedStringResource?
 		let facilities: [ParkingFacility]
 
-		init(title: String?, facilities: [ParkingFacility]) {
+		init(title: LocalizedStringResource, facilities: [ParkingFacility]) {
 			self.title = title
 			self.facilities = facilities
-			self.id = title ?? "untitled"
+			self.id = String(localized: title)
 		}
 	}
 
 	private var sections: [FacilitySection] {
 		groupedFacilities
 			.filter { !$0.facilities.isEmpty }
-			.map { FacilitySection(title: $0.title, facilities: $0.facilities) }
+			.map {
+				FacilitySection(
+					title: $0.title ?? "",
+					facilities: $0.facilities
+				)
+			}
 	}
 
 	private var sectionStructureHash: Int {
 		var hasher = Hasher()
 		for (title, facilities) in groupedFacilities {
-			hasher.combine(title)
+			let sectionTitle: String = String(localized: title ?? "")
+
+			hasher.combine(sectionTitle)
 			for facility in facilities {
 				hasher.combine(facility.persistentModelID)
 			}
@@ -65,7 +73,9 @@ struct FacilityList: View {
 						)
 					}
 				} header: {
-					SectionHeader(title: section.title)
+					if let title = section.title {
+						Text(title)
+					}
 				}
 			}
 		}
@@ -102,18 +112,20 @@ extension FacilityList {
 
 		@ViewBuilder
 		private func leadingSwipeAction(for facility: ParkingFacility)
-		-> some View
+			-> some View
 		{
 			Button(role: facility.isFavourite ? .destructive : nil) {
 				withAnimation(.smooth) {
 					facility.isFavourite.toggle()
-						// Save the context to persist the change
+					// Save the context to persist the change
 					try? modelContext.save()
 				}
 			} label: {
 				Label(
-					facility.isFavourite ? .actionButtonUnpin : .actionButtonPin,
-					systemImage: facility.isFavourite ? "star.slash" : "star.fill"
+					facility.isFavourite
+						? .actionButtonUnpin : .actionButtonPin,
+					systemImage: facility.isFavourite
+						? "star.slash" : "star.fill"
 				)
 				.labelStyle(.iconOnly)
 			}
@@ -132,7 +144,7 @@ extension FacilityList {
 			}
 			.buttonStyle(.glass)
 			.accessibilityIdentifier("facility-row-\(facility.facilityId)")
-				// TODO: add AccessibilityHint and AccessibilityLabel
+			// TODO: add AccessibilityHint and AccessibilityLabel
 			.listRowInsets(
 				EdgeInsets(top: 8, leading: 16, bottom: 4, trailing: 16)
 			)
@@ -150,8 +162,6 @@ extension FacilityList {
 		let isRefreshing: Bool
 		let staleness: ParkingFacility.DataStaleness
 
-
-
 		var body: some View {
 			HStack(alignment: .center, spacing: 12) {
 				VStack(alignment: .center) {
@@ -161,7 +171,7 @@ extension FacilityList {
 						total: facility.totalSpaces,
 						availabilityStatus: facility.availabilityStatus,
 						isRefreshing: isRefreshing
-						&& staleness == .stale
+							&& staleness == .stale
 					)
 				}
 				.padding(8)
@@ -210,15 +220,6 @@ extension FacilityList {
 		}
 	}
 
-	@ViewBuilder
-	private func SectionHeader(title: String?) -> some View {
-		if let title = title, !title.isEmpty {
-			Text(title)
-				.font(.headline)
-				.foregroundStyle(.primary)
-				.transition(.blurReplace.combined(with: .move(edge: .top)))
-		}
-	}
 }
 
 // MARK: - Previews
@@ -235,7 +236,7 @@ extension FacilityList {
 			namespace: namespace,
 			groupedFacilities: [
 				(title: "Pinned", facilities: favourites),
-				(title: "Nearby", facilities: others)
+				(title: "Nearby", facilities: others),
 			],
 			selectedFacility: $selectedFacility
 		)

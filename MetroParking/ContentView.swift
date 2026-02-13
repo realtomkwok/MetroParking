@@ -36,7 +36,7 @@ struct ContentView: View {
 
 	/// Grouped facilities with pinned items at the top
 	private var groupedFacilities:
-		[(title: String?, facilities: [ParkingFacility])]
+		[(title: LocalizedStringResource?, facilities: [ParkingFacility])]
 	{
 		// Filter and sort all facilities once
 		let filteredFacilities =
@@ -55,11 +55,13 @@ struct ContentView: View {
 		let pinnedFacilities = filteredFacilities.filter { $0.isFavourite }
 		let unpinnedFacilities = filteredFacilities.filter { !$0.isFavourite }
 
-		var sections: [(title: String?, facilities: [ParkingFacility])] = []
+		var sections:
+			[(title: LocalizedStringResource?, facilities: [ParkingFacility])] =
+				[]
 
 		if !pinnedFacilities.isEmpty {
 			sections.append(
-				(title: "Pinned", facilities: pinnedFacilities)
+				(title: "facilityList.section.title.pinned", facilities: pinnedFacilities)
 			)
 		}
 
@@ -67,7 +69,7 @@ struct ContentView: View {
 			sections.append(
 				(
 					title: pinnedFacilities.isEmpty
-						? nil : "More Parking",
+						? nil : "facilityList.section.title.more",
 					facilities: unpinnedFacilities
 				)
 			)
@@ -97,7 +99,8 @@ struct ContentView: View {
 
 	struct MainView: View {
 		let namespace: Namespace.ID
-		let groupedFacilities: [(title: String?, facilities: [ParkingFacility])]
+		let groupedFacilities:
+			[(title: LocalizedStringResource?, facilities: [ParkingFacility])]
 		@Binding var selectedFacility: ParkingFacility?
 
 		@Environment(SearchManager.self) private var searchMgr

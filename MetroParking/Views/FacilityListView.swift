@@ -106,7 +106,6 @@ extension FacilityList {
 		let namespace: Namespace.ID
 
 		@Environment(\.modelContext) private var modelContext
-		@Environment(FacilityManager.self) private var facilityDataMgr
 
 		@Binding var selectedFacility: ParkingFacility?
 
@@ -136,11 +135,7 @@ extension FacilityList {
 			Button {
 				selectedFacility = facility
 			} label: {
-				rowContent(
-					facility: facility,
-					isRefreshing: facilityDataMgr.isRefreshing,
-					staleness: facility.refreshStatus.staleness
-				)
+				rowContent(facility: facility)
 			}
 			.buttonStyle(.glass)
 			.accessibilityIdentifier("facility-row-\(facility.facilityId)")
@@ -159,8 +154,10 @@ extension FacilityList {
 
 	struct rowContent: View {
 		let facility: ParkingFacility
-		let isRefreshing: Bool
-		let staleness: ParkingFacility.DataStaleness
+
+		@Environment(LocationManager.self) private var locationMgr
+		@Environment(ETAManager.self) private var etaMgr
+		@Environment(FacilityManager.self) private var facilityDataMgr
 
 		var body: some View {
 			HStack(alignment: .center, spacing: 12) {
@@ -170,8 +167,8 @@ extension FacilityList {
 						available: facility.vacancy.available,
 						total: facility.totalSpaces,
 						availabilityStatus: facility.availabilityStatus,
-						isRefreshing: isRefreshing
-							&& staleness == .stale
+						isRefreshing: facilityDataMgr.isRefreshing
+							&& facility.refreshStatus.staleness == .stale
 					)
 				}
 				.padding(8)
@@ -192,7 +189,7 @@ extension FacilityList {
 							Image(systemName: "star.fill")
 								.font(.caption2)
 								.foregroundStyle(.tertiary)
-								.transition(.scale.combined(with: .opacity))
+								.contentTransition(.symbolEffect(.automatic))
 						}
 						Spacer()
 					}
@@ -202,21 +199,83 @@ extension FacilityList {
 
 					Spacer()
 
-					HStack(alignment: .firstTextBaseline, spacing: 4) {
+					HStack(alignment: .center, spacing: 4) {
 						Text(facility.availabilityStatus.text)
 							.font(.subheadline)
 							.fontWeight(.semibold)
 							.foregroundStyle(.secondary)
+
+						Spacer()
+
+						routeInfoLabel
 					}
 				}
 				.padding(.vertical, 4)
 
 				Spacer()
 			}
+			.onChange(of: facility.refreshStatus.staleness) {
+				if facility.refreshStatus.staleness == .stale {
+					Task {
+						await facilityDataMgr.loadFacility(facility)
+					}
+				}
+			}
 			.padding(.vertical, 4)
 			.opacity(facility.refreshStatus.staleness.displayOpacity)
 			.animation(.smooth, value: facility.isFavourite)
-			.animation(.smooth, value: staleness)
+			.animation(.smooth, value: facility.refreshStatus.staleness)
+			.animation(.smooth, value: facility.route?.travelTime)
+		}
+
+		@ViewBuilder
+		private var routeInfoLabel: some View {
+			if locationMgr.isLocationAvailable {
+				if let route = facility.route,
+					route.isValid(
+						from: locationMgr.currentLocation?.coordinate
+					)
+				{
+					// Fresh route data
+					routeDataView(route: route)
+				} else if let route = facility.route,
+					etaMgr.isCalculatingBatchETA
+				{
+					// Stale route while recalculating — show old values dimmed
+					routeDataView(route: route)
+						.opacity(0.6)
+				} else if etaMgr.isCalculatingBatchETA {
+					// No route data at all yet — first load
+					ProgressView()
+						.controlSize(.mini)
+						.transition(.blurReplace)
+				}
+			}
+		}
+
+		@ViewBuilder
+		private func routeDataView(route: ParkingFacility.RouteInfo)
+			-> some View
+		{
+			HStack(spacing: 4) {
+				Image(systemName: "car.fill")
+					.font(.caption2)
+				Text(etaMgr.formatETA(route.travelTime))
+					.font(.caption)
+					.fontWeight(.medium)
+					.contentTransition(
+						.numericText(value: route.travelTime)
+					)
+				Text("·")
+					.font(.caption)
+				Text(etaMgr.formatDistance(route.distance))
+					.font(.caption)
+					.contentTransition(
+						.numericText(value: route.distance)
+					)
+			}
+			.foregroundStyle(.secondary)
+			.transition(.blurReplace)
 		}
 	}
 
@@ -240,9 +299,11 @@ extension FacilityList {
 			],
 			selectedFacility: $selectedFacility
 		)
-		.navigationTitle("Facilities")
+		.navigationTitle("Metro Parking")
 	}
 	.environment(FacilityManager.shared)
+	.environment(LocationManager.shared)
+	.environment(ETAManager.shared)
 	.modelContainer(.preview())
 }
 
@@ -261,6 +322,8 @@ extension FacilityList {
 		.navigationTitle("All Facilities")
 	}
 	.environment(FacilityManager.shared)
+	.environment(LocationManager.shared)
+	.environment(ETAManager.shared)
 	.modelContainer(.preview())
 }
 
@@ -277,5 +340,7 @@ extension FacilityList {
 		.navigationTitle("No Facilities")
 	}
 	.environment(FacilityManager.shared)
+	.environment(LocationManager.shared)
+	.environment(ETAManager.shared)
 	.modelContainer(.emptyPreview())
 }

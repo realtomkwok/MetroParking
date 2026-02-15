@@ -68,6 +68,7 @@ final class ETAManager {
 	}
 
 	var isCalculatingETA: Bool = false
+	var isCalculatingBatchETA: Bool = false
 	var etaError: String?
 	var isDirectionAvailable: Bool = false
 
@@ -78,6 +79,11 @@ final class ETAManager {
 
 	private var currentETARequest: MKDirections.Request?
 	private var activeTasks: [String: Task<Void, Never>] = [:]
+	private var batchETATask: Task<Void, Never>?
+	private var lastBatchETATimestamp: Date = .distantPast
+
+	/// Minimum interval between batch ETA runs to avoid MKDirections rate limiting (50 req/60s)
+	private let batchETACooldown: TimeInterval = 60
 
 	/// Cache of route info per facility
 	private var routeCache: [String: RouteInfo] = [:]
@@ -199,7 +205,8 @@ final class ETAManager {
 					// Cache the result in the facility model
 					facility.updateRoutingData(
 						distance: route.distance,
-						travelTime: route.expectedTravelTime
+						travelTime: route.expectedTravelTime,
+						from: userLocation
 					)
 
 					Logger.eta.info(
@@ -271,7 +278,7 @@ final class ETAManager {
 		// Check if we have valid cached data and don't need to refresh
 		if !forceRefresh,
 			let route = facility.route,
-			route.isValid
+		   route.isValid(from: userLocation)
 		{
 			// Create lightweight route info from cached facility data
 			let travelTime = route.travelTime
@@ -328,7 +335,8 @@ final class ETAManager {
 					// Cache the result in the facility model
 					facility.updateRoutingData(
 						distance: distance,
-						travelTime: travelTime
+						travelTime: travelTime,
+						from: userLocation
 					)
 
 					// Also create a RouteInfo object for the ETAManager state
@@ -416,9 +424,9 @@ final class ETAManager {
 		to facility: ParkingFacility,
 		transportType: MKDirectionsTransportType = .automobile
 	) async -> TimeInterval? {
-
+		
 		// Check cache first
-		if let route = facility.route, route.isValid {
+		if let route = facility.route, route.isValid(from: userLocation) {
 			Logger.eta.debug(
 				"🚗 getETA: Using cached value for '\(facility.displayName.title)'"
 			)
@@ -448,7 +456,8 @@ final class ETAManager {
 			// Cache the result
 			facility.updateRoutingData(
 				distance: distance,
-				travelTime: travelTime
+				travelTime: travelTime,
+				from: userLocation
 			)
 
 			Logger.eta.info(
@@ -555,5 +564,105 @@ final class ETAManager {
 			currentRouteInfo = nil
 		}
 		Logger.eta.debug("🗺️ Cleared cached route for facility: \(facilityID)")
+	}
+
+	// MARK: - Batch ETA Calculation
+
+	/// Calculate ETAs for all provided facilities with throttling and failure backoff.
+	/// Results are persisted via `facility.updateRoutingData()`, which triggers `@Query` reactivity.
+	/// Stops early after `maxConsecutiveFailures` consecutive MKDirections failures.
+	func calculateBatchETA(
+		from userLocation: CLLocationCoordinate2D,
+		for facilities: [ParkingFacility],
+		maxConsecutiveFailures: Int = 5
+	) async {
+		// Enforce cooldown to avoid MKDirections rate limiting
+		let timeSinceLastBatch = Date().timeIntervalSince(lastBatchETATimestamp)
+		if timeSinceLastBatch < batchETACooldown {
+			let remaining = batchETACooldown - timeSinceLastBatch
+			Logger.eta.debug(
+				"🚗 Batch ETA: cooldown active, waiting \(remaining, format: .fixed(precision: 0))s"
+			)
+			try? await Task.sleep(for: .seconds(remaining))
+			guard !Task.isCancelled else { return }
+		}
+
+		batchETATask?.cancel()
+		lastBatchETATimestamp = Date()
+
+		isCalculatingBatchETA = true
+
+		let task = Task {
+			// Partition: facilities with valid cached routes skip the network call
+			var needsCalculation: [ParkingFacility] = []
+
+			for facility in facilities {
+				if let route = facility.route,
+					route.isValid(from: userLocation)
+				{
+					// Already cached and valid, skip
+				} else {
+					needsCalculation.append(facility)
+				}
+			}
+
+			Logger.eta.info(
+				"🚗 Batch ETA: \(needsCalculation.count)/\(facilities.count) need calculation"
+			)
+
+			// Process sequentially with backoff on failure
+			var consecutiveFailures = 0
+
+			for facility in needsCalculation {
+				guard !Task.isCancelled else { break }
+
+				let result = await self.getETA(
+					from: userLocation,
+					to: facility
+				)
+
+				if result != nil {
+					consecutiveFailures = 0
+				} else {
+					consecutiveFailures += 1
+
+					if consecutiveFailures >= maxConsecutiveFailures {
+						Logger.eta.warning(
+							"🚗 Batch ETA: \(maxConsecutiveFailures) consecutive failures, stopping batch"
+						)
+						break
+					}
+
+					// Exponential backoff: 1s, 2s, 4s, 8s, capped at 16s
+					let backoff = min(
+						pow(2.0, Double(consecutiveFailures - 1)), 16.0
+					)
+					Logger.eta.debug(
+						"🚗 Batch ETA: failure #\(consecutiveFailures), backing off \(backoff)s"
+					)
+					try? await Task.sleep(for: .seconds(backoff))
+				}
+
+				// Base delay between requests
+				try? await Task.sleep(for: .milliseconds(200))
+			}
+
+			guard !Task.isCancelled else { return }
+
+			isCalculatingBatchETA = false
+			Logger.eta.notice(
+				"🚗 Batch ETA complete: \(facilities.count) facilities processed (\(consecutiveFailures) trailing failures)"
+			)
+		}
+
+		batchETATask = task
+		await task.value
+	}
+
+	/// Cancel any in-progress batch ETA calculation
+	func cancelBatchETA() {
+		batchETATask?.cancel()
+		batchETATask = nil
+		isCalculatingBatchETA = false
 	}
 }

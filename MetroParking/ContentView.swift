@@ -20,6 +20,8 @@ struct ContentView: View {
 	@Environment(\.isSearching) private var isSearching
 
 	@Environment(FacilityManager.self) private var facilityDataMgr
+	@Environment(ETAManager.self) private var etaMgr
+	@Environment(LocationManager.self) private var locationMgr
 	@Environment(OnboardingManager.self) private var onboardingMgr
 	@Environment(DeepLinkManager.self) private var deepLinkMgr
 	@Environment(SearchManager.self) private var searchMgr
@@ -29,6 +31,12 @@ struct ContentView: View {
 	@State private var isFiltered: Bool = false
 	@State private var deepLinkedFacility: ParkingFacility?
 	@State private var isSettingsPresented: Bool = false
+	@State private var batchETATask: Task<Void, Never>?
+
+	/// Larger distance threshold for ETA recalculation (500m).
+	/// At driving speed, 100m triggers every ~5s which overwhelms MKDirections rate limits.
+	/// ETAs to distant parking lots don't change meaningfully over 500m.
+	private let batchETADistanceThreshold: CLLocationDistance = 500
 
 	// Single query for all facilities - let SwiftData handle animations smoothly
 	@Query(animation: .smooth)
@@ -204,8 +212,56 @@ struct ContentView: View {
 			guard let facilityId = newValue else { return }
 			handleDeepLink(facilityId: facilityId)
 		}
+		.task {
+			// Initial batch ETA on first appearance if location is already available
+			if let location = locationMgr.currentLocation {
+				await triggerBatchETA(location: location)
+			}
+		}
+		.onChange(of: locationMgr.isLocationAvailable) { _, isAvailable in
+			if isAvailable, let location = locationMgr.currentLocation {
+				batchETATask?.cancel()
+				batchETATask = Task {
+					await triggerBatchETA(location: location)
+				}
+			}
+		}
+		.onChange(of: locationMgr.currentLocation) {
+			oldLocation,
+			newLocation in
+			guard let newLoc = newLocation else { return }
+
+			// Use a larger threshold for ETA recalculation than the 100m location filter.
+			// At driving speed, 100m fires every ~5s which overwhelms MKDirections (50 req/min).
+			let isSignificantChange: Bool
+			if let oldLoc = oldLocation {
+				isSignificantChange =
+					newLoc.distance(from: oldLoc)
+					> batchETADistanceThreshold
+			} else {
+				isSignificantChange = true
+			}
+
+			guard isSignificantChange else { return }
+
+			batchETATask?.cancel()
+			batchETATask = Task {
+				await triggerBatchETA(location: newLoc)
+			}
+		}
 	}
 
+}
+
+// MARK: - Batch ETA
+extension ContentView {
+	private func triggerBatchETA(location: CLLocation) async {
+		guard !allFacilities.isEmpty else { return }
+		await etaMgr.calculateBatchETA(
+			from: location.coordinate,
+			for: allFacilities
+		)
+	}
 }
 
 // MARK: - Deep link

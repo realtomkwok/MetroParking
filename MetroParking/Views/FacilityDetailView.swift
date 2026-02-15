@@ -44,11 +44,6 @@ struct FacilityDetailView: View {
 		_nearbyFacilities = State(initialValue: [])
 	}
 
-}
-
-/// Body
-extension FacilityDetailView {
-
 	var body: some View {
 		ScrollView(.vertical) {
 			MapHeader(
@@ -90,16 +85,32 @@ extension FacilityDetailView {
 		.toolbarTitleDisplayMode(.inline)
 		.toolbarBackgroundVisibility(.visible, for: .navigationBar)
 		.id(facility.facilityId)  // Ensure view resets when switching facilities
-		.task(id: facility.facilityId, priority: .high) {
-			try? await Task.sleep(for: .seconds(0.3))			// Defer the tasks after transition
+		.task(id: "\(facility.facilityId) - initial tasks") {
+			try? await Task.sleep(for: .seconds(0.3))  // Defer the tasks after transition
 			await performInitialTasks()
 		}
-		.task(id: facility.facilityId) {
+		.task(id: "\(facility.facilityId) - load nearby facilities") {
 			await loadNearbyFacilities(limit: 3)
 		}
 		.onChange(of: locationMgr.isLocationAvailable) { _, isAvailable in
 			if isAvailable {
 				// Location just became available, calculate ETA
+				Task {
+					await calculateETAIfLocationAvailable()
+				}
+			}
+		}
+		.onChange(of: locationMgr.currentLocation) {
+			oldLocation,
+			newLocation in
+			guard let newLoc = newLocation,
+				let oldLoc = oldLocation
+			else {
+				return
+			}
+			// recalculate when moved significantly -> respect locationMgr's distanceFilter
+			if newLoc.distance(from: oldLoc) > locationMgr.distanceFilter {
+				etaMgr.clearCachedRoute(for: facility.facilityId)
 				Task {
 					await calculateETAIfLocationAvailable()
 				}
@@ -204,12 +215,17 @@ extension FacilityDetailView {
 			} label: {
 				Image(
 					systemName: facility.isFavourite
-					? "star.slash.fill" : "star"
+						? "star.slash.fill" : "star"
 				)
 				.contentTransition(
-					.symbolEffect(.replace.magic(fallback: .replace))
+					.symbolEffect(.replace)
 				)
-				.accessibilityLabel(Text(facility.isFavourite ? "action.button.pin" : "action.button.unpin"))
+				.accessibilityLabel(
+					Text(
+						facility.isFavourite
+							? "action.button.pin" : "action.button.unpin"
+					)
+				)
 			}
 			.sensoryFeedback(.success, trigger: facility.isFavourite)
 		}
@@ -306,7 +322,7 @@ struct DetailSections: View {
 
 		}
 		.padding()
-		.task(id: selectedFacility.facilityId) {
+		.task(id: "\(selectedFacility.facilityId)-\(nearbyFacilities.count)") {
 			try? await Task.sleep(for: .seconds(0.3))
 
 			nearbyRoutes = [:]
@@ -316,10 +332,11 @@ struct DetailSections: View {
 			) { group in
 				for nearby in nearbyFacilities {
 					group.addTask { @MainActor in
-						let result = await etaMgr.calculateDistanceBetweenFacilities(
-							from: selectedFacility,
-							to: nearby
-						)
+						let result =
+							await etaMgr.calculateDistanceBetweenFacilities(
+								from: selectedFacility,
+								to: nearby
+							)
 						return (nearby.facilityId, result)
 					}
 				}
@@ -471,12 +488,12 @@ extension DetailSections {
 		}
 
 		struct trailingView: View {
-			let selectedFacility: ParkingFacility
+			let lastUpdated: Date
 
 			var body: some View {
 				TimelineView(.periodic(from: .now, by: 60)) { context in
 					let timeInterval = context.date.timeIntervalSince(
-						selectedFacility.refreshStatus.lastUpdated
+						lastUpdated
 					)
 
 					if timeInterval < 60 {
@@ -484,7 +501,7 @@ extension DetailSections {
 					} else {
 						Text(
 							.dateFormatUpdated(
-								selectedFacility.refreshStatus.lastUpdated
+								lastUpdated
 									.formatted(
 										.relative(
 											presentation: .named,
@@ -495,6 +512,7 @@ extension DetailSections {
 						)
 					}
 				}
+				.transition(.opacity)
 				.monospacedDigit()
 				.font(.footnote)
 			}
@@ -509,7 +527,7 @@ extension DetailSections {
 					isRefreshing: $isRefreshing
 				),
 				trailingTopContent: trailingView(
-					selectedFacility: selectedFacility
+					lastUpdated: selectedFacility.refreshStatus.lastUpdated
 				),
 			)
 		}
@@ -683,32 +701,19 @@ extension DetailSections {
 			}
 		}
 
-		// MARK: - Navigation Menu (static — no route/etaMgr dependency)
 
 		struct NavigationMenuView: View {
 			let selectedFacility: ParkingFacility
 
 			var body: some View {
 				Menu {
-					Button(
-						.navigationOptionAppleMaps,
-						systemImage: "map.fill"
-					) {
-						Task {
-							let mapItem =
-								await selectedFacility.getMapItem()
-							openInMapsWithDirections(mapItem)
+					ForEach(MapProvider.allCases, id: \.id) { provider in
+						Button(provider.displayText, systemImage: provider.icon) {
+							Task {
+								let mapItem = await selectedFacility.getMapItem()
+								openInMaps(mapItem, provider: provider)
+							}
 						}
-					}
-					Button(
-						.navigationOptionGoogleMaps,
-						systemImage: "g.circle.fill"
-					) {
-						openInGoogleMaps(
-							coordinate: selectedFacility.location
-								.coordinate,
-							destinationName: selectedFacility.name
-						)
 					}
 				} label: {
 					Label(
@@ -852,18 +857,24 @@ extension DetailSections {
 
 					Spacer()
 
-					if let route = nearbyRoutes[facility.facilityId] {
-						VStack(alignment: .trailing, spacing: 4) {
-							Text(etaMgr.formatDistance(route.distance))
-								.font(.subheadline)
-							Text(etaMgr.formatETA(route.travelTime))
-								.font(.caption)
-								.foregroundStyle(.secondary)
+					ZStack {
+						if let route = nearbyRoutes[facility.facilityId] {
+							VStack(alignment: .trailing, spacing: 4) {
+								Text(etaMgr.formatDistance(route.distance))
+									.font(.subheadline)
+								Text(etaMgr.formatETA(route.travelTime))
+									.font(.caption)
+									.foregroundStyle(.secondary)
+							}
+							.zIndex(1)
+						} else {
+							ProgressView()
+								.controlSize(.small)
+								.zIndex(1)
 						}
-					} else {
-						ProgressView()
-							.controlSize(.small)
 					}
+					.transition(.blurReplace)
+
 
 					Image(systemName: "chevron.forward")
 						.foregroundStyle(.tertiary)

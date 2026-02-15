@@ -12,6 +12,7 @@ import SwiftUI
 struct SettingsView: View {
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.openURL) private var openUrl
+	@Environment(UserPreferences.self) private var userPreferences
 
 	let version = InfoPlistStrings.version
 	let build = InfoPlistStrings.build

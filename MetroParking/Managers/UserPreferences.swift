@@ -91,6 +91,7 @@ final class UserPreferences {
 	@ObservationIgnored
 	@AppStorage("enableHaptics") private var _enableHaptics: Bool = true
 
+
 	// MARK: - Initialisation
 
 	private init() {

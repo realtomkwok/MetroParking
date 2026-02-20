@@ -29,6 +29,8 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
 			|| authorisationStatus == .restricted
 	}
 
+	let distanceFilter: CLLocationDistance = 100
+
 	private let CLLocationMgr = CLLocationManager()
 
 	override init() {
@@ -62,12 +64,11 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
 extension LocationManager {
 
 
-
 	private func setupLocationManger() {
 		CLLocationMgr.delegate = self
 		// 100m accuracy provides good balance for parking distance calculations while preserving battery life
 		CLLocationMgr.desiredAccuracy = kCLLocationAccuracyHundredMeters
-		CLLocationMgr.distanceFilter = 100  // Update every 100 metres
+		CLLocationMgr.distanceFilter = distanceFilter  // Update every 100 metres
 
 		/// Get current authorisation status
 		authorisationStatus = CLLocationMgr.authorizationStatus

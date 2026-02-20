@@ -50,24 +50,24 @@ struct OnboardingView: View {
 						FeatureRow(
 							order: 0,
 							icon: "gauge.open.with.lines.needle.33percent",
-							title: "Info at a Glance",
+							title: LocalizedStringResource.onboardingMessageOverviewTitle,
 							description:
-								"A glanceable overview of car park availability, location and more."
+								LocalizedStringResource.onboardingMessageOverviewDescription
 						)
 						FeatureRow(
 							order: 1,
 							icon: "star.square.on.square.fill",
-							title: "Pin Your Favourite",
+							title: LocalizedStringResource.onboardingMessagePinTitle,
 							description:
-								"Quick access to frequently used car parks on the top of the list."
+								LocalizedStringResource.onboardingMessagePinDescription
 						)
 
 						FeatureRow(
 							order: 2,
 							icon: "square.grid.2x2.fill",
-							title: "Live Widgets",
+							title: LocalizedStringResource.onboardingMessageWidgetTitle,
 							description:
-								"Quick look on the car park's availability on your home screen."
+								LocalizedStringResource.onboardingMessageWidgetDescription
 						)
 					}
 
@@ -107,8 +107,8 @@ struct OnboardingView: View {
 struct FeatureRow: View {
 	let order: Int
 	let icon: String
-	let title: String
-	let description: String
+	let title: LocalizedStringResource
+	let description: LocalizedStringResource
 
 	var body: some View {
 		HStack(alignment: .top, spacing: 24) {

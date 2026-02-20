@@ -12,73 +12,81 @@ import SwiftUI
 struct SettingsView: View {
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.openURL) private var openUrl
+	@Environment(UserPreferences.self) private var userPreferences
 
-	let version: String =
-		Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
-		?? "--"
-
-	let build: String =
-		Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "--"
-
-	let devEmail: URL = URL.safe(
-		Bundle.main.infoDictionary?["DEV_EMAIL"] as? String ?? ""
-	)
-
-	let devWebsite: URL =
-		URL.safe(
-			Bundle.main.infoDictionary?["DEV_WEBSITE_URL"] as? String ?? ""
-		)
-
-	let testFlightUrl: URL =
-		URL.safe(
-			Bundle.main.infoDictionary?["DEV_WEBSITE_URL"] as? String ?? ""
-		)
+	let version = InfoPlistStrings.version
+	let build = InfoPlistStrings.build
+	let devEmail = InfoPlistStrings.devEmail
+	let devWebsite = InfoPlistStrings.devWebsite
+	let testFlightUrl = InfoPlistStrings.testFlightUrl
+	let feedbackForm = InfoPlistStrings.feedbackFormUrl
+	let privacyPolicyUrl = InfoPlistStrings.privacyTermsUrl
+	let reviewUrl = InfoPlistStrings.appStoreReviewUrl
 
 	var body: some View {
 		NavigationStack {
 			List {
 
-				Section(.settingsSectionHelp) {
+				Section {
 					SettingsRow(
 						"tips.section.title",
 						icon: "sparkles",
-						iconColour: .yellow,
-						destination: { Settings_TipsView("tips.section.title") }
-					)
-					SettingsRow(
-						"feedback.row.faq",
-						icon: "questionmark.circle.fill",
-						iconColour: .blue,
-						systemURL: testFlightUrl
+						iconColour: .yellow.mix(with: .orange, by: 0.3),
+						destination: { Settings_TipsView() }
 					)
 					SettingsRow(
 						"feedback.section.title",
 						icon: "exclamationmark.bubble.fill",
-						iconColour: .pink,
-						destination: { Settings_FeedbackView("feedback.section.title") }
-					)
+						iconColour: .purple,
+						externalURL: feedbackForm,
+					) {
+						ExternalAccessory()
+					}
+					SettingsRow(
+						"review.section.title",
+						icon: "star.bubble.fill",
+						iconColour: .orange,
+						systemURL: reviewUrl
+					) {
+					}
 				}
+
+				Section {
+
+					SettingsRow(
+						"testflight.section.title",
+						subtitle: "testflight.section.subtitle",
+						icon: "testtube.2",
+						iconColour: .blue,
+						systemURL: testFlightUrl
+					) {
+					}
+				}
+
 				Section {
 					SettingsRow(
 						"settings.title.developer",
 						icon: "figure.flexibility",
-						iconColour: .orange,
+						iconColour: .pink,
 						externalURL: devWebsite
 					) {
-						Text("Tom Kwok")
-							.foregroundStyle(.primary)
+						Text(verbatim: "Tom Kwok")
 					}
 					SettingsRow(
+						"settings.row.privacy",
+						icon: "checkmark.seal.text.page.fill",
+						iconColour: .brown,
+						externalURL: privacyPolicyUrl
+					)
+					SettingsRow(
 						"settings.row.version",
-						icon: "info.circle",
-						iconColour: .blue.mix(with: .cyan, by: 0.5),
+						icon: "info.circle.fill",
+						iconColour: .blue.mix(with: .teal, by: 0.5),
 						accessory: {
 							Text("\(version) (\(build))")
 								.foregroundStyle(.secondary)
 						}
 					)
-				} header: {
-					Text(.settingsSectionAbout)
 				} footer: {
 					Text(.settingsFootnote)
 				}
@@ -143,6 +151,16 @@ struct SettingsSubpage<Content: View>: View {
 	}
 }
 
+struct ExternalAccessory: View {
+	var body: some View {
+		Label(.externalLinkLabel, systemImage: "arrow.up.forward")
+			.font(.callout)
+			.fontWeight(.medium)
+			.foregroundStyle(Color(uiColor: .tertiaryLabel))
+			.labelStyle(.iconOnly)
+	}
+}
+
 // MARK: - Unified Settings Row
 
 /// Defines the interaction type for a settings row.
@@ -160,33 +178,12 @@ enum SettingsRowAction {
 }
 
 /// A unified, reusable settings row that handles navigation, external links, actions, and static display.
-///
-/// Usage examples:
-/// ```swift
-/// // Navigation to a destination view
-/// SettingsRow("Profile", icon: "person") {
-///     ProfileView()
-/// }
-///
-/// // External URL (opens in Safari sheet)
-/// SettingsRow("Website", icon: "globe", externalURL: URL(string: "https://example.com")!)
-///
-/// // System URL (opens via openURL environment)
-/// SettingsRow("Email", icon: "envelope", systemURL: URL(string: "mailto:hi@example.com")!)
-///
-/// // Custom action
-/// SettingsRow("Reset", icon: "arrow.counterclockwise", action: { resetSettings() })
-///
-/// // Static row with accessory
-/// SettingsRow("Version", icon: "info.circle") {
-///     Text("1.0.0").foregroundStyle(.secondary)
-/// }
-/// ```
+
 struct SettingsRow<Destination: View, Accessory: View>: View {
 	let title: LocalizedStringKey
 	let subtitle: LocalizedStringKey?
-	let icon: String
-	let iconColour: Color
+	let icon: String?
+	let iconColour: Color?
 	let rowAction: SettingsRowAction
 	let destination: Destination?
 	@ViewBuilder let accessory: Accessory
@@ -221,10 +218,10 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 	init(
 		_ title: LocalizedStringKey,
 		subtitle: LocalizedStringKey? = nil,
-		icon: String,
-		iconColour: Color,
+		icon: String? = nil,
+		iconColour: Color? = nil,
 		externalURL: URL,
-		@ViewBuilder accessory: () -> Accessory
+		@ViewBuilder accessory: () -> Accessory = { ExternalAccessory() }
 	) where Destination == EmptyView {
 		self.title = title
 		self.subtitle = subtitle
@@ -233,6 +230,7 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 		self.rowAction = .externalURL(externalURL)
 		self.destination = nil
 		self.accessory = accessory()
+
 	}
 
 	/// Creates a settings row with a system URL (opens via openURL).
@@ -341,10 +339,14 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 				Text(title)
 					.foregroundStyle(Color.primary)
 			} icon: {
-				Image(systemName: icon)
-					.foregroundStyle(iconColour)
-					.symbolRenderingMode(.hierarchical)
-					.symbolColorRenderingMode(.gradient)
+				if let icon, let iconColour {
+					Image(systemName: icon)
+						.foregroundStyle(iconColour)
+						.symbolRenderingMode(.hierarchical)
+						.symbolColorRenderingMode(.gradient)
+				} else {
+					EmptyView()
+				}
 			}
 			if let subtitle {
 				Text(subtitle)
@@ -372,25 +374,6 @@ extension SettingsRow where Accessory == EmptyView {
 			icon: icon,
 			iconColour: iconColour,
 			destination: destination
-		) {
-			EmptyView()
-		}
-	}
-
-	/// Creates a settings row with an external URL and no accessory.
-	init(
-		_ title: LocalizedStringKey,
-		subtitle: LocalizedStringKey? = nil,
-		icon: String,
-		iconColour: Color,
-		externalURL: URL
-	) where Destination == EmptyView {
-		self.init(
-			title,
-			subtitle: subtitle,
-			icon: icon,
-			iconColour: iconColour,
-			externalURL: externalURL
 		) {
 			EmptyView()
 		}
@@ -453,40 +436,102 @@ extension SettingsRow where Accessory == EmptyView {
 
 // MARK: - Tips Subpage
 
-@ViewBuilder
-private func Settings_TipsView(_ title: LocalizedStringKey) -> some View {
-	SettingsSubpage(title) {
-		List {
-			Section(.navigationSectionTitle) {
-				Label(
-					.tipsTitleSwipeToPin,
-					systemImage: "arrow.right.to.line"
-				)
-				Label(
-					.tipsTitleSwipeToRefresh,
-					systemImage: "arrow.clockwise"
-				)
-			}
-			// Add more tips as needed
-		}
-	}
-}
+struct Settings_TipsView: View {
+	let title: LocalizedStringKey = "tips.section.title"
 
-extension SettingsView {
+	let learnMoreUrl = InfoPlistStrings.learnMoreUrl
+
 	@ViewBuilder
-	private func Settings_FeedbackView(_ title: LocalizedStringKey) -> some View
-	{
+	private func FAQBody(
+		_ title: LocalizedStringKey,
+		_ body: LocalizedStringKey,
+		systemIcon: String,
+		iconColour: Color
+	) -> some View {
+		VStack(alignment: .listRowSeparatorLeading, spacing: 16) {
+			RoundedRectangle(cornerRadius: 8, style: .circular)
+				.foregroundStyle(iconColour.gradient)
+				.aspectRatio(1.0, contentMode: .fit)
+				.frame(maxWidth: 48)
+				.overlay {
+					Image(systemName: systemIcon)
+						.font(.title)
+						.fontWeight(.semibold)
+						.foregroundStyle(.white.gradient)
+						.symbolRenderingMode(.hierarchical)
+						.symbolColorRenderingMode(.gradient)
+						.padding()
+				}
+			VStack(alignment: .listRowSeparatorLeading, spacing: 8) {
+				Text(title)
+					.font(.headline)
+					.fixedSize(horizontal: false, vertical: true)
+
+				Text(body)
+					.font(.body)
+					.foregroundStyle(.secondary)
+					.fixedSize(horizontal: false, vertical: true)
+			}
+
+		}
+
+	}
+
+	var body: some View {
 		SettingsSubpage(title) {
 			List {
-				Section {
+				Section(.faqCarparkSectionTitle) {
+					FAQBody(
+						"faq.carpark.hours.title",
+						"faq.carpark.hours.body",
+						systemIcon: "parkingsign.square.fill",
+						iconColour: .blue
+					)
+					SettingsRow(
+						"faq.carpark.learnMore.title",
+						subtitle: "faq.carpark.learnMore.subtitle",
+						externalURL: learnMoreUrl
+					)
+				}
 
-					Section(.feedbackLabelIssueNotListed) {
+				Section(.faqsSectionTitle) {
+					FAQBody(
+						"faq.1.title",
+						"faq.1.body",
+						systemIcon: "arrow.clockwise.circle.fill",
+						iconColour: .green
+					)
+					FAQBody(
+						"faq.2.title",
+						"faq.2.body",
+						systemIcon: "location.circle.fill",
+						iconColour: .blue
+					)
+					FAQBody(
+						"faq.3.title",
+						"faq.3.body",
+						systemIcon: "exclamationmark.bubble.fill",
+						iconColour: .purple
+					)
+				}
 
-					}
+				Section(.navigationSectionTitle1) {
+					SettingsRow(
+						"tips.title.swipeToPin",
+						icon: "star.fill",
+						iconColour: .yellow.mix(with: .orange, by: 0.5)
+					)
+					SettingsRow(
+						"tips.title.swipeToRefresh",
+						icon: "arrow.clockwise",
+						iconColour: .blue.mix(with: .cyan, by: 0.5)
+					)
 				}
 			}
 		}
+
 	}
+
 }
 
 // MARK: - Previews
@@ -497,6 +542,6 @@ extension SettingsView {
 
 #Preview("Tips") {
 	NavigationStack {
-		Settings_TipsView("Feedback")
+		Settings_TipsView()
 	}
 }

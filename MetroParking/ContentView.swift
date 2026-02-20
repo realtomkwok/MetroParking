@@ -20,6 +20,8 @@ struct ContentView: View {
 	@Environment(\.isSearching) private var isSearching
 
 	@Environment(FacilityManager.self) private var facilityDataMgr
+	@Environment(ETAManager.self) private var etaMgr
+	@Environment(LocationManager.self) private var locationMgr
 	@Environment(OnboardingManager.self) private var onboardingMgr
 	@Environment(DeepLinkManager.self) private var deepLinkMgr
 	@Environment(SearchManager.self) private var searchMgr
@@ -29,6 +31,12 @@ struct ContentView: View {
 	@State private var isFiltered: Bool = false
 	@State private var deepLinkedFacility: ParkingFacility?
 	@State private var isSettingsPresented: Bool = false
+	@State private var batchETATask: Task<Void, Never>?
+
+	/// Larger distance threshold for ETA recalculation (500m).
+	/// At driving speed, 100m triggers every ~5s which overwhelms MKDirections rate limits.
+	/// ETAs to distant parking lots don't change meaningfully over 500m.
+	private let batchETADistanceThreshold: CLLocationDistance = 500
 
 	// Single query for all facilities - let SwiftData handle animations smoothly
 	@Query(animation: .smooth)
@@ -36,7 +44,7 @@ struct ContentView: View {
 
 	/// Grouped facilities with pinned items at the top
 	private var groupedFacilities:
-		[(title: String?, facilities: [ParkingFacility])]
+		[(title: LocalizedStringResource?, facilities: [ParkingFacility])]
 	{
 		// Filter and sort all facilities once
 		let filteredFacilities =
@@ -55,11 +63,13 @@ struct ContentView: View {
 		let pinnedFacilities = filteredFacilities.filter { $0.isFavourite }
 		let unpinnedFacilities = filteredFacilities.filter { !$0.isFavourite }
 
-		var sections: [(title: String?, facilities: [ParkingFacility])] = []
+		var sections:
+			[(title: LocalizedStringResource?, facilities: [ParkingFacility])] =
+				[]
 
 		if !pinnedFacilities.isEmpty {
 			sections.append(
-				(title: "Pinned", facilities: pinnedFacilities)
+				(title: "facilityList.section.title.pinned", facilities: pinnedFacilities)
 			)
 		}
 
@@ -67,7 +77,7 @@ struct ContentView: View {
 			sections.append(
 				(
 					title: pinnedFacilities.isEmpty
-						? nil : "More Parking",
+						? nil : "facilityList.section.title.more",
 					facilities: unpinnedFacilities
 				)
 			)
@@ -95,41 +105,55 @@ struct ContentView: View {
 
 	}
 
-	private var MainView: some View {
+	struct MainView: View {
+		let namespace: Namespace.ID
+		let groupedFacilities:
+			[(title: LocalizedStringResource?, facilities: [ParkingFacility])]
+		@Binding var selectedFacility: ParkingFacility?
 
-		return ZStack {
-			BackgroundGradient(isAnimating: false)
-			FacilityList(
-				nameSpace: navigationNamespace,
-				groupedFacilities: groupedFacilities,
-				selectedFacility: $selectedFacility,
-			)
+		@Environment(SearchManager.self) private var searchMgr
+		@Environment(UserPreferences.self) private var preferences
 
-			.overlay {
-				if groupedFacilities.isEmpty {
-					if !searchMgr.searchText.isEmpty {
-						ContentUnavailableView
-							.search(text: searchMgr.searchText)
-					} else if preferences.filterIsOn && preferences.preferredFilterOption == .pinned {
-						ContentUnavailableView {
-							Label(.facilityListEmptyNoPinnedTitle, systemImage: "questionmark.diamond.fill")
-						} description: {
-							Text(.facilityListEmptyNoPinnedMessage)
-						} actions: {
-							Button {
-								withAnimation(.snappy) {
-									preferences.filterIsOn.toggle()
+		var body: some View {
+			ZStack {
+				BackgroundGradient(isAnimating: true)
+				FacilityList(
+					namespace: namespace,
+					groupedFacilities: groupedFacilities,
+					selectedFacility: $selectedFacility,
+				)
+
+				.overlay {
+					if groupedFacilities.isEmpty {
+						if !searchMgr.searchText.isEmpty {
+							ContentUnavailableView
+								.search(text: searchMgr.searchText)
+						} else if preferences.filterIsOn
+							&& preferences.preferredFilterOption == .pinned
+						{
+							ContentUnavailableView {
+								Label(
+									.facilityListEmptyNoPinnedTitle,
+									systemImage: "questionmark.diamond.fill"
+								)
+							} description: {
+								Text(.facilityListEmptyNoPinnedMessage)
+							} actions: {
+								Button {
+									withAnimation(.snappy) {
+										preferences.filterIsOn.toggle()
+									}
+								} label: {
+									Text(.actionButtonClearFilter)
 								}
-							} label: {
-								Text(.actionButtonClearFilter)
+								.buttonStyle(.borderedProminent)
 							}
-							.buttonStyle(.borderedProminent)
 						}
+
 					}
-
 				}
-			}
 
+			}
 		}
 	}
 
@@ -139,7 +163,11 @@ struct ContentView: View {
 		@Bindable var search = searchMgr
 
 		NavigationStack {
-			MainView
+			MainView(
+				namespace: navigationNamespace,
+				groupedFacilities: groupedFacilities,
+				selectedFacility: $selectedFacility
+			)
 			.navigationTitle(.metroParking)
 			.navigationSubtitle(navigationSubtitle)
 			.toolbarTitleDisplayMode(.inlineLarge)
@@ -152,9 +180,6 @@ struct ContentView: View {
 				BottomBar()
 
 			}
-		}
-		.refreshable {
-			await facilityDataMgr.performLoad(forced: true)
 		}
 		// https://developer.apple.com/videos/play/wwdc2021/10176/?time=133
 		.searchable(
@@ -176,35 +201,91 @@ struct ContentView: View {
 				.environment(OnboardingManager.shared)
 		}
 		.sheet(item: $deepLinkedFacility) { facility in
-			DetailSheet(selectedFacility: facility)
-				.presentationDragIndicator(.visible)
-				.navigationAllowDismissalGestures([.none])
+			DetailSheet(
+				selectedFacility: facility,
+				namespace: navigationNamespace
+			)
+			.presentationDragIndicator(.visible)
+			.navigationAllowDismissalGestures([.none])
 		}
 		.onChange(of: deepLinkMgr.selectedFacilityId) { _, newValue in
 			guard let facilityId = newValue else { return }
 			handleDeepLink(facilityId: facilityId)
 		}
+		.task {
+			// Initial batch ETA on first appearance if location is already available
+			if let location = locationMgr.currentLocation {
+				await triggerBatchETA(location: location)
+			}
+		}
+		.onChange(of: locationMgr.isLocationAvailable) { _, isAvailable in
+			if isAvailable, let location = locationMgr.currentLocation {
+				batchETATask?.cancel()
+				batchETATask = Task {
+					await triggerBatchETA(location: location)
+				}
+			}
+		}
+		.onChange(of: locationMgr.currentLocation) {
+			oldLocation,
+			newLocation in
+			guard let newLoc = newLocation else { return }
+
+			// Use a larger threshold for ETA recalculation than the 100m location filter.
+			// At driving speed, 100m fires every ~5s which overwhelms MKDirections (50 req/min).
+			let isSignificantChange: Bool
+			if let oldLoc = oldLocation {
+				isSignificantChange =
+					newLoc.distance(from: oldLoc)
+					> batchETADistanceThreshold
+			} else {
+				isSignificantChange = true
+			}
+
+			guard isSignificantChange else { return }
+
+			batchETATask?.cancel()
+			batchETATask = Task {
+				await triggerBatchETA(location: newLoc)
+			}
+		}
 	}
 
+}
 
+// MARK: - Batch ETA
+extension ContentView {
+	private func triggerBatchETA(location: CLLocation) async {
+		guard !allFacilities.isEmpty else { return }
+		await etaMgr.calculateBatchETA(
+			from: location.coordinate,
+			for: allFacilities
+		)
+	}
 }
 
 // MARK: - Deep link
 extension ContentView {
 
-	@ViewBuilder
-	private func DetailSheet(selectedFacility: ParkingFacility) -> some View {
-		NavigationStack {
-			FacilityDetailView(
-				namespace: navigationNamespace,
-				facility: selectedFacility
-			)
-			.toolbar {
-				ToolbarItem(placement: .topBarLeading) {
-					Button {
-						deepLinkedFacility = nil
-					} label: {
-						Image(systemName: "xmark")
+	struct DetailSheet: View {
+		let selectedFacility: ParkingFacility
+		let namespace: Namespace.ID
+
+		@Environment(\.dismiss) private var dismiss
+
+		var body: some View {
+			NavigationStack {
+				FacilityDetailView(
+					namespace: namespace,
+					facility: selectedFacility
+				)
+				.toolbar {
+					ToolbarItem(placement: .topBarLeading) {
+						Button {
+							dismiss()
+						} label: {
+							Image(systemName: "xmark")
+						}
 					}
 				}
 			}
@@ -212,8 +293,8 @@ extension ContentView {
 	}
 
 	private func handleDeepLink(facilityId: String) {
-			// Use SwiftData predicate query for O(1) lookup instead of O(n) array scan
-			// This also avoids creating a dependency on the entire allFacilities array
+		// Use SwiftData predicate query for O(1) lookup instead of O(n) array scan
+		// This also avoids creating a dependency on the entire allFacilities array
 		let descriptor = FetchDescriptor<ParkingFacility>(
 			predicate: #Predicate { $0.facilityId == facilityId }
 		)
@@ -230,17 +311,16 @@ extension ContentView {
 			"✅ Deep link: Navigating to facility '\(facility.displayName.title)'"
 		)
 
-			// Present as sheet with animation
+		// Present as sheet with animation
 		withAnimation(.smooth) {
 			deepLinkedFacility = facility
 		}
 
-			// Clear the deep link handler after navigation is initiated
+		// Clear the deep link handler after navigation is initiated
 		deepLinkMgr.clearSelection()
 	}
 
 }
-
 
 // MARK: - Toolbar
 extension ContentView {
@@ -250,9 +330,7 @@ extension ContentView {
 
 		ToolbarItem(placement: .topBarTrailing) {
 			RefreshButton(
-				action: { await facilityDataMgr.performLoad(forced: true) },
-				isActive: facilityDataMgr.isRefreshing,
-				isDisabled: facilityDataMgr.isRefreshing
+				scope: .all
 			)
 		}
 
@@ -373,8 +451,11 @@ extension ContentView {
 					.tag(option)
 				}
 			} label: {
-				Label(.sortFilterLabelSortBy, systemImage: "arrow.up.arrow.down")
-					.labelStyle(.titleOnly)
+				Label(
+					.sortFilterLabelSortBy,
+					systemImage: "arrow.up.arrow.down"
+				)
+				.labelStyle(.titleOnly)
 			}
 			.pickerStyle(.inline)
 			.sensoryFeedback(
@@ -382,39 +463,45 @@ extension ContentView {
 				trigger: preferences.preferredSortOption
 			)
 
-
 		} label: {
-			Label(.sortFilterLabelSortBy, systemImage: "arrow.up.arrow.down")
+			Label(
+				.sortFilterLabelSortBy,
+				systemImage: "arrow.up.arrow.down"
+			)
 		}
 		.accessibilityIdentifier("sorting-menu")
 	}
+}
 
-	/// A reusable picker section for options with display properties
-	struct LabeledPickerSection<T>: View
-	where
-		T: CaseIterable & Hashable & PickerOptionDisplayable,
-		T.DisplayType: BasicDisplayable
-	{
-		let title: LocalizedStringKey
-		let icon: String
-		@Binding var selection: T
-		let options: [T]
+/// A reusable picker section for options with display properties
+struct LabeledPickerSection<T>: View
+where
+	T: CaseIterable & Hashable & PickerOptionDisplayable,
+	T.DisplayType: BasicDisplayable
+{
+	let title: LocalizedStringKey
+	let icon: String
+	@Binding var selection: T
+	let options: [T]
 
-		var body: some View {
-			Picker(selection: $selection) {
-				ForEach(Array(options), id: \.self) { option in
-					Label(
-						option.display.title,
-						systemImage: option.display.systemImage
-					)
-					.tag(option)
-				}
-			} label: {
-				Label(title, systemImage: icon)
-				Text(selection.display.title)
+	var body: some View {
+		Picker(selection: $selection) {
+			ForEach(Array(options), id: \.self) { option in
+				Label(
+					option.display.title,
+					systemImage: option.display.systemImage
+				)
+				.tag(option)
 			}
-			.pickerStyle(.menu)
+		} label: {
+			Label {
+				Text(title)
+				Text(selection.display.title)
+			} icon: {
+				Image(systemName: icon)
+			}
 		}
+		.pickerStyle(.menu)
 	}
 }
 

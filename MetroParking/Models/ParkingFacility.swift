@@ -40,6 +40,8 @@ final class ParkingFacility {
 	private var _lastFailureDate: Date?
 
 	// Route caching - stored properties
+	private var _routeOriginLatitude: CLLocationDegrees?
+	private var _routeOriginLongitude: CLLocationDegrees?
 	private var _routeDistance: CLLocationDistance?
 	private var _routeTravelTime: TimeInterval?
 	private var _routeTimestamp: Date?
@@ -128,6 +130,7 @@ final class ParkingFacility {
 		let distance: CLLocationDistance
 		let travelTime: TimeInterval
 		let calculatedAt: Date
+		let originCoordinate: CLLocationCoordinate2D?
 
 		/// Cached distance formatter - creating formatters is expensive
 		private static let distanceFormatter: MKDistanceFormatter = {
@@ -135,6 +138,27 @@ final class ParkingFacility {
 			formatter.unitStyle = .abbreviated
 			return formatter
 		}()
+
+		func isValid(from currentLocation: CLLocationCoordinate2D?) -> Bool {
+//			guard let currentLocation else { return isValid }
+			let withinTimeLimit = calculatedAt.timeIntervalSinceNow > -3600
+			guard withinTimeLimit else { return false }
+
+			if let origin = originCoordinate, let current = currentLocation {
+				let originCL = CLLocation(
+					latitude: origin.latitude,
+					longitude: origin.longitude
+				)
+				let currentCL = CLLocation(
+					latitude: current.latitude,
+					longitude: current.longitude
+				)
+
+				return originCL.distance(from: currentCL) < 500
+			}
+			// No new location available to compare - trust the time check
+			return true
+		}
 
 		var isValid: Bool {
 			calculatedAt.timeIntervalSinceNow > -3600  // Valid for 1 hour
@@ -281,10 +305,19 @@ final class ParkingFacility {
 		else {
 			return nil
 		}
+
+		let origin: CLLocationCoordinate2D? = {
+			guard let lat = _routeOriginLatitude, let lng = _routeOriginLongitude else {
+				return nil
+			}
+			return CLLocationCoordinate2D(latitude: lat, longitude: lng)
+		}()
+
 		return RouteInfo(
 			distance: distance,
 			travelTime: travelTime,
-			calculatedAt: timestamp
+			calculatedAt: timestamp,
+			originCoordinate: origin
 		)
 	}
 
@@ -452,11 +485,14 @@ extension ParkingFacility {
 
 	func updateRoutingData(
 		distance: CLLocationDistance,
-		travelTime: TimeInterval
+		travelTime: TimeInterval,
+		from origin: CLLocationCoordinate2D? = nil
 	) {
 		self._routeDistance = distance
 		self._routeTravelTime = travelTime
 		self._routeTimestamp = Date()
+		self._routeOriginLatitude = origin?.latitude
+		self._routeOriginLongitude = origin?.longitude
 	}
 
 	func clearStaleRoutingData() {
@@ -465,6 +501,14 @@ extension ParkingFacility {
 			self._routeTravelTime = nil
 			self._routeTimestamp = nil
 		}
+	}
+
+	func clearRoutingData() {
+		self._routeTimestamp = nil
+		self._routeDistance = nil
+		self._routeTravelTime = nil
+		self._routeOriginLatitude = nil
+		self._routeOriginLongitude = nil
 	}
 }
 
@@ -498,10 +542,11 @@ enum AvailabilityStatus: CaseIterable {
 
 	var text: String {
 		switch self {
-			case .available: return String(localized: .availabilityStatusAvailable)
-			case .almostFull: return String(localized: .availabilityStatusAlmostFull)
-			case .full: return String(localized: .availabilityStatusFull)
-			case .noData: return String(localized: .availabilityStatusNoData)
+		case .available: return String(localized: .availabilityStatusAvailable)
+		case .almostFull:
+			return String(localized: .availabilityStatusAlmostFull)
+		case .full: return String(localized: .availabilityStatusFull)
+		case .noData: return String(localized: .availabilityStatusNoData)
 		}
 	}
 

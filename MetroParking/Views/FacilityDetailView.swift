@@ -12,7 +12,6 @@ import SwiftUI
 import SwiftUIBackports
 
 struct FacilityDetailView: View {
-	var namespace: Namespace.ID
 	var facility: ParkingFacility
 
 	@Environment(FacilityManager.self) private var facilityDataMgr
@@ -21,69 +20,33 @@ struct FacilityDetailView: View {
 	@Environment(LocationManager.self) private var locationMgr
 	@Environment(\.modelContext) private var modelContext
 
-	@State private var allowDismissalGesture:
-		AllowedNavigationDismissalGestures = .none
+	@State private var nearbyFacilities: [ParkingFacility] = []
 
-	@State private var cameraPosition: MapCameraPosition
-	@State private var showMap: Bool = false
-	@State private var nearbyFacilities: [ParkingFacility]
-
-	init(namespace: Namespace.ID, facility: ParkingFacility) {
-		self.namespace = namespace
-		self.facility = facility
-		_cameraPosition = State(
-			initialValue: .camera(
-				MapCamera(
-					centerCoordinate: facility.location.coordinate,
-					distance: 500,
-					heading: 0,
-					pitch: 60
-				)
-			)
-		)
-		_nearbyFacilities = State(initialValue: [])
-	}
+	/// Keeps cards readable when the sheet or panel is wide.
+	private let readableWidth: CGFloat = 640
 
 	var body: some View {
 		ScrollView(.vertical) {
-			MapHeader(
-				facility: facility,
-				showMap: $showMap,
-				cameraPosition: $cameraPosition
-			)
-			.zIndex(0)
-
 			DetailSections(
-				namespace: namespace,
 				selectedFacility: facility,
 				nearbyFacilities: nearbyFacilities
 			)
-			//			.scrollTargetLayout()
+			.frame(maxWidth: readableWidth)
+			.frame(maxWidth: .infinity)
 			.accessibilityIdentifier("detail-sections")
-			.backport.concentricClipShape()
-			.zIndex(1)
 		}
 		.accessibilityElement(children: .contain)
 		.accessibilityIdentifier("detail-view")
-		.containerShape(.rect(cornerRadius: 48))
-		.backgroundStyle(.background)
-		.scrollTargetBehavior(.paging)
+		.containerShape(.rect(cornerRadius: 32))
 		.scrollIndicators(.hidden)
-		.scrollBounceBehavior(.always)
-		.ignoresSafeArea(edges: .top)
-		.toolbarRole(.browser)
 		.toolbar {
 			TopBarActions()
-		}
-		.toolbar {
-			BottomBarActions()
 		}
 		.navigationTitle(facility.displayName.full)
 		.backport.navigationSubtitle(
 			Text(facility.location.address)
 		)
 		.toolbarTitleDisplayMode(.inline)
-		.toolbarBackgroundVisibility(.visible, for: .navigationBar)
 		.id(facility.facilityId)  // Ensure view resets when switching facilities
 		.task(id: "\(facility.facilityId) - initial tasks") {
 			try? await Task.sleep(for: .seconds(0.3))  // Defer the tasks after transition
@@ -116,11 +79,6 @@ struct FacilityDetailView: View {
 				}
 			}
 		}
-		.navigationAllowDismissalGestures(
-			AllowedNavigationDismissalGestures(
-				[.swipeToGoBack, .zoomEdgePanToDismiss]
-			)
-		)
 	}
 }
 
@@ -155,21 +113,12 @@ extension FacilityDetailView {
 
 		lookAroundMgr.coordinate = facility.location.coordinate
 
-		withAnimation(.smooth) {
-			showMap = true
-		}
-
 		// Run tasks concurrently without waiting for all to complete
 		async let lookAroundTask: Void = lookAroundMgr.loadPreview()
 		async let etaTask: Void = calculateETAIfLocationAvailable()
 
 		// These two are independent and can start immediately
 		_ = await (lookAroundTask, etaTask)
-
-		// Enable dismissal gesture after a short delay
-		// This runs after the main tasks to avoid blocking them
-		try? await Task.sleep(for: .seconds(1))
-		allowDismissalGesture = .all
 	}
 
 	/// Calculate ETA if location is available, otherwise show permission prompt if needed
@@ -202,11 +151,8 @@ extension FacilityDetailView {
 				scope: .single(facility)
 			)
 		}
-	}
 
-	@ToolbarContentBuilder
-	func BottomBarActions() -> some ToolbarContent {
-		ToolbarItem(placement: .bottomBar) {
+		ToolbarItem(placement: .topBarTrailing) {
 			Button {
 				withAnimation(.smooth) {
 					facility.isFavourite.toggle()
@@ -234,54 +180,6 @@ extension FacilityDetailView {
 	}
 }
 
-/// Map Header
-struct MapHeader: View {
-	/// MapKit bug with Metal https://support.revealapp.com/article/34-ios-application-crash-when-inspecting-views-with-mapkit-overlays
-
-	let facility: ParkingFacility
-
-	// Fixed camera position to prevent zoom issues
-	@Binding var showMap: Bool
-	@Binding var cameraPosition: MapCameraPosition
-
-	var body: some View {
-		GeometryReader { geometry in
-			let minY = geometry.frame(in: .scrollView).minY
-			let size = geometry.size
-			let height = size.height + max(-minY, minY)
-
-			Map(position: .constant(cameraPosition)) {
-				if !showMap {
-					EmptyMapContent()
-				} else {
-					Marker(
-						facility.displayName.title,
-						systemImage: "parkingsign.circle.fill",
-						coordinate: facility.location.coordinate
-					)
-					.tint(Color.red)
-				}
-			}
-			.animation(.snappy, value: showMap)
-			.safeAreaPadding(.leading, 26)
-			.safeAreaPadding(.bottom, 16)
-			.mapStyle(
-				.standard(
-					elevation: .realistic,
-					emphasis: .muted,
-				)
-			)
-			.mapControlVisibility(.hidden)
-			.frame(width: size.width, height: height)
-			.backport.concentricClipShape()
-			.allowsHitTesting(false)
-			.offset(y: minY > 0 ? -minY : minY * -0.2)
-		}
-		.frame(height: 400)
-	}
-
-}
-
 /// Detail Sections
 ///  - Vacancy
 ///  - Traffics
@@ -289,7 +187,6 @@ struct MapHeader: View {
 ///  - Nearby facilities
 
 struct DetailSections: View {
-	var namespace: Namespace.ID
 	var selectedFacility: ParkingFacility
 	var nearbyFacilities: [ParkingFacility]
 
@@ -315,7 +212,6 @@ struct DetailSections: View {
 
 			NearbyParkingView(
 				nearbyFacilities: nearbyFacilities,
-				namespace: namespace,
 				nearbyRoutes: $nearbyRoutes
 			)
 			LookAroundView()
@@ -405,11 +301,11 @@ extension DetailSections {
 
 	struct VacancyView: View {
 		let selectedFacility: ParkingFacility
-		@State var isRefreshing: Bool
+		let isRefreshing: Bool
 
 		struct content: View {
 			let selectedFacility: ParkingFacility
-			@Binding var isRefreshing: Bool
+			let isRefreshing: Bool
 
 			var body: some View {
 				HStack(alignment: .center) {
@@ -437,6 +333,8 @@ extension DetailSections {
 							}
 							.font(.title)
 							.fontWeight(.semibold)
+							.lineLimit(1)
+							.minimumScaleFactor(0.6)
 							.opacity(
 								selectedFacility.refreshStatus.staleness
 									.displayOpacity
@@ -450,8 +348,10 @@ extension DetailSections {
 							Text(.facilityDetailLabelSpaces)
 								.font(.callout)
 								.foregroundStyle(.secondary)
+								.lineLimit(1)
 								.contentTransition(.identity)
 						}
+						.layoutPriority(1)
 
 						HStack(alignment: .firstTextBaseline, spacing: 4) {
 							Text("\(selectedFacility.availabilityStatus.text)")
@@ -469,7 +369,7 @@ extension DetailSections {
 							0...1
 					) {
 					}
-					.frame(width: 96)
+					.frame(minWidth: 48, maxWidth: 96)
 					.gaugeStyle(
 						.linearCapacity
 					)
@@ -524,7 +424,7 @@ extension DetailSections {
 				labelIcon: "checkmark.circle.fill",
 				content: content(
 					selectedFacility: selectedFacility,
-					isRefreshing: $isRefreshing
+					isRefreshing: isRefreshing
 				),
 				trailingTopContent: trailingView(
 					lastUpdated: selectedFacility.refreshStatus.lastUpdated
@@ -814,7 +714,6 @@ extension DetailSections {
 
 	struct NearbyParkingView: View {
 		let nearbyFacilities: [ParkingFacility]
-		let namespace: Namespace.ID
 
 		@Binding var nearbyRoutes:
 			[String: (distance: CLLocationDistance, travelTime: TimeInterval)]
@@ -894,12 +793,9 @@ extension DetailSections {
 					id: \.facilityId
 				) { facility in
 
-					NavigationLink {
-						FacilityDetailView(
-							namespace: namespace,
-							facility: facility
-						)
-					} label: {
+					NavigationLink(
+						value: MapSheetModel.Route.facility(id: facility.facilityId)
+					) {
 						rowContent(
 							nearbyRoutes: nearbyRoutes,
 							facility: facility
@@ -933,7 +829,6 @@ extension DetailSections {
 /// Preview wrapper that inserts a sample facility into the model context
 private struct FacilityDetailPreviewContainer: View {
 	var status: AvailabilityStatus
-	@Namespace private var namespace
 	@Environment(\.modelContext) private var modelContext
 	@State private var facility: ParkingFacility?
 
@@ -941,10 +836,7 @@ private struct FacilityDetailPreviewContainer: View {
 		Group {
 			if let facility {
 				NavigationStack {
-					FacilityDetailView(
-						namespace: namespace,
-						facility: facility
-					)
+					FacilityDetailView(facility: facility)
 				}
 			} else {
 				ProgressView("Loading preview...")

@@ -10,27 +10,23 @@ import OSLog
 import SwiftData
 import SwiftUI
 
+/// Root view: a full-screen map with the browse/detail stack layered on top.
+///
+/// - Compact width: a persistent bottom sheet with detents, like Maps on iPhone.
+/// - Regular width or compact height (iPhone Duo inner display, landscape):
+///   a floating panel beside the map. Layout is driven by size class only,
+///   never by device or orientation.
 struct ContentView: View {
-	@Namespace private var navigationNamespace
-	@Namespace private var filterToggleNamespace
-
-	// Access managers from environment
 	@Environment(\.modelContext) private var modelContext
-	@Environment(\.dismiss) private var dismiss
-	@Environment(\.isSearching) private var isSearching
+	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
+	@Environment(\.verticalSizeClass) private var verticalSizeClass
 
-	@Environment(FacilityManager.self) private var facilityDataMgr
 	@Environment(ETAManager.self) private var etaMgr
 	@Environment(LocationManager.self) private var locationMgr
-	@Environment(OnboardingManager.self) private var onboardingMgr
 	@Environment(DeepLinkManager.self) private var deepLinkMgr
-	@Environment(SearchManager.self) private var searchMgr
-	@Environment(UserPreferences.self) private var preferences
 
-	@State private var selectedFacility: ParkingFacility?
-	@State private var isFiltered: Bool = false
-	@State private var deepLinkedFacility: ParkingFacility?
-	@State private var isSettingsPresented: Bool = false
+	@State private var sheet = MapSheetModel()
+	@State private var containerSize: CGSize = .zero
 	@State private var batchETATask: Task<Void, Never>?
 
 	/// Larger distance threshold for ETA recalculation (500m).
@@ -38,178 +34,74 @@ struct ContentView: View {
 	/// ETAs to distant parking lots don't change meaningfully over 500m.
 	private let batchETADistanceThreshold: CLLocationDistance = 500
 
-	// Single query for all facilities - let SwiftData handle animations smoothly
-	@Query(animation: .smooth)
-	private var allFacilities: [ParkingFacility]
-
-	/// Grouped facilities with pinned items at the top
-	private var groupedFacilities:
-		[(title: LocalizedStringResource?, facilities: [ParkingFacility])]
-	{
-		// Filter and sort all facilities once
-		let filteredFacilities =
-			allFacilities
-			.filtered(
-				by: preferences.filterIsOn
-					? preferences.preferredFilterOption : nil
-			)
-			.searchFiltered(by: searchMgr.searchText)
-			.sorted(
-				by: preferences.preferredSortOption,
-				order: preferences.preferredSortingOrder
-			)
-
-		// Separate into pinned and unpinned after filtering/sorting
-		let pinnedFacilities = filteredFacilities.filter { $0.isFavourite }
-		let unpinnedFacilities = filteredFacilities.filter { !$0.isFavourite }
-
-		var sections:
-			[(title: LocalizedStringResource?, facilities: [ParkingFacility])] =
-				[]
-
-		if !pinnedFacilities.isEmpty {
-			sections.append(
-				(title: "facilityList.section.title.pinned", facilities: pinnedFacilities)
-			)
-		}
-
-		if !unpinnedFacilities.isEmpty {
-			sections.append(
-				(
-					title: pinnedFacilities.isEmpty
-						? nil : "facilityList.section.title.more",
-					facilities: unpinnedFacilities
-				)
-			)
-		}
-
-		return sections
+	private var usesFloatingPanel: Bool {
+		horizontalSizeClass == .regular || verticalSizeClass == .compact
 	}
 
-	private var navigationSubtitle: Text {
-
-		if preferences.filterIsOn {
-			switch preferences.preferredFilterOption {
-			case .pinned:
-				return Text(.facilityListStatusPinnedOnly)
-			case .available:
-				return Text(.sortFilterStatusAvailableOnly)
-			}
+	/// Space the sheet or panel covers, so the map frames content in what's left visible.
+	private var mapOcclusion: (edges: Edge.Set, length: CGFloat) {
+		if usesFloatingPanel {
+			let width = FloatingPanel.width(
+				forContainerWidth: containerSize.width
+			)
+			return (.leading, width + FloatingPanel.margin)
 		}
 
-		if facilityDataMgr.isRefreshing {
-			return Text(facilityDataMgr.loadProgress.description)
-		}
-
-		return Text(.facilityListStatusAllUpdated)
-
-	}
-
-	struct MainView: View {
-		let namespace: Namespace.ID
-		let groupedFacilities:
-			[(title: LocalizedStringResource?, facilities: [ParkingFacility])]
-		@Binding var selectedFacility: ParkingFacility?
-
-		@Environment(SearchManager.self) private var searchMgr
-		@Environment(UserPreferences.self) private var preferences
-
-		var body: some View {
-			ZStack {
-				BackgroundGradient(isAnimating: true)
-				FacilityList(
-					namespace: namespace,
-					groupedFacilities: groupedFacilities,
-					selectedFacility: $selectedFacility,
-				)
-
-				.overlay {
-					if groupedFacilities.isEmpty {
-						if !searchMgr.searchText.isEmpty {
-							ContentUnavailableView
-								.search(text: searchMgr.searchText)
-						} else if preferences.filterIsOn
-							&& preferences.preferredFilterOption == .pinned
-						{
-							ContentUnavailableView {
-								Label(
-									.facilityListEmptyNoPinnedTitle,
-									systemImage: "questionmark.diamond.fill"
-								)
-							} description: {
-								Text(.facilityListEmptyNoPinnedMessage)
-							} actions: {
-								Button {
-									withAnimation(.snappy) {
-										preferences.filterIsOn.toggle()
-									}
-								} label: {
-									Text(.actionButtonClearFilter)
-								}
-								.buttonStyle(.borderedProminent)
-							}
-						}
-
-					}
-				}
-
-			}
-		}
+		// Use detent-derived heights rather than live sheet geometry so the map
+		// doesn't re-layout on every frame of a sheet drag.
+		let length =
+			sheet.detent == MapSheetModel.peekDetent
+			? MapSheetModel.peekHeight
+			: containerSize.height / 2
+		return (.bottom, length)
 	}
 
 	var body: some View {
-		@Bindable var onboarding = onboardingMgr
-		@Bindable var preferences = preferences
-		@Bindable var search = searchMgr
+		let occlusion = mapOcclusion
 
-		NavigationStack {
-			MainView(
-				namespace: navigationNamespace,
-				groupedFacilities: groupedFacilities,
-				selectedFacility: $selectedFacility
-			)
-			.navigationTitle(.metroParking)
-			.navigationSubtitle(navigationSubtitle)
-			.toolbarTitleDisplayMode(.inlineLarge)
-			.scrollEdgeEffectStyle(.soft, for: .vertical)
-			.scrollContentBackground(.hidden)
-			.toolbar {
-				TopBar()
-			}
-			.toolbar {
-				BottomBar()
+		ZStack(alignment: .topLeading) {
+			ParkingMapView(model: sheet)
+				.safeAreaPadding(occlusion.edges, occlusion.length)
+				.ignoresSafeArea()
 
+			if usesFloatingPanel {
+				SheetStack(model: sheet)
+					.floatingPanel(containerWidth: containerSize.width)
+					.transition(.move(edge: .leading).combined(with: .opacity))
 			}
 		}
-		// https://developer.apple.com/videos/play/wwdc2021/10176/?time=133
-		.searchable(
-			text: $search.searchText,
-			isPresented: $search.isSearching,
-			placement: .toolbar,
-			prompt: .facilityListPlaceholderSearch
-		)
-		.searchToolbarBehavior(
-			preferences.filterIsOn ? .minimize : .automatic
-		)
-
-		.containerShape(.rect(cornerRadius: 24))
-		.sheet(isPresented: $isSettingsPresented) {
-			SettingsView()
+		.onGeometryChange(for: CGSize.self) { proxy in
+			proxy.size
+		} action: { newSize in
+			containerSize = newSize
 		}
-		.sheet(isPresented: $onboarding.isShowingOnboarding) {
-			OnboardingView()
-				.environment(OnboardingManager.shared)
-		}
-		.sheet(item: $deepLinkedFacility) { facility in
-			DetailSheet(
-				selectedFacility: facility,
-				namespace: navigationNamespace
+		.animation(.smooth, value: usesFloatingPanel)
+		.sheet(
+			isPresented: Binding(
+				get: { !usesFloatingPanel },
+				set: { _ in }  // Persistent: only the layout decides.
 			)
-			.presentationDragIndicator(.visible)
-			.navigationAllowDismissalGestures([.none])
+		) {
+			SheetStack(model: sheet)
+				.presentationDetents(
+					MapSheetModel.detents,
+					selection: $sheet.detent
+				)
+				.presentationBackgroundInteraction(.enabled(upThrough: .medium))
+				.presentationDragIndicator(.visible)
+				.interactiveDismissDisabled()
 		}
-		.onChange(of: deepLinkMgr.selectedFacilityId) { _, newValue in
-			guard let facilityId = newValue else { return }
+		.onChange(of: sheet.selectedFacilityId) { _, facilityId in
+			updateCamera(for: facilityId)
+		}
+		.onChange(of: usesFloatingPanel) {
+			// The visible map area changed; keep the selection framed.
+			updateCamera(for: sheet.selectedFacilityId)
+		}
+		.onChange(of: deepLinkMgr.selectedFacilityId, initial: true) {
+			_,
+			facilityId in
+			guard let facilityId else { return }
 			handleDeepLink(facilityId: facilityId)
 		}
 		.task {
@@ -250,263 +142,60 @@ struct ContentView: View {
 			}
 		}
 	}
+}
 
+// MARK: - Map camera
+extension ContentView {
+	private func updateCamera(for facilityId: String?) {
+		withAnimation(.smooth) {
+			if let facilityId, let facility = fetchFacility(id: facilityId) {
+				sheet.focus(on: facility.location.coordinate)
+			} else {
+				sheet.showAll()
+			}
+		}
+	}
+
+	private func fetchFacility(id facilityId: String) -> ParkingFacility? {
+		var descriptor = FetchDescriptor<ParkingFacility>(
+			predicate: #Predicate { $0.facilityId == facilityId }
+		)
+		descriptor.fetchLimit = 1
+		return try? modelContext.fetch(descriptor).first
+	}
 }
 
 // MARK: - Batch ETA
 extension ContentView {
 	private func triggerBatchETA(location: CLLocation) async {
-		guard !allFacilities.isEmpty else { return }
+		let facilities =
+			(try? modelContext.fetch(FetchDescriptor<ParkingFacility>())) ?? []
+		guard !facilities.isEmpty else { return }
 		await etaMgr.calculateBatchETA(
 			from: location.coordinate,
-			for: allFacilities
+			for: facilities
 		)
 	}
 }
 
 // MARK: - Deep link
 extension ContentView {
-
-	struct DetailSheet: View {
-		let selectedFacility: ParkingFacility
-		let namespace: Namespace.ID
-
-		@Environment(\.dismiss) private var dismiss
-
-		var body: some View {
-			NavigationStack {
-				FacilityDetailView(
-					namespace: namespace,
-					facility: selectedFacility
-				)
-				.toolbar {
-					ToolbarItem(placement: .topBarLeading) {
-						Button {
-							dismiss()
-						} label: {
-							Image(systemName: "xmark")
-						}
-					}
-				}
-			}
-		}
-	}
-
 	private func handleDeepLink(facilityId: String) {
-		// Use SwiftData predicate query for O(1) lookup instead of O(n) array scan
-		// This also avoids creating a dependency on the entire allFacilities array
-		let descriptor = FetchDescriptor<ParkingFacility>(
-			predicate: #Predicate { $0.facilityId == facilityId }
-		)
+		defer { deepLinkMgr.clearSelection() }
 
-		guard let facility = try? modelContext.fetch(descriptor).first else {
+		guard fetchFacility(id: facilityId) != nil else {
 			Logger.deeplink.error(
 				"⚠️ Deep link: No facility found with ID: \(facilityId)"
 			)
-			deepLinkMgr.clearSelection()
 			return
 		}
 
-		Logger.deeplink.info(
-			"✅ Deep link: Navigating to facility '\(facility.displayName.title)'"
-		)
-
-		// Present as sheet with animation
-		withAnimation(.smooth) {
-			deepLinkedFacility = facility
-		}
-
-		// Clear the deep link handler after navigation is initiated
-		deepLinkMgr.clearSelection()
-	}
-
-}
-
-// MARK: - Toolbar
-extension ContentView {
-
-	@ToolbarContentBuilder
-	func TopBar() -> some ToolbarContent {
-
-		ToolbarItem(placement: .topBarTrailing) {
-			RefreshButton(
-				scope: .all
-			)
-		}
-
-		ToolbarItem(placement: .topBarTrailing) {
-			Button {
-				isSettingsPresented.toggle()
-			} label: {
-				Label(.settingsLabelTitle, systemImage: "ellipsis")
-					.labelStyle(.iconOnly)
-			}
-			.accessibilityIdentifier("settings-button")
-		}
-	}
-
-	@ToolbarContentBuilder
-	func BottomBar() -> some ToolbarContent {
-		@Bindable var preferences = preferences
-
-		ToolbarItemGroup(placement: .bottomBar) {
-			FilterMenu(preferences: preferences)
-		}
-
-		ToolbarSpacer(.flexible, placement: .bottomBar)
-
-		DefaultToolbarItem(kind: .search, placement: .bottomBar)
-
-		ToolbarSpacer(.flexible, placement: .bottomBar)
-
-		ToolbarItem(id: "Sorting", placement: .bottomBar) {
-			SortingMenu(preferences: preferences)
-		}
-
-	}
-
-	@ViewBuilder
-	private func FilterMenu(@Bindable preferences: UserPreferences) -> some View
-	{
-		Toggle(isOn: $preferences.filterIsOn.animation(.bouncy)) {
-			Label(
-				.sortFilterLabelFilter,
-				systemImage: "line.3.horizontal.decrease"
-			)
-			.labelStyle(.iconOnly)
-		}
-		.accessibilityIdentifier("filter-toggle")
-		.sensoryFeedback(.selection, trigger: preferences.filterIsOn)
-
-		if preferences.filterIsOn {
-
-			Picker(selection: $preferences.preferredFilterOption) {
-				ForEach(FilterOption.allCases, id: \.self) { option in
-
-					let icon: String =
-						option == preferences.preferredFilterOption
-						? option.display.systemImageAfter
-						: option.display.systemImage
-
-					Label(
-						option.display.title,
-						systemImage: icon
-					)
-					.tag(option)
-				}
-			} label: {
-				Text(.sortFilterLabelFilters)
-			}
-			.sensoryFeedback(
-				.selection,
-				trigger: preferences.preferredFilterOption
-			)
-			.pickerStyle(.inline)
-		}
-	}
-
-	@ViewBuilder
-	private func SortingMenu(@Bindable preferences: UserPreferences)
-		-> some View
-	{
-		Menu {
-			let isAscending: Bool =
-				preferences.preferredSortingOrder == .ascending
-
-			Picker(selection: $preferences.preferredSortingOrder) {
-				ForEach(SortingOrder.allCases, id: \.self) { order in
-					Label(
-						preferences.preferredSortOption.display.subtitle(
-							ascending: order == .ascending
-						),
-						systemImage: order.display.systemImage
-					)
-					.tag(order)
-				}
-			} label: {
-				Label(
-					.sortFilterLabelOrder,
-					systemImage: isAscending
-						? "text.line.first.and.arrowtriangle.forward"
-						: "text.line.last.and.arrowtriangle.forward"
-				)
-				Text(
-					preferences.preferredSortOption.display.subtitle(
-						ascending: isAscending
-					)
-				)
-			}
-			.pickerStyle(.menu)
-			.sensoryFeedback(
-				.selection,
-				trigger: preferences.preferredSortOption
-			)
-
-			Picker(selection: $preferences.preferredSortOption) {
-				ForEach(SortingOption.allCases, id: \.self) { option in
-					Label(
-						option.display.title,
-						systemImage: option.display.systemImage
-					)
-					.tag(option)
-				}
-			} label: {
-				Label(
-					.sortFilterLabelSortBy,
-					systemImage: "arrow.up.arrow.down"
-				)
-				.labelStyle(.titleOnly)
-			}
-			.pickerStyle(.inline)
-			.sensoryFeedback(
-				.selection,
-				trigger: preferences.preferredSortOption
-			)
-
-		} label: {
-			Label(
-				.sortFilterLabelSortBy,
-				systemImage: "arrow.up.arrow.down"
-			)
-		}
-		.accessibilityIdentifier("sorting-menu")
-	}
-}
-
-/// A reusable picker section for options with display properties
-struct LabeledPickerSection<T>: View
-where
-	T: CaseIterable & Hashable & PickerOptionDisplayable,
-	T.DisplayType: BasicDisplayable
-{
-	let title: LocalizedStringKey
-	let icon: String
-	@Binding var selection: T
-	let options: [T]
-
-	var body: some View {
-		Picker(selection: $selection) {
-			ForEach(Array(options), id: \.self) { option in
-				Label(
-					option.display.title,
-					systemImage: option.display.systemImage
-				)
-				.tag(option)
-			}
-		} label: {
-			Label {
-				Text(title)
-				Text(selection.display.title)
-			} icon: {
-				Image(systemName: icon)
-			}
-		}
-		.pickerStyle(.menu)
+		Logger.deeplink.info("✅ Deep link: Showing facility \(facilityId)")
+		sheet.select(facilityId)
 	}
 }
 
 #Preview("With Pinned Facilities") {
-
 	ContentView()
 		.modelContainer(.preview(includeSampleData: true, favoriteCount: 3))
 		.environment(FacilityManager.shared)
@@ -515,6 +204,8 @@ where
 		.environment(DeepLinkManager.shared)
 		.environment(SearchManager.shared)
 		.environment(UserPreferences.shared)
+		.environment(ETAManager.shared)
+		.environment(LocationManager.shared)
 }
 
 #Preview("Empty State") {
@@ -526,4 +217,6 @@ where
 		.environment(DeepLinkManager.shared)
 		.environment(SearchManager.shared)
 		.environment(UserPreferences.shared)
+		.environment(ETAManager.shared)
+		.environment(LocationManager.shared)
 }

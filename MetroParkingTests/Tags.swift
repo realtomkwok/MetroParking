@@ -16,4 +16,5 @@ extension Tag {
 	@Tag static var configuration: Self
 	@Tag static var formatting: Self
 	@Tag static var integration: Self
+	@Tag static var navigation: Self
 }

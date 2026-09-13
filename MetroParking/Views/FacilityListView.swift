@@ -12,11 +12,9 @@ import SwiftUIBackports
 
 /// Future features: Live Activity/notification swipe actions (v0.5.0+)
 struct FacilityList: View {
-	var namespace: Namespace.ID
 	let groupedFacilities:
 		[(title: LocalizedStringResource?, facilities: [ParkingFacility])]
 
-	@Binding var selectedFacility: ParkingFacility?
 	@Environment(FacilityManager.self) private var facilityDataMgr
 
 	// MARK: - Identifiable Section
@@ -26,10 +24,10 @@ struct FacilityList: View {
 		let title: LocalizedStringResource?
 		let facilities: [ParkingFacility]
 
-		init(title: LocalizedStringResource, facilities: [ParkingFacility]) {
+		init(title: LocalizedStringResource?, facilities: [ParkingFacility]) {
 			self.title = title
 			self.facilities = facilities
-			self.id = String(localized: title)
+			self.id = title.map { String(localized: $0) } ?? "untitled"
 		}
 	}
 
@@ -38,7 +36,7 @@ struct FacilityList: View {
 			.filter { !$0.facilities.isEmpty }
 			.map {
 				FacilitySection(
-					title: $0.title ?? "",
+					title: $0.title,
 					facilities: $0.facilities
 				)
 			}
@@ -66,11 +64,7 @@ struct FacilityList: View {
 				Section {
 					ForEach(section.facilities, id: \.persistentModelID) {
 						facility in
-						ListRow(
-							facility: facility,
-							namespace: namespace,
-							selectedFacility: $selectedFacility
-						)
+						ListRow(facility: facility)
 					}
 				} header: {
 					if let title = section.title {
@@ -89,12 +83,6 @@ struct FacilityList: View {
 			.smooth(),
 			value: sectionStructureHash
 		)
-		.navigationDestination(item: $selectedFacility) { facility in
-			FacilityDetailView(namespace: namespace, facility: facility)
-				.navigationTransition(
-					.zoom(sourceID: facility.facilityId, in: namespace)
-				)
-		}
 	}
 }
 
@@ -103,11 +91,8 @@ extension FacilityList {
 
 	struct ListRow: View {
 		let facility: ParkingFacility
-		let namespace: Namespace.ID
 
 		@Environment(\.modelContext) private var modelContext
-
-		@Binding var selectedFacility: ParkingFacility?
 
 		@ViewBuilder
 		private func leadingSwipeAction(for facility: ParkingFacility)
@@ -132,20 +117,15 @@ extension FacilityList {
 		}
 
 		var body: some View {
-			Button {
-				selectedFacility = facility
-			} label: {
+			NavigationLink(value: MapSheetModel.Route.facility(id: facility.facilityId)) {
 				rowContent(facility: facility)
 			}
-			.buttonStyle(.glass)
 			.accessibilityIdentifier("facility-row-\(facility.facilityId)")
 			// TODO: add AccessibilityHint and AccessibilityLabel
 			.listRowInsets(
-				EdgeInsets(top: 8, leading: 16, bottom: 4, trailing: 16)
+				EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16)
 			)
 			.listRowBackground(Color.clear)
-			.listRowSeparator(.hidden)
-			.matchedTransitionSource(id: facility.facilityId, in: namespace)
 			.swipeActions(edge: .leading) {
 				leadingSwipeAction(for: facility)
 			}
@@ -284,20 +264,16 @@ extension FacilityList {
 // MARK: - Previews
 
 #Preview("Grouped Facilities") {
-	@Previewable @Namespace var namespace
-	@Previewable @State var selectedFacility: ParkingFacility?
 
 	let favourites = ParkingFacility.sampleFavorites()
 	let others = ParkingFacility.samples(count: 5)
 
 	NavigationStack {
 		FacilityList(
-			namespace: namespace,
 			groupedFacilities: [
 				(title: "Pinned", facilities: favourites),
 				(title: "Nearby", facilities: others),
-			],
-			selectedFacility: $selectedFacility
+			]
 		)
 		.navigationTitle("Metro Parking")
 	}
@@ -308,16 +284,12 @@ extension FacilityList {
 }
 
 #Preview("Single Section") {
-	@Previewable @Namespace var namespace
-	@Previewable @State var selectedFacility: ParkingFacility?
 
 	NavigationStack {
 		FacilityList(
-			namespace: namespace,
 			groupedFacilities: [
 				(title: nil, facilities: ParkingFacility.samples(count: 8))
-			],
-			selectedFacility: $selectedFacility
+			]
 		)
 		.navigationTitle("All Facilities")
 	}
@@ -328,14 +300,10 @@ extension FacilityList {
 }
 
 #Preview("Empty State") {
-	@Previewable @Namespace var namespace
-	@Previewable @State var selectedFacility: ParkingFacility?
 
 	NavigationStack {
 		FacilityList(
-			namespace: namespace,
-			groupedFacilities: [],
-			selectedFacility: $selectedFacility
+			groupedFacilities: []
 		)
 		.navigationTitle("No Facilities")
 	}

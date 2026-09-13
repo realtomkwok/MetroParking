@@ -24,10 +24,6 @@ struct MetroParkingApp: App {
 
 		setupConfiguration()
 
-		Task.detached(priority: .userInitiated) {
-			_ = await SharedDataManager.prepareStoreDirectory()
-		}
-
 		// Initialise AppStateManager to set up lifecycle observers
 		_ = AppStateManager.shared
 
@@ -57,7 +53,6 @@ struct MetroParkingApp: App {
 			// Clear UserDefaults to show onboarding
 			if let bundleID = Bundle.main.bundleIdentifier {
 				UserDefaults.standard.removePersistentDomain(forName: bundleID)
-				UserDefaults.standard.synchronize()
 			}
 		}
 
@@ -67,7 +62,6 @@ struct MetroParkingApp: App {
 			print("⏭️ Skipping onboarding for UI test")
 			#endif
 			UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
-			UserDefaults.standard.synchronize()
 		}
 
 		if arguments.contains("DISABLE_ANIMATIONS") {

@@ -332,6 +332,7 @@ extension BackgroundTaskManager {
 				let spacesBefore = facility.vacancy.available
 
 				do {
+					APIUsageMonitor.recordCall()
 					let response = try await ParkingAPIService.shared.fetchFacility(
 						id: facility.facilityId
 					)

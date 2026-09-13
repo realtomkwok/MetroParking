@@ -8,7 +8,6 @@
 import Foundation
 import SwiftData
 import SwiftUI
-import SwiftUIBackports
 
 /// Future features: Live Activity/notification swipe actions (v0.5.0+)
 struct FacilityList: View {

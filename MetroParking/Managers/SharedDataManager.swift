@@ -125,7 +125,8 @@ extension SharedDataManager {
 		let availableSpaces: Int
 		let totalSpaces: Int
 		let occupancyRatio: Double
-		let availabilityStatus: String  // "available", "almostFull", "full", "noData" -> as AvailabilityStatus is not codable
+		/// `AvailabilityStatus` raw value. Older caches may hold display text instead; see `status`.
+		let availabilityStatus: String
 
 		// Route
 		let distance: Double?
@@ -135,12 +136,16 @@ extension SharedDataManager {
 		let lastUpdated: Date
 		let cacheTimestamp: Date
 
-		var statusColour: String {
-			switch availabilityStatus {
-			case "available": return "green"
-			case "almostFull": return "yellow"
-			case "full": return "red"
-			default: return "gray"
+		var status: AvailabilityStatus {
+			if let status = AvailabilityStatus(rawValue: availabilityStatus) {
+				return status
+			}
+			// Caches written before raw values were stored held English display text.
+			switch availabilityStatus.lowercased().replacingOccurrences(of: " ", with: "") {
+			case "available": return .available
+			case "almostfull": return .almostFull
+			case "full": return .full
+			default: return .noData
 			}
 		}
 
@@ -165,6 +170,54 @@ extension SharedDataManager {
 		}
 	}
 
+	/// Fetches fresh vacancy for a widget facility and updates the shared cache.
+	/// - Parameter existingData: Cached data whose name, address and route fields are kept.
+	/// - Returns: The updated data, or `nil` if the fetch failed.
+	func refreshWidgetData(
+		facilityId: String,
+		existingData: WidgetFacilityData?
+	) async -> WidgetFacilityData? {
+		do {
+			let response = try await ParkingAPIService.shared.fetchFacility(
+				id: facilityId,
+				timeout: 10  // Widgets have limited run time
+			)
+
+			let total = Int(response.spots) ?? 0
+			let occupied = Int(response.occupancy.total ?? "0") ?? 0
+			let available = max(0, total - occupied)
+			let displayName = ParkingFacility.parseDisplayName(response.facilityName)
+			let now = Date()
+
+			let updatedData = WidgetFacilityData(
+				facilityId: facilityId,
+				name: response.facilityName,
+				displayTitle: existingData?.displayTitle ?? displayName.title,
+				displaySubtitle: existingData?.displaySubtitle ?? displayName.subtitle,
+				address: existingData?.address ?? response.location.address,
+				availableSpaces: available,
+				totalSpaces: total,
+				occupancyRatio: total > 0 ? Double(occupied) / Double(total) : 0,
+				availabilityStatus: AvailabilityStatus(available: available, total: total).rawValue,
+				distance: existingData?.distance,
+				travelTime: existingData?.travelTime,
+				lastUpdated: now,
+				cacheTimestamp: now
+			)
+
+			saveWidgetData(updatedData, triggerReload: false)
+			Logger.widget.info(
+				"✅ Widget: Fetched fresh data for \(displayName.title) - \(available)/\(total) available"
+			)
+			return updatedData
+		} catch {
+			Logger.widget.error(
+				"❌ Widget: Failed to fetch facility \(facilityId): \(error.localizedDescription)"
+			)
+			return nil
+		}
+	}
+
 	func registerWidgetFacility(_ facilityId: String) {
 		guard let userDefaults = sharedDefaults else {
 			Logger.widget.error("❌ Failed to access shared UserDefaults")
@@ -175,7 +228,6 @@ extension SharedDataManager {
 		if !ids.contains(facilityId) {
 			ids.append(facilityId)
 			userDefaults.set(ids, forKey: Self.widgetFacilityIdsKey)
-			userDefaults.synchronize()
 			invalidateWidgetIdsCache()
 
 			Logger.widget.info("✅ Registered facility ID: \(facilityId)")
@@ -193,7 +245,6 @@ extension SharedDataManager {
 		var ids = getWidgetFacilityIDs()
 		ids.removeAll { $0 == facilityId }
 		userDefaults.set(ids, forKey: Self.widgetFacilityIdsKey)
-		userDefaults.synchronize()
 		invalidateWidgetIdsCache()
 
 		Logger.widget.info("✅ Deregistered facility ID: \(facilityId)")
@@ -227,7 +278,6 @@ extension SharedDataManager {
 			encoder.dateEncodingStrategy = .iso8601
 			let encoded = try encoder.encode(cache)
 			defaults.set(encoded, forKey: Self.widgetDataCacheKey)
-			defaults.synchronize()
 
 			if triggerReload {
 				WidgetBudgetTracker.shared.requestReload()
@@ -274,24 +324,6 @@ extension SharedDataManager {
 		return cache[facilityId]
 	}
 
-	/// Get all currently cached widget data for registered widget facilities
-	func getAllWidgetData() -> [WidgetFacilityData] {
-		let cache = loadWidgetDataCache()
-		let widgetFacilityIds = getWidgetFacilityIDs()
-
-		return widgetFacilityIds.compactMap { cache[$0] }
-	}
-
-	/// Legacy method - loads the first widget facility data for backward compatibility
-	/// - Note: Deprecated - Use `loadWidgetData(forFacilityId:)` or `getAllWidgetData()` instead
-	@available(*, deprecated, message: "Use loadWidgetData(forFacilityId:) or getAllWidgetData() for multi-widget support")
-	func loadWidgetData() -> WidgetFacilityData? {
-		// Return the first registered widget facility's data
-		let widgetIds = getWidgetFacilityIDs()
-		guard let firstId = widgetIds.first else { return nil }
-		return loadWidgetData(forFacilityId: firstId)
-	}
-
 	func makeWidgetData(from facility: ParkingFacility) -> WidgetFacilityData {
 		let vacancy = facility.vacancy
 		let displayName = facility.displayName
@@ -305,7 +337,7 @@ extension SharedDataManager {
 			availableSpaces: vacancy.available,
 			totalSpaces: vacancy.total,
 			occupancyRatio: vacancy.occupancy,
-			availabilityStatus: facility.availabilityStatus.text,
+			availabilityStatus: facility.availabilityStatus.rawValue,
 			distance: facility.route?.distance,
 			travelTime: facility.route?.travelTime,
 			lastUpdated: facility.refreshStatus.lastUpdated,
@@ -341,20 +373,6 @@ extension SharedDataManager {
 		Logger.widget.debug(
 			"💾 Cached widget data for: \(facility.displayName.title)"
 		)
-	}
-
-	/// Update widget only if this facility is currently selected in the widget
-	func updateWidgetIfSelected(_ facility: ParkingFacility) {
-		// Check if this facility is registered in any widget
-		guard isCurrentlyInWidget(facility.facilityId) else {
-			// This facility is not shown in any widget
-			return
-		}
-
-		// Update the widget with fresh data
-		updateWidget(with: facility)
-		Logger.widget
-			.info("🔄 Widget updated for: \(facility.displayName.title)")
 	}
 
 	/// Get all facility IDs currently displayed in widgets
@@ -396,30 +414,4 @@ extension SharedDataManager {
 		let ids = defaults.stringArray(forKey: widgetFacilityIdsKey) ?? []
 		return ids.contains(facilityId)
 	}
-
-	/// Check if the model container was created successfully
-	nonisolated static func prepareStoreDirectory() async -> Bool {
-		let storeDirectory = FileManager.default
-			.containerURL(
-				forSecurityApplicationGroupIdentifier: appGroupIdentifier
-			)
-
-		guard let storeDirectory else { return false }
-
-		if FileManager.default.fileExists(atPath: storeDirectory.path) {
-			return true
-		}
-
-		do {
-			try FileManager.default.createDirectory(
-				at: storeDirectory,
-				withIntermediateDirectories: true,
-				attributes: nil
-			)
-			return true
-		} catch {
-			return false
-		}
-	}
 }
-

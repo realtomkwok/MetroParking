@@ -33,7 +33,7 @@ final class ScreenshotTests: XCTestCase {
 		XCUIDevice.shared.location = XCUILocation(location: sydney)
 
         app = XCUIApplication()
-		app.launchArguments += ["UI_TESTING", "DISABLE_ANIMATION"]
+		app.launchArguments += ["UI_TESTING", "DISABLE_ANIMATIONS"]
 
         // Enable Fastlane snapshot support
         setupSnapshot(app)
@@ -76,7 +76,7 @@ final class ScreenshotTests: XCTestCase {
             snapshot("01_Onboarding")
         } else {
             // Onboarding might already be completed, skip this test
-            XCTSkip("Onboarding already completed")
+            throw XCTSkip("Onboarding already completed")
         }
     }
 

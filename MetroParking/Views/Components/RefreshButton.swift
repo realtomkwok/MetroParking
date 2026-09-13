@@ -21,15 +21,6 @@ struct RefreshButton: View {
 		facilityDataMgr.isRefreshing
 	}
 
-	private var isDisabled: Bool {
-		switch scope {
-			case .single(
-				let facility
-			): return facility.refreshStatus.timeSinceLastUpdate < 1
-			case .all: return facilityDataMgr.isRefreshing
-		}
-	}
-
 	var body: some View {
 		Button {
 			Task {

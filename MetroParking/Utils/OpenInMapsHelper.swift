@@ -50,8 +50,7 @@ func openInMaps(_ mapItem: MKMapItem, provider: MapProvider) {
 							longitudeDelta: 0.01
 						)
 					),
-					MKLaunchOptionsDirectionsModeKey: MKDirectionsTransportType
-						.automobile.launchOptionsValue,
+					MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving,
 				]
 			)
 	case .googleMaps:

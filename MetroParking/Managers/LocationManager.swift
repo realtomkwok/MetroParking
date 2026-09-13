@@ -154,9 +154,6 @@ extension LocationManager {
 				)
 				currentLocation = location
 				updateLocationAvailability()
-
-				// Invalidate cache
-				DistanceHelper.clearDistanceCache()
 			} else {
 				Logger.location.debug(
 					"  → Location change not significant (<100m), skipping update"

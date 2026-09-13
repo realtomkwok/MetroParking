@@ -12,7 +12,6 @@
 		181F07902EF13C06008F451B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 181F078F2EF13C06008F451B /* WidgetKit.framework */; };
 		181F07922EF13C06008F451B /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 181F07912EF13C06008F451B /* SwiftUI.framework */; };
 		181F079D2EF13C07008F451B /* MetroParkingWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 181F078E2EF13C06008F451B /* MetroParkingWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		1826A71C2EEE5DDD00B13802 /* SwiftUIBackports in Frameworks */ = {isa = PBXBuildFile; productRef = 1826A71B2EEE5DDD00B13802 /* SwiftUIBackports */; };
 		182A3C0E2E03BC3500E64A38 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 182A3C0D2E03BC3100E64A38 /* .gitignore */; };
 		182A3C122E03C14100E64A38 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182A3C112E03C13F00E64A38 /* Configuration.swift */; };
 		1873C8A12E568C2000E2B438 /* App Icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 1873C8A02E568C2000E2B438 /* App Icon.icon */; };
@@ -63,24 +62,19 @@
 		180974D62F3AE67C00E48620 /* ProductionTestPlan.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = ProductionTestPlan.xctestplan; sourceTree = "<group>"; };
 		180F1B5D2EE659EF00A72037 /* SortingFiltering Architecture.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "SortingFiltering Architecture.md"; sourceTree = "<group>"; };
 		180F1B5E2EE659EF00A72037 /* CONFIGURATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONFIGURATION.md; sourceTree = "<group>"; };
-		180F1BC02EE6C21600A72037 /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLAUDE.md; sourceTree = SOURCE_ROOT; };
 		180F1BC42EE794EF00A72037 /* MAPS_MANAGER_MIGRATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MAPS_MANAGER_MIGRATION.md; sourceTree = "<group>"; };
 		180F1BC82EE79CD900A72037 /* TECHNICAL_DEEP_DIVE_MAPS_MANAGER.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TECHNICAL_DEEP_DIVE_MAPS_MANAGER.md; sourceTree = "<group>"; };
 		180F1BCE2EE8EECB00A72037 /* PERMISSION_FLOW_DIAGRAM.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PERMISSION_FLOW_DIAGRAM.md; sourceTree = "<group>"; };
 		180F337E2F3547E300540491 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		181F07142EEEDC18008F451B /* MIGRATION_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MIGRATION_GUIDE.md; sourceTree = "<group>"; };
 		181F077F2EF1235E008F451B /* WIDGET_ARCHITECTURE_PLAN.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_ARCHITECTURE_PLAN.md; sourceTree = "<group>"; };
 		181F07802EF1235E008F451B /* WIDGET_DATA_FLOW.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_DATA_FLOW.md; sourceTree = "<group>"; };
 		181F07812EF1235E008F451B /* WIDGET_QUICK_REFERENCE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_QUICK_REFERENCE.md; sourceTree = "<group>"; };
-		181F07822EF1235E008F451B /* WIDGET_README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_README.md; sourceTree = "<group>"; };
-		181F07832EF1235E008F451B /* WIDGET_VISUAL_MOCKUPS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_VISUAL_MOCKUPS.md; sourceTree = "<group>"; };
 		181F078E2EF13C06008F451B /* MetroParkingWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MetroParkingWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		181F078F2EF13C06008F451B /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		181F07912EF13C06008F451B /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		181F07A42EF14159008F451B /* WIDGET_SETUP_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_SETUP_GUIDE.md; sourceTree = "<group>"; };
 		181F07A62EF1415B008F451B /* WIDGET_IMPLEMENTATION_CHECKLIST.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_IMPLEMENTATION_CHECKLIST.md; sourceTree = "<group>"; };
 		181F07B42EF2D517008F451B /* WIDGET_APPINTENT_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_APPINTENT_GUIDE.md; sourceTree = "<group>"; };
-		181F07B62EF2D52B008F451B /* WIDGET_SETUP_CHECKLIST.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_SETUP_CHECKLIST.md; sourceTree = "<group>"; };
 		181F07CA2EF80426008F451B /* WIDGET_BUDGET_UPDATE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_BUDGET_UPDATE.md; sourceTree = "<group>"; };
 		181F07CF2EF8D9FF008F451B /* CODE_REVIEW_CHECKLIST.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CODE_REVIEW_CHECKLIST.md; sourceTree = "<group>"; };
 		181F07D02EF8D9FF008F451B /* CONCURRENCY_FIXES_SUMMARY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONCURRENCY_FIXES_SUMMARY.md; sourceTree = "<group>"; };
@@ -100,20 +94,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		180F1B592EE5B33E00A72037 /* Exceptions for "MetroParking" folder in "MetroParkingTests" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Utils/NavigationAllowedDismissalGesturesModifier.swift,
-			);
-			target = 184037042DD9F82F009D7FBA /* MetroParkingTests */;
-		};
-		180F1B5A2EE5B33E00A72037 /* Exceptions for "MetroParking" folder in "MetroParkingUITests" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Utils/NavigationAllowedDismissalGesturesModifier.swift,
-			);
-			target = 1840370E2DD9F82F009D7FBA /* MetroParkingUITests */;
-		};
 		180F33E12F3592AE00540491 /* Exceptions for "MetroParkingUITests" folder in "MetroParkingUITests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -140,13 +120,12 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Localizable.xcstrings,
-				Managers/MapsManager.swift,
 				Managers/SharedDataManager.swift,
 				Models/ParkingAPIModels.swift,
 				Models/ParkingFacility.swift,
 				Models/ParkingZone.swift,
 				RoutingAppCoverage.geojson,
-				Utils/AdaptiveColourHelper.swift,
+				Services/ParkingAPIService.swift,
 				Utils/Logger.swift,
 				Utils/RefreshConfiguration.swift,
 				Utils/RemovePrefixHelper.swift,
@@ -169,8 +148,6 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				180F33E32F35C36400540491 /* Exceptions for "MetroParking" folder in "MetroParking" target */,
-				180F1B592EE5B33E00A72037 /* Exceptions for "MetroParking" folder in "MetroParkingTests" target */,
-				180F1B5A2EE5B33E00A72037 /* Exceptions for "MetroParking" folder in "MetroParkingUITests" target */,
 				181F07AB2EF1555B008F451B /* Exceptions for "MetroParking" folder in "MetroParkingWidgetExtension" target */,
 			);
 			path = MetroParking;
@@ -205,7 +182,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1826A71C2EEE5DDD00B13802 /* SwiftUIBackports in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -233,8 +209,6 @@
 				181F07842EF1235E008F451B /* Widgets */,
 				180F1B622EE65A0000A72037 /* Components */,
 				180F1B5E2EE659EF00A72037 /* CONFIGURATION.md */,
-				180F1BC02EE6C21600A72037 /* CLAUDE.md */,
-				181F07142EEEDC18008F451B /* MIGRATION_GUIDE.md */,
 				189811DD2EFB56D400B7440D /* NEARBY_FACILITIES_IMPLEMENTATION.md */,
 			);
 			path = Docs;
@@ -256,11 +230,8 @@
 			children = (
 				181F077F2EF1235E008F451B /* WIDGET_ARCHITECTURE_PLAN.md */,
 				181F07B42EF2D517008F451B /* WIDGET_APPINTENT_GUIDE.md */,
-				181F07B62EF2D52B008F451B /* WIDGET_SETUP_CHECKLIST.md */,
 				181F07802EF1235E008F451B /* WIDGET_DATA_FLOW.md */,
 				181F07812EF1235E008F451B /* WIDGET_QUICK_REFERENCE.md */,
-				181F07822EF1235E008F451B /* WIDGET_README.md */,
-				181F07832EF1235E008F451B /* WIDGET_VISUAL_MOCKUPS.md */,
 				181F07A62EF1415B008F451B /* WIDGET_IMPLEMENTATION_CHECKLIST.md */,
 				181F07A42EF14159008F451B /* WIDGET_SETUP_GUIDE.md */,
 				181F07CA2EF80426008F451B /* WIDGET_BUDGET_UPDATE.md */,
@@ -340,8 +311,6 @@
 				181F07932EF13C06008F451B /* MetroParkingWidget */,
 			);
 			name = MetroParkingWidgetExtension;
-			packageProductDependencies = (
-			);
 			productName = MetroParkingWidgetExtension;
 			productReference = 181F078E2EF13C06008F451B /* MetroParkingWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -364,9 +333,6 @@
 				182A3C822E0CAE5500E64A38 /* MetroParking */,
 			);
 			name = MetroParking;
-			packageProductDependencies = (
-				1826A71B2EEE5DDD00B13802 /* SwiftUIBackports */,
-			);
 			productName = MetroParking;
 			productReference = 184036F62DD9F82D009D7FBA /* MetroParking.app */;
 			productType = "com.apple.product-type.application";
@@ -388,8 +354,6 @@
 				184037082DD9F82F009D7FBA /* MetroParkingTests */,
 			);
 			name = MetroParkingTests;
-			packageProductDependencies = (
-			);
 			productName = MetroParkingTests;
 			productReference = 184037052DD9F82F009D7FBA /* MetroParkingTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -411,8 +375,6 @@
 				184037122DD9F82F009D7FBA /* MetroParkingUITests */,
 			);
 			name = MetroParkingUITests;
-			packageProductDependencies = (
-			);
 			productName = MetroParkingUITests;
 			productReference = 1840370F2DD9F82F009D7FBA /* MetroParkingUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -454,9 +416,6 @@
 			);
 			mainGroup = 184036ED2DD9F82D009D7FBA;
 			minimizedProjectReferenceProxies = 1;
-			packageReferences = (
-				1826A71A2EEE5DDD00B13802 /* XCRemoteSwiftPackageReference "iOS-Backports" */,
-			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 184036F72DD9F82D009D7FBA /* Products */;
 			projectDirPath = "";
@@ -1013,24 +972,6 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		1826A71A2EEE5DDD00B13802 /* XCRemoteSwiftPackageReference "iOS-Backports" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/superwall/iOS-Backports";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.5;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		1826A71B2EEE5DDD00B13802 /* SwiftUIBackports */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 1826A71A2EEE5DDD00B13802 /* XCRemoteSwiftPackageReference "iOS-Backports" */;
-			productName = SwiftUIBackports;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 184036EE2DD9F82D009D7FBA /* Project object */;
 }

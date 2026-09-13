@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import MapKit
 import OSLog
 import SwiftUI
 
@@ -23,10 +22,6 @@ final class AppStateManager {
 
 	private init() {
 		setupLifecycleObservers()
-	}
-
-	deinit {
-		NotificationCenter.default.removeObserver(self)
 	}
 }
 

@@ -54,14 +54,6 @@ final class ParkingFacility {
 	@Relationship(deleteRule: .cascade, inverse: \ParkingZone.facility)
 	var zones: [ParkingZone] = []
 
-	// MARK: - Static Formatters (performance optimisation)
-
-	/// Shared ISO8601 date formatter - creating formatters is expensive
-	private static let iso8601Formatter: ISO8601DateFormatter = {
-		let formatter = ISO8601DateFormatter()
-		return formatter
-	}()
-
 	/// Regex pattern for parsing display names - compiled once
 	private static let displayNamePattern = /^(.+?)\s*\((.+?)\)$/
 
@@ -98,19 +90,27 @@ final class ParkingFacility {
 	/// Parses the facility name and caches the display title/subtitle
 	/// Called once during initialisation to avoid regex parsing on every access
 	private func _parseAndCacheDisplayName() {
+		let parsed = Self.parseDisplayName(name)
+		_displayFullName = parsed.full
+		_displayTitle = parsed.title
+		_displaySubtitle = parsed.subtitle
+	}
+
+	/// Splits a TfNSW facility name into a display title and subtitle.
+	/// e.g. "Park&Ride - Gordon Henry St (north)" → ("Gordon Henry St", "North")
+	nonisolated static func parseDisplayName(_ name: String) -> (
+		title: String, subtitle: String, full: String
+	) {
 		let stripped = name.removePrefix("Park&Ride - ").localizedCapitalized
 
-		_displayFullName = stripped
-
-		if let match = stripped.firstMatch(of: Self.displayNamePattern) {
-			_displayTitle = String(match.1).trimmingCharacters(in: .whitespaces)
-			_displaySubtitle = String(match.2).trimmingCharacters(
-				in: .whitespaces
+		if let match = stripped.firstMatch(of: displayNamePattern) {
+			return (
+				title: String(match.1).trimmingCharacters(in: .whitespaces),
+				subtitle: String(match.2).trimmingCharacters(in: .whitespaces),
+				full: stripped
 			)
-		} else {
-			_displayTitle = stripped
-			_displaySubtitle = ""
 		}
+		return (title: stripped, subtitle: "", full: stripped)
 	}
 
 	// MARK: - Nested Types
@@ -132,13 +132,6 @@ final class ParkingFacility {
 		let calculatedAt: Date
 		let originCoordinate: CLLocationCoordinate2D?
 
-		/// Cached distance formatter - creating formatters is expensive
-		private static let distanceFormatter: MKDistanceFormatter = {
-			let formatter = MKDistanceFormatter()
-			formatter.unitStyle = .abbreviated
-			return formatter
-		}()
-
 		func isValid(from currentLocation: CLLocationCoordinate2D?) -> Bool {
 //			guard let currentLocation else { return isValid }
 			let withinTimeLimit = calculatedAt.timeIntervalSinceNow > -3600
@@ -159,19 +152,6 @@ final class ParkingFacility {
 			// No new location available to compare - trust the time check
 			return true
 		}
-
-		var isValid: Bool {
-			calculatedAt.timeIntervalSinceNow > -3600  // Valid for 1 hour
-		}
-
-		var formattedDistance: String {
-			Self.distanceFormatter.string(fromDistance: distance)
-		}
-
-		var formattedTravelTime: String {
-			let duration: Duration = .seconds(travelTime)
-			return duration.formatted(.units(width: .wide))
-		}
 	}
 
 	/// Data staleness level for UI presentation
@@ -186,14 +166,6 @@ final class ParkingFacility {
 			case .stale: return 0.6
 			}
 		}
-
-		/// Whether to show a refresh indicator
-		var showsRefreshIndicator: Bool {
-			switch self {
-			case .fresh: return false
-			case .stale: return true
-			}
-		}
 	}
 
 	/// Refresh and update tracking information
@@ -206,11 +178,6 @@ final class ParkingFacility {
 
 		var timeSinceLastUpdate: TimeInterval {
 			Date().timeIntervalSince(lastUpdated)
-		}
-
-		var hasRecentFailures: Bool {
-			failures > 0
-				&& lastFailureDate?.timeIntervalSinceNow ?? -.infinity > -300  // Within 5 min
 		}
 
 		/// Determines staleness level based on cache age and tier
@@ -361,15 +328,7 @@ final class ParkingFacility {
 		}
 
 		// For stale data, still show the status but UI should indicate staleness
-		let available = vacancyInfo.available
-
-		if available == 0 {
-			return .full
-		} else if available < totalSpaces / 10 {
-			return .almostFull
-		} else {
-			return .available
-		}
+		return AvailabilityStatus(available: vacancyInfo.available, total: totalSpaces)
 	}
 
 	// MARK: - Refresh Priority (2-Tier System)
@@ -436,13 +395,6 @@ extension ParkingFacility {
 		return mapItem
 	}
 
-	/// Returns an MKMapItem for this facility (async version for backward compatibility)
-	/// - Returns: A configured MKMapItem with the facility's location and details
-	/// - Note: Prefer `getOrCreateMapItem()` for synchronous access without network calls
-	func getMapItem() async -> MKMapItem {
-		return await MapsManager.shared.createMapItem(for: self)
-	}
-
 	/// Determines if this facility should be refreshed based on app state and cache validity
 	/// Centralises the refresh decision logic used across FacilityManager and BackgroundTaskManager
 	/// - Parameters:
@@ -495,14 +447,6 @@ extension ParkingFacility {
 		self._routeOriginLongitude = origin?.longitude
 	}
 
-	func clearStaleRoutingData() {
-		if route?.isValid == false {
-			self._routeDistance = nil
-			self._routeTravelTime = nil
-			self._routeTimestamp = nil
-		}
-	}
-
 	func clearRoutingData() {
 		self._routeTimestamp = nil
 		self._routeDistance = nil
@@ -519,8 +463,23 @@ extension ParkingFacility {
 // Full: vacancy < 1
 // Almost full: vacancy < 10% of total
 
-enum AvailabilityStatus: CaseIterable {
+/// Stored by raw value in the widget cache, so keep raw values stable.
+enum AvailabilityStatus: String, CaseIterable, Codable, Sendable {
 	case available, almostFull, full, noData
+
+	/// Status for a known occupancy reading. Single source of the thresholds
+	/// shared by the app and the widget.
+	init(available: Int, total: Int) {
+		if total <= 0 {
+			self = .noData
+		} else if available <= 0 {
+			self = .full
+		} else if available < total / 10 {
+			self = .almostFull
+		} else {
+			self = .available
+		}
+	}
 
 	var fill: Color {
 		switch self {
@@ -528,15 +487,6 @@ enum AvailabilityStatus: CaseIterable {
 		case .almostFull: return .yellow
 		case .full: return .red
 		case .noData: return Color(.tertiarySystemBackground)
-		}
-	}
-
-	/// Returns an appropriate text colour that contrasts with the status colour
-	var foreground: Color {
-		switch self {
-		case .noData: return .secondary.opacity(0.6)
-		default:
-			return fill.adaptedTextColor()
 		}
 	}
 
@@ -553,9 +503,4 @@ enum AvailabilityStatus: CaseIterable {
 	static let gradient = Gradient(colors: [
 		available.fill, almostFull.fill, full.fill,
 	])
-
-	/// Returns all status colours including noData
-	static var allColors: [Color] {
-		return allCases.map { $0.fill }
-	}
 }

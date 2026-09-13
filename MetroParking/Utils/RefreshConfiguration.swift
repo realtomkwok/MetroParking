@@ -116,9 +116,6 @@ enum RefreshConfiguration {
 		/// Delay between UI updates for cascade animation effect
 		static let uiStaggerDelay: TimeInterval = 0.1  // 100ms
 
-		/// Batch size for concurrent facility fetches
-		static let batchSize: Int = 6
-
 		/// Maximum facilities to refresh in quick background task
 		static let quickRefreshLimit: Int = 5
 

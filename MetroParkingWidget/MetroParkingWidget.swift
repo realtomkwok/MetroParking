@@ -111,7 +111,7 @@ struct FacilityProvider: AppIntentTimelineProvider {
 			Logger
 				.widget
 				.info("🔄 Widget: Data is stale, fetching fresh from API...")
-			if let freshData = await WidgetAPIService.shared.fetchAndUpdateCache(
+			if let freshData = await SharedDataManager.shared.refreshWidgetData(
 				facilityId: selectedFacility.id,
 				existingData: displayData
 			) {
@@ -259,7 +259,7 @@ extension SharedDataManager.WidgetFacilityData {
 			availableSpaces: available,
 			totalSpaces: total,
 			occupancyRatio: Double(total - available) / Double(total),
-			availabilityStatus: status.text,
+			availabilityStatus: status.rawValue,
 			distance: 2500.0,
 			travelTime: 420.0,
 			lastUpdated: Date(),

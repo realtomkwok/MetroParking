@@ -24,11 +24,6 @@ final class WidgetBudgetTracker {
 	var lastReloadTime: Date {
 		getReloadHistory().last ?? .distantPast
 	}
-
-	/// Remaining budget for today
-	var remainingBudget: Int {
-		max(0, RefreshConfiguration.Widget.dailyBudget - reloadsInLast24Hours())
-	}
 }
 
 // MARK: - Public API
@@ -65,14 +60,6 @@ extension WidgetBudgetTracker {
 		WidgetCenter.shared.reloadAllTimelines()
 		recordReload()
 		return true
-	}
-
-	/// Force reload widgets regardless of budget (use sparingly)
-	/// Still records the reload for budget tracking
-	func forceReload() {
-		WidgetCenter.shared.reloadAllTimelines()
-		recordReload()
-		Logger.widget.notice("⚡️ Forced widget reload")
 	}
 
 	func reloadsInLast24Hours() -> Int {
@@ -122,7 +109,6 @@ extension WidgetBudgetTracker {
 
 		if let data = try? JSONEncoder().encode(dates) {
 			defaults.set(data, forKey: reloadHistoryKey)
-			defaults.synchronize()
 		}
 	}
 }

@@ -190,7 +190,6 @@ struct SettingsRow<Destination: View, Accessory: View>: View {
 
 	@Environment(\.openURL) private var openURL
 	@State private var isShowingSafari: Bool = false
-	@State private var iconWidth: Double = 0
 
 	// MARK: - Navigation Initialiser
 

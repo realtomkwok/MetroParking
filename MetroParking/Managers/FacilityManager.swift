@@ -88,11 +88,6 @@ extension FacilityManager {
 		Logger.facilityData.notice("✅ Static facility loading complete!")
 	}
 
-	func reloadStaticFacilities() async {
-		await clearAllFacilities()
-		await loadStaticFacilitiesIfNeeded()
-	}
-
 	func hasExistingFacilities() async -> Bool {
 		guard let context = modelContext else {
 			return false
@@ -109,28 +104,6 @@ extension FacilityManager {
 			)
 			return false
 		}
-	}
-
-	func clearAllFacilities() async {
-		guard let context = modelContext else {
-			return
-		}
-
-		let descriptor = FetchDescriptor<ParkingFacility>()
-
-		do {
-			let facilities = try context.fetch(descriptor)
-			for facility in facilities {
-				context.delete(facility)
-			}
-			try context.save()
-			Logger.facilityData.notice("🗑️ Cleared all facilities")
-		} catch {
-			Logger.facilityData.error(
-				"❌ Failed to clear facilities: \(error.localizedDescription)"
-			)
-		}
-
 	}
 }
 
@@ -284,6 +257,7 @@ extension FacilityManager {
 		}
 
 		do {
+			APIUsageMonitor.recordCall()
 			let rawResponse = try await ParkingAPIService.shared.fetchFacility(id: facility.facilityId)
 
 			let occupied = Int(rawResponse.occupancy.total ?? "0") ?? 0

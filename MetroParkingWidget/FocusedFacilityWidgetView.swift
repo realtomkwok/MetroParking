@@ -67,7 +67,7 @@ struct FocusedFacilityWidgetView: View {
 		let statusColourFill: Color =
 			isTooOld
 			? .gray
-			: (isStale ? .gray : statusColour(facility.availabilityStatus).fill)
+			: (isStale ? .gray : facility.status.fill)
 
 		ZStack {
 
@@ -148,7 +148,7 @@ struct FocusedFacilityWidgetView: View {
 						}
 
 						HStack(alignment: .firstTextBaseline, spacing: 4) {
-							Text("\(facility.availabilityStatus)")
+							Text(facility.status.text)
 								.font(.headline)
 								.fontWeight(.semibold)
 								.foregroundStyle(
@@ -226,15 +226,6 @@ struct FocusedFacilityWidgetView: View {
 			.fontDesign(.rounded)
 			.padding()
 			.containerBackground(Color(.systemGray6).gradient, for: .widget)
-		}
-	}
-
-	private func statusColour(_ status: String) -> AvailabilityStatus {
-		switch status.lowercased().replacingOccurrences(of: " ", with: "") {
-		case "available": AvailabilityStatus.available
-		case "almostfull": AvailabilityStatus.almostFull
-		case "full": AvailabilityStatus.full
-		default: AvailabilityStatus.noData
 		}
 	}
 }

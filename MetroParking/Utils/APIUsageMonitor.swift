@@ -5,13 +5,11 @@
 //  Created by Tom Kwok on 1/9/2025.
 //
 
-import SwiftUI
 import Foundation
 import OSLog
 
 struct APIUsageMonitor {
 	private static let dailyLimit = 60000  // Current plan, can upgrade if exceeds too often
-	private static let safetyBuffer = 0.85
 
 	private static let dailyCountKey = "api_daily_count"
 	private static let dailyDateKey = "api_daily_date"
@@ -42,18 +40,6 @@ extension APIUsageMonitor {
 					"⚠️ Daily API usage at 80%: \(newRecord)/\(dailyLimit)"
 				)
 		}
-	}
-
-	static var usageReport: String {
-		resetIfNeeded()
-
-		let dailyPercent = Int(Double(dailyUsage) / Double(dailyLimit) * 100)
-
-		return """
-				📊 API Usage Report
-				Daily: \(dailyUsage)/\(dailyLimit) (\(dailyPercent.formatted(.percent)))
-				Status: \(canMakeCall ? "✅ OK" : "⚠️ Limit Reached")
-			"""
 	}
 
 	private static func resetIfNeeded() {

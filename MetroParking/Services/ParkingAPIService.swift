@@ -1,5 +1,5 @@
 //
-//  ParkingAPI.swift
+//  ParkingAPIService.swift
 //  MetroParking
 //
 //  Created by Tom Kwok on 19/6/2025.
@@ -8,42 +8,67 @@
 import Foundation
 import OSLog
 
-/// Main app API service for fetching parking facility data from TfNSW API
+/// Fetches car park occupancy from the TfNSW Car Park API.
 ///
-/// **Note:** Core API logic is duplicated in `WidgetAPIService` (widget extension).
-/// This is necessary because widget extensions can't import main app code.
-/// Keep both implementations synchronised when making changes to API calls.
-class ParkingAPIService {
+/// Shared by the app and the widget extension (compiled into both targets).
+/// Rate limiting (`APIDispatcher`) and usage accounting (`APIUsageMonitor`)
+/// are the caller's responsibility.
+struct ParkingAPIService: Sendable {
 	static let shared = ParkingAPIService()
 
-	private let session = URLSession.shared
-	private let decoder = JSONDecoder()
+	private let session: URLSession
 
-	private init() {
+	init(session: URLSession = .shared) {
+		self.session = session
 	}
 
 	// MARK: - API Methods
 
-	func fetchFacility(id: String) async throws -> ParkingApiModel {
-		// Rate limiting is now handled by APIDispatcher at orchestration level
-
-		// Record API usage
-		APIUsageMonitor.recordCall()
-
+	/// - Parameter timeout: Request timeout; widgets use a short one because they have limited run time.
+	func fetchFacility(
+		id: String,
+		timeout: TimeInterval = 60
+	) async throws -> ParkingApiModel {
 		let url = try buildURL(for: id)
-		let request = buildRequest(for: url)
+		var request = buildRequest(for: url)
+		request.timeoutInterval = timeout
 
 		let (data, response) = try await session.data(for: request)
 
 		try validateResponse(response)
 
-		return try decode(data, facilityId: id)
+		return try Self.decode(data, facilityId: id)
+	}
+
+	/// Decodes either a single facility object or a dictionary keyed by facility ID.
+	static func decode(_ data: Data, facilityId: String) throws -> ParkingApiModel {
+		let decoder = JSONDecoder()
+
+		if let response = try? decoder.decode(ParkingApiModel.self, from: data) {
+			return response
+		}
+
+		let dict: [String: ParkingApiModel]
+		do {
+			dict = try decoder.decode([String: ParkingApiModel].self, from: data)
+		} catch {
+			throw APIError.decodingFailed(error)
+		}
+
+		guard let response = dict[facilityId] ?? dict.values.first else {
+			throw APIError.noDataForFacility(facilityId)
+		}
+		return response
 	}
 
 	// MARK: - Private methods
 
 	private func buildURL(for facilityId: String) throws -> URL {
-		guard let url = URL(string: "\(Configuration.carParkBaseUrl)/carpark?facility=\(facilityId)") else {
+		guard
+			let url = URL(
+				string: "\(Configuration.carParkBaseUrl)/carpark?facility=\(facilityId)"
+			)
+		else {
 			throw APIError.invalidURL
 		}
 		return url
@@ -62,52 +87,25 @@ class ParkingAPIService {
 
 	private func validateResponse(_ res: URLResponse) throws {
 		guard let httpResponse = res as? HTTPURLResponse else {
-			Logger.facilityRefresh.error("HTTP error")
+			Logger.api.error("HTTP error")
 			throw URLError(.badServerResponse)
 		}
 
 		switch httpResponse.statusCode {
-		case 200 ... 299:
+		case 200...299:
 			return
 		case 429:
-			Logger.facilityRefresh.warning("⚠️ API rate limit hit")
+			Logger.api.warning("⚠️ API rate limit hit")
 			throw APIError.networkError(429)
-		case 400 ... 499:
-			Logger.facilityRefresh.error("❌ Client error: \(httpResponse.statusCode)")
+		case 400...499:
+			Logger.api.error("❌ Client error: \(httpResponse.statusCode)")
 			throw APIError.networkError(httpResponse.statusCode)
-		case 500 ... 599:
-			Logger.facilityRefresh.error("❌ Server error: \(httpResponse.statusCode)")
+		case 500...599:
+			Logger.api.error("❌ Server error: \(httpResponse.statusCode)")
 			throw APIError.networkError(httpResponse.statusCode)
 		default:
-			Logger.facilityRefresh.error("❌ Unexpected status: \(httpResponse.statusCode)")
+			Logger.api.error("❌ Unexpected status: \(httpResponse.statusCode)")
 			throw APIError.networkError(httpResponse.statusCode)
-
-		}
-	}
-
-	func decode(_ data: Data, facilityId: String) throws -> ParkingApiModel {
-
-		if let response = try? decoder.decode(
-			ParkingApiModel.self,
-			from: data
-		) {
-			return response
-		}
-
-		// Fallback to dictionary format decoder
-		do {
-			let dict = try decoder.decode(
-				[String: ParkingApiModel] .self,
-				from: data
-			)
-
-			if let response = dict[facilityId] ?? dict.values.first {
-				return response
-			} else {
-				throw APIError.noDataForFacility(facilityId)
-			}
-		} catch {
-			throw APIError.decodingFailed(error)
 		}
 	}
 }
@@ -116,19 +114,19 @@ class ParkingAPIService {
 
 enum APIError: LocalizedError {
 	case invalidURL
-	case noDataForFacility (String)
-	case decodingFailed (Error)
-	case networkError (Int)
+	case noDataForFacility(String)
+	case decodingFailed(Error)
+	case networkError(Int)
 
 	var errorDescription: String? {
 		switch self {
 		case .invalidURL:
 			return "Invalid API URL configuration"
-		case .noDataForFacility (let id):
+		case .noDataForFacility(let id):
 			return "No data returned for facility \(id)"
-		case .decodingFailed (let error):
+		case .decodingFailed(let error):
 			return "Failed to decode API response: \(error.localizedDescription)"
-		case .networkError (let code):
+		case .networkError(let code):
 			return "Network error with status code: \(code)"
 		}
 	}

@@ -79,46 +79,6 @@ enum SortingOption: String, CaseIterable, Codable, Hashable,
 		}
 	}
 
-	/// Get sort descriptors with the specified order
-	/// - Parameter order: The sorting order to apply
-	/// - Returns: Array of sort descriptors for SwiftData queries
-	func sortDescriptor(order: SortingOrder = .ascending) -> [SortDescriptor<
-		ParkingFacility
-	>] {
-		let sortOrder: SortOrder = order == .ascending ? .forward : .reverse
-
-		switch self {
-		case .name:
-			// Note: displayName is a computed property, so we sort by the actual name field
-			// We also add facilityId as a tiebreaker to ensure stable, consistent sorting
-			return [
-				SortDescriptor(\.name, order: sortOrder),
-				SortDescriptor(\.facilityId, order: sortOrder),
-			]
-		case .lastUpdated:
-			// For lastUpdated, we typically want newest first as default
-			// So when "ascending" is selected, we show oldest first
-			// When "descending" is selected, we show newest first
-			return [
-				SortDescriptor(\.refreshStatus.lastUpdated, order: sortOrder),
-				SortDescriptor(\.facilityId, order: sortOrder),
-			]
-		case .distance:
-			// Sort by distance using sortableDistance (computed property that returns Double.infinity for nil) -> to avoid SwiftData's failure of sorting by an optional relationship
-			// This ensures facilities without route data appear at the end
-			return [
-				SortDescriptor(\.sortableDistance, order: sortOrder),
-				SortDescriptor(\.name, order: sortOrder),
-				SortDescriptor(\.facilityId, order: sortOrder),
-			]
-		}
-	}
-
-	/// Legacy computed property for backward compatibility (uses ascending order)
-	var sortDescriptor: [SortDescriptor<ParkingFacility>] {
-		sortDescriptor(order: .ascending)
-	}
-
 	/// In-memory sorting comparator for ParkingFacility arrays
 	/// - Parameters:
 	///   - lhs: Left-hand side facility
@@ -253,19 +213,6 @@ enum FilterOption: String, CaseIterable, Codable, Hashable,
 					systemImageAfter: "checkmark.circle.fill"
 				)
 
-		}
-	}
-
-	/// SwiftData Queries
-	var filteringLogic: Predicate<ParkingFacility> {
-		switch self {
-		case .pinned: return #Predicate { $0.isFavourite }
-		case .available:
-			return #Predicate {
-				// Use vacancy.available which is computed from totalSpaces - _cachedOccupied
-				// Since we can't use computed properties in predicates, we need to compute it inline
-				$0.totalSpaces - $0.vacancy.occupied > 0
-			}
 		}
 	}
 

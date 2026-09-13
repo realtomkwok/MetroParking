@@ -9,7 +9,6 @@ import SwiftUI
 
 /// Single-page onboarding view displayed on first app launch
 /// Provides a welcome message and overview of key features
-@available(iOS 26.0, *)
 struct OnboardingView: View {
 	@Environment(OnboardingManager.self) private var onboardingManager
 	@Environment(\.dismiss) private var dismiss
@@ -48,14 +47,12 @@ struct OnboardingView: View {
 					// Feature Highlights
 					VStack(alignment: .leading, spacing: 16) {
 						FeatureRow(
-							order: 0,
 							icon: "gauge.open.with.lines.needle.33percent",
 							title: LocalizedStringResource.onboardingMessageOverviewTitle,
 							description:
 								LocalizedStringResource.onboardingMessageOverviewDescription
 						)
 						FeatureRow(
-							order: 1,
 							icon: "star.square.on.square.fill",
 							title: LocalizedStringResource.onboardingMessagePinTitle,
 							description:
@@ -63,7 +60,6 @@ struct OnboardingView: View {
 						)
 
 						FeatureRow(
-							order: 2,
 							icon: "square.grid.2x2.fill",
 							title: LocalizedStringResource.onboardingMessageWidgetTitle,
 							description:
@@ -103,9 +99,7 @@ struct OnboardingView: View {
 }
 
 /// Reusable feature row component for onboarding
-@available(iOS 26.0, *)
 struct FeatureRow: View {
-	let order: Int
 	let icon: String
 	let title: LocalizedStringResource
 	let description: LocalizedStringResource
@@ -132,7 +126,6 @@ struct FeatureRow: View {
 
 // MARK: - Previews
 
-@available(iOS 26.0, *)
 #Preview("Onboarding") {
 	OnboardingView()
 		.environment(OnboardingManager.shared)

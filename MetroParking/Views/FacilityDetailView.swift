@@ -9,7 +9,6 @@ import Foundation
 import MapKit
 import SwiftData
 import SwiftUI
-import SwiftUIBackports
 
 struct FacilityDetailView: View {
 	var facility: ParkingFacility
@@ -43,9 +42,7 @@ struct FacilityDetailView: View {
 			TopBarActions()
 		}
 		.navigationTitle(facility.displayName.full)
-		.backport.navigationSubtitle(
-			Text(facility.location.address)
-		)
+		.navigationSubtitle(Text(facility.location.address))
 		.toolbarTitleDisplayMode(.inline)
 		.id(facility.facilityId)  // Ensure view resets when switching facilities
 		.task(id: "\(facility.facilityId) - initial tasks") {
@@ -89,21 +86,25 @@ extension FacilityDetailView {
 		let descriptor = FetchDescriptor<ParkingFacility>()
 		let allFacilities = (try? modelContext.fetch(descriptor)) ?? []
 
-		nearbyFacilities = Array(
-			allFacilities
-				.filter { $0.facilityId != facility.facilityId }
-				.sorted { a, b in
-					DistanceHelper.distance(
-						from: facility.location.coordinate,
-						to: a.location.coordinate
-					)
-						< DistanceHelper.distance(
-							from: facility.location.coordinate,
-							to: b.location.coordinate
-						)
-				}
-				.prefix(limit)
+		let origin = CLLocation(
+			latitude: facility.location.latitude,
+			longitude: facility.location.longitude
 		)
+
+		// Compute each distance once, then sort by it.
+		nearbyFacilities =
+			allFacilities
+			.filter { $0.facilityId != facility.facilityId }
+			.map { candidate in
+				let location = CLLocation(
+					latitude: candidate.location.latitude,
+					longitude: candidate.location.longitude
+				)
+				return (facility: candidate, distance: origin.distance(from: location))
+			}
+			.sorted { $0.distance < $1.distance }
+			.prefix(limit)
+			.map(\.facility)
 	}
 
 	private func performInitialTasks() async {
@@ -276,7 +277,7 @@ extension DetailSections {
 						.foregroundStyle(Color(labelColor))
 						.font(.subheadline)
 						.fontWeight(.semibold)
-						.backport.labelIconToTitle(4)
+						.labelIconToTitleSpacing(4)
 
 					Spacer()
 
@@ -491,7 +492,7 @@ extension DetailSections {
 						.font(.subheadline)
 						.fontWeight(.semibold)
 					}
-					.backport.glassButtonStyle(fallbackStyle: .bordered)
+					.buttonStyle(.glass)
 					.buttonBorderShape(.capsule)
 					.controlSize(.regular)
 					.alert(
@@ -609,10 +610,10 @@ extension DetailSections {
 				Menu {
 					ForEach(MapProvider.allCases, id: \.id) { provider in
 						Button(provider.displayText, systemImage: provider.icon) {
-							Task {
-								let mapItem = await selectedFacility.getMapItem()
-								openInMaps(mapItem, provider: provider)
-							}
+							openInMaps(
+								selectedFacility.getOrCreateMapItem(),
+								provider: provider
+							)
 						}
 					}
 				} label: {
@@ -626,7 +627,7 @@ extension DetailSections {
 				}
 				.menuStyle(.button)
 				.controlSize(.regular)
-				.backport.glassProminentButtonStyle()
+				.buttonStyle(.glassProminent)
 				.containerShape(.circle)
 				.contentTransition(
 					.symbolEffect(.replace.magic(fallback: .downUp))
@@ -664,15 +665,9 @@ extension DetailSections {
 				.frame(height: 200)
 				.clipShape(.containerRelative)
 				.transition(.blurReplace)
-				.backport.glassEffect(
+				.glassEffect(
 					.clear,
-					in: .rect(
-						corners: .concentric,
-						isUniform: true
-					),
-					fallbackBackground: Color(
-						UIColor.secondarySystemGroupedBackground
-					)
+					in: .rect(corners: .concentric, isUniform: true)
 				)
 				.zIndex(0)
 		}

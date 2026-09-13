@@ -68,22 +68,3 @@ struct ParkingOccupancyAPI: ApiModel {
 		case transients
 	}
 }
-
-extension ParkingApiModel {
-	func toDomain() -> ParkingFacility? {
-		guard let lat = Double(location.latitude),
-			  let lng = Double(location.longitude),
-			  let spaces = Int(spots)
-				else { return nil }
-
-		return ParkingFacility(
-			facilityId: facilityId,
-			name: facilityName,
-			suburb: location.suburb,
-			address: location.address,
-			latitude: lat,
-			longitude: lng,
-			totalSpaces: spaces
-		)
-	}
-}

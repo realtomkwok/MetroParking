@@ -73,7 +73,7 @@ struct MetroParkingApp: App {
 		WindowGroup {
 			ContentView()
 				.modelContainer(sharedModelContainer)
-				.appManagers()
+				.appEnvironment(.live)
 				.onOpenURL { url in
 					_ = DeepLinkManager.shared.handleURL(url)
 				}
@@ -108,21 +108,5 @@ struct MetroParkingApp: App {
 		await facilityManager.loadStaticFacilitiesIfNeeded()
 		await facilityManager.performLoad()
 		facilityManager.startAutoRefresh()
-	}
-}
-
-extension View {
-	/// Injects the app-wide managers into the environment.
-	fileprivate func appManagers() -> some View {
-		self
-			.environment(SearchManager.shared)
-			.environment(AppStateManager.shared)
-			.environment(FacilityManager.shared)
-			.environment(LocationManager.shared)
-			.environment(LookAroundManager.shared)
-			.environment(ETAManager.shared)
-			.environment(OnboardingManager.shared)
-			.environment(UserPreferences.shared)
-			.environment(DeepLinkManager.shared)
 	}
 }

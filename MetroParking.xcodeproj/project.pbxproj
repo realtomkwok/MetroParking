@@ -13,11 +13,9 @@
 		181F07922EF13C06008F451B /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 181F07912EF13C06008F451B /* SwiftUI.framework */; };
 		181F079D2EF13C07008F451B /* MetroParkingWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 181F078E2EF13C06008F451B /* MetroParkingWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		182A3C0E2E03BC3500E64A38 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 182A3C0D2E03BC3100E64A38 /* .gitignore */; };
-		182A3C122E03C14100E64A38 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182A3C112E03C13F00E64A38 /* Configuration.swift */; };
 		1873C8A12E568C2000E2B438 /* App Icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 1873C8A02E568C2000E2B438 /* App Icon.icon */; };
 		1873C8A22E568C2000E2B438 /* App Icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 1873C8A02E568C2000E2B438 /* App Icon.icon */; };
 		1873C8A32E568C2000E2B438 /* App Icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 1873C8A02E568C2000E2B438 /* App Icon.icon */; };
-		18WIDGET01 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182A3C112E03C13F00E64A38 /* Configuration.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -79,7 +77,6 @@
 		181F07CF2EF8D9FF008F451B /* CODE_REVIEW_CHECKLIST.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CODE_REVIEW_CHECKLIST.md; sourceTree = "<group>"; };
 		181F07D02EF8D9FF008F451B /* CONCURRENCY_FIXES_SUMMARY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONCURRENCY_FIXES_SUMMARY.md; sourceTree = "<group>"; };
 		182A3C0D2E03BC3100E64A38 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
-		182A3C112E03C13F00E64A38 /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
 		182A3C282E0833FF00E64A38 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
 		182A3CC82E0EC2E300E64A38 /* MapKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MapKit.framework; path = System/Library/Frameworks/MapKit.framework; sourceTree = SDKROOT; };
 		184036F62DD9F82D009D7FBA /* MetroParking.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MetroParking.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -105,7 +102,7 @@
 		180F33E32F35C36400540491 /* Exceptions for "MetroParking" folder in "MetroParking" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Info.plist,
+				Resources/Info.plist,
 			);
 			target = 184036F52DD9F82D009D7FBA /* MetroParking */;
 		};
@@ -119,17 +116,18 @@
 		181F07AB2EF1555B008F451B /* Exceptions for "MetroParking" folder in "MetroParkingWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Localizable.xcstrings,
-				Managers/SharedDataManager.swift,
-				Models/ParkingAPIModels.swift,
-				Models/ParkingFacility.swift,
-				Models/ParkingZone.swift,
-				RoutingAppCoverage.geojson,
-				Services/ParkingAPIService.swift,
-				Utils/Logger.swift,
-				Utils/RefreshConfiguration.swift,
-				Utils/RemovePrefixHelper.swift,
-				Utils/WidgetBudgetTracker.swift,
+				Core/Model/ParkingFacility.swift,
+				Core/Model/ParkingZone.swift,
+				Core/Networking/ParkingAPIModels.swift,
+				Core/Networking/ParkingAPIService.swift,
+				Core/Persistence/Configuration.swift,
+				Core/Persistence/SharedDataManager.swift,
+				Core/Refresh/RefreshConfiguration.swift,
+				Core/Refresh/WidgetBudgetTracker.swift,
+				Core/Support/Logger.swift,
+				Core/Support/RemovePrefixHelper.swift,
+				Resources/Localizable.xcstrings,
+				Resources/RoutingAppCoverage.geojson,
 			);
 			target = 181F078D2EF13C06008F451B /* MetroParkingWidgetExtension */;
 		};
@@ -275,7 +273,6 @@
 				1873C8A02E568C2000E2B438 /* App Icon.icon */,
 				18CC02462EE52D5100A8FDC0 /* README.md */,
 				1873C8A92E56ACE400E2B438 /* Config.xcconfig */,
-				182A3C112E03C13F00E64A38 /* Configuration.swift */,
 				182A3C0D2E03BC3100E64A38 /* .gitignore */,
 				180F337E2F3547E300540491 /* PrivacyInfo.xcprivacy */,
 			);
@@ -471,7 +468,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				18WIDGET01 /* Configuration.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -479,7 +475,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				182A3C122E03C14100E64A38 /* Configuration.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -762,13 +757,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = MetroParking/MetroParking.entitlements;
+				CODE_SIGN_ENTITLEMENTS = MetroParking/Resources/MetroParking.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3M6C8L4M5D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = MetroParking/Info.plist;
+				INFOPLIST_FILE = MetroParking/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Metro Parking";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
@@ -814,13 +809,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = MetroParking/MetroParking.entitlements;
+				CODE_SIGN_ENTITLEMENTS = MetroParking/Resources/MetroParking.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3M6C8L4M5D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = MetroParking/Info.plist;
+				INFOPLIST_FILE = MetroParking/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Metro Parking";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";

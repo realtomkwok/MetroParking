@@ -276,9 +276,7 @@ extension FacilityList {
 		)
 		.navigationTitle("Metro Parking")
 	}
-	.environment(FacilityManager.shared)
-	.environment(LocationManager.shared)
-	.environment(ETAManager.shared)
+	.previewEnvironment()
 	.modelContainer(.preview())
 }
 
@@ -292,9 +290,7 @@ extension FacilityList {
 		)
 		.navigationTitle("All Facilities")
 	}
-	.environment(FacilityManager.shared)
-	.environment(LocationManager.shared)
-	.environment(ETAManager.shared)
+	.previewEnvironment()
 	.modelContainer(.preview())
 }
 
@@ -306,8 +302,6 @@ extension FacilityList {
 		)
 		.navigationTitle("No Facilities")
 	}
-	.environment(FacilityManager.shared)
-	.environment(LocationManager.shared)
-	.environment(ETAManager.shared)
+	.previewEnvironment()
 	.modelContainer(.emptyPreview())
 }

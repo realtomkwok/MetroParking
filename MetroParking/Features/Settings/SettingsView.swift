@@ -99,7 +99,6 @@ struct SettingsView: View {
 							iconColour: .gray,
 							destination: {
 								APIUsageDebugView()
-									.environment(FacilityManager.shared)
 							}
 						)
 						SettingsRow(
@@ -537,6 +536,7 @@ struct Settings_TipsView: View {
 
 #Preview("Settings") {
 	SettingsView()
+		.previewEnvironment()
 }
 
 #Preview("Tips") {

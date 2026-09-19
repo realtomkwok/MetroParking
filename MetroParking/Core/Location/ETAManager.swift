@@ -101,7 +101,7 @@ final class ETAManager {
 		let task = Task {
 			// Create source and destination using facility's mapItem (synchronous, no network)
 			let source = MKMapItem.forCurrentLocation()
-			let destination = facility.getOrCreateMapItem()
+			let destination = facility.makeMapItem()
 
 			Logger.eta.debug("  → Creating MKDirections request")
 			let request = MKDirections.Request()
@@ -192,8 +192,8 @@ final class ETAManager {
 		if let cached = facilityToFacilityCache[cacheKey] { return cached }
 
 		let request = MKDirections.Request()
-		request.source = origin.getOrCreateMapItem()
-		request.destination = destination.getOrCreateMapItem()
+		request.source = origin.makeMapItem()
+		request.destination = destination.makeMapItem()
 		request.transportType = .automobile
 
 		let directions = MKDirections(request: request)
@@ -226,7 +226,7 @@ final class ETAManager {
 		)
 		// Create source and destination using facility's mapItem (synchronous, no network)
 		let source = MKMapItem.forCurrentLocation()
-		let destination = facility.getOrCreateMapItem()
+		let destination = facility.makeMapItem()
 
 		let request = MKDirections.Request()
 		request.source = source

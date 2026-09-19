@@ -7,8 +7,8 @@
 //  Created by Tom Kwok on 19/6/2025.
 //
 
+import CoreLocation
 import Foundation
-import MapKit
 import OSLog
 import SwiftData
 import SwiftUI
@@ -53,9 +53,6 @@ nonisolated final class ParkingFacility {
 
 	@Relationship(deleteRule: .cascade, inverse: \ParkingZone.facility)
 	var zones: [ParkingZone] = []
-
-	/// Cached MapItem - not persisted to SwiftData
-	@Transient private var _cachedMapItem: MKMapItem?
 
 	// MARK: - Initialiser
 
@@ -368,28 +365,6 @@ extension ParkingFacility {
 		if totalSpaces != self.totalSpaces {
 			self.totalSpaces = totalSpaces
 		}
-	}
-
-	/// Returns a cached or newly created MKMapItem using local data only.
-	/// This method is SYNCHRONOUS and does not make network requests.
-	/// Use this for navigation and directions to avoid UI hangs.
-	func getOrCreateMapItem() -> MKMapItem {
-		if let cached = _cachedMapItem {
-			return cached
-		}
-
-		let mapItem: MKMapItem
-		let location = CLLocation(latitude: _latitude, longitude: _longitude)
-		let fullAddress = "\(_address), \(_suburb)"
-		let mkAddress = MKAddress(
-			fullAddress: fullAddress,
-			shortAddress: _address
-		)
-		mapItem = MKMapItem(location: location, address: mkAddress)
-		mapItem.name = displayName.title
-
-		_cachedMapItem = mapItem
-		return mapItem
 	}
 
 	/// Determines if this facility should be refreshed based on app state and cache validity

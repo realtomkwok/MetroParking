@@ -247,8 +247,6 @@ struct APIUsageDebugView: View {
     NavigationStack {
         APIUsageDebugView()
     }
-	.environment(FacilityManager.shared)
-	.environment(LookAroundManager.shared)
-	.environment(ETAManager.shared)
+	.previewEnvironment()
 	.modelContainer(.preview(includeSampleData: false))
 }

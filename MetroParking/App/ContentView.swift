@@ -198,25 +198,11 @@ extension ContentView {
 #Preview("With Pinned Facilities") {
 	ContentView()
 		.modelContainer(.preview(includeSampleData: true, favoriteCount: 3))
-		.environment(FacilityManager.shared)
-		.environment(LookAroundManager.shared)
-		.environment(OnboardingManager.shared)
-		.environment(DeepLinkManager.shared)
-		.environment(SearchManager.shared)
-		.environment(UserPreferences.shared)
-		.environment(ETAManager.shared)
-		.environment(LocationManager.shared)
+		.previewEnvironment()
 }
 
 #Preview("Empty State") {
 	ContentView()
 		.modelContainer(.emptyPreview())
-		.environment(FacilityManager.shared)
-		.environment(LookAroundManager.shared)
-		.environment(OnboardingManager.shared)
-		.environment(DeepLinkManager.shared)
-		.environment(SearchManager.shared)
-		.environment(UserPreferences.shared)
-		.environment(ETAManager.shared)
-		.environment(LocationManager.shared)
+		.previewEnvironment()
 }

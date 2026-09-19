@@ -128,5 +128,5 @@ struct FeatureRow: View {
 
 #Preview("Onboarding") {
 	OnboardingView()
-		.environment(OnboardingManager.shared)
+		.previewEnvironment()
 }

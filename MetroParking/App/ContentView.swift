@@ -28,12 +28,18 @@ struct ContentView: View {
 
 	@State private var sheet = MapSheetModel()
 	@State private var containerSize: CGSize = .zero
+	/// Active fold on a foldable (iOS 27.1+), in this view's coordinates.
+	@State private var foldFrame: CGRect?
 	@State private var batchETATask: Task<Void, Never>?
 
 	/// Larger distance threshold for ETA recalculation (500m).
 	/// At driving speed, 100m triggers every ~5s which overwhelms MKDirections rate limits.
 	/// ETAs to distant parking lots don't change meaningfully over 500m.
 	private let batchETADistanceThreshold: CLLocationDistance = 500
+
+	private var panelWidth: CGFloat {
+		FloatingPanel.width(forContainerWidth: containerSize.width, fold: foldFrame)
+	}
 
 	private var usesFloatingPanel: Bool {
 		horizontalSizeClass == .regular || verticalSizeClass == .compact
@@ -42,10 +48,7 @@ struct ContentView: View {
 	/// Space the sheet or panel covers, so the map frames content in what's left visible.
 	private var mapOcclusion: (edges: Edge.Set, length: CGFloat) {
 		if usesFloatingPanel {
-			let width = FloatingPanel.width(
-				forContainerWidth: containerSize.width
-			)
-			return (.leading, width + FloatingPanel.margin)
+			return (.leading, panelWidth + FloatingPanel.margin)
 		}
 
 		// Use detent-derived heights rather than live sheet geometry so the map
@@ -67,7 +70,7 @@ struct ContentView: View {
 
 			if usesFloatingPanel {
 				SheetStack(model: sheet)
-					.floatingPanel(containerWidth: containerSize.width)
+					.floatingPanel(width: panelWidth)
 					.transition(.move(edge: .leading).combined(with: .opacity))
 			}
 		}
@@ -75,6 +78,11 @@ struct ContentView: View {
 			proxy.size
 		} action: { newSize in
 			containerSize = newSize
+		}
+		.onGeometryChange(for: CGRect?.self) { proxy in
+			FloatingPanel.activeFold(in: proxy)
+		} action: { fold in
+			foldFrame = fold
 		}
 		.animation(.smooth, value: usesFloatingPanel)
 		.sheet(

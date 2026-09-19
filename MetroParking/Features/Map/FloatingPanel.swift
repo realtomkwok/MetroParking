@@ -15,19 +15,43 @@ enum FloatingPanel {
 	static let minWidth: CGFloat = 340
 	static let maxWidth: CGFloat = 420
 
-	static func width(forContainerWidth containerWidth: CGFloat) -> CGFloat {
-		min(maxWidth, max(minWidth, containerWidth * 0.36))
+	/// Panel width for a container.
+	///
+	/// When a vertical fold runs through the container (iPhone Duo, open), the
+	/// panel fills the leading pane up to the fold so no content sits on the
+	/// hinge, and the map gets the other pane. Otherwise it's a fixed-range card.
+	static func width(forContainerWidth containerWidth: CGFloat, fold: CGRect?) -> CGFloat {
+		if let fold, fold.height > fold.width {
+			let leadingPane = fold.minX - 2 * margin
+			if leadingPane >= minWidth {
+				return leadingPane
+			}
+		}
+		return min(maxWidth, max(minWidth, containerWidth * 0.36))
+	}
+
+	/// The frame of the active fold, if the device reports one.
+	/// Reserved regions arrive with the iOS 27.1 SDK.
+	nonisolated static func activeFold(in proxy: GeometryProxy) -> CGRect? {
+		#if canImport(SwiftUICore, _version: 8.0.85)
+			if #available(iOS 27.1, *) {
+				return proxy.reservedRegions(kind: .division)
+					.first(where: \.isActive)?
+					.frame
+			}
+		#endif
+		return nil
 	}
 }
 
 private struct FloatingPanelModifier: ViewModifier {
-	let containerWidth: CGFloat
+	let width: CGFloat
 
 	func body(content: Content) -> some View {
 		let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
 
 		content
-			.frame(width: FloatingPanel.width(forContainerWidth: containerWidth))
+			.frame(width: width)
 			.frame(maxHeight: .infinity)
 			.clipShape(shape)
 			.glassEffect(.regular, in: shape)
@@ -37,7 +61,7 @@ private struct FloatingPanelModifier: ViewModifier {
 }
 
 extension View {
-	func floatingPanel(containerWidth: CGFloat) -> some View {
-		modifier(FloatingPanelModifier(containerWidth: containerWidth))
+	func floatingPanel(width: CGFloat) -> some View {
+		modifier(FloatingPanelModifier(width: width))
 	}
 }

@@ -91,13 +91,13 @@ struct FacilityProvider: AppIntentTimelineProvider {
 		}
 
 		// Register this facility as being displayed in a widget
-		await SharedDataManager.shared.registerWidgetFacility(selectedFacility.id)
+		SharedDataManager.shared.registerWidgetFacility(selectedFacility.id)
 
 		// STEP 1: Load cached data immediately (prevents placeholder flash)
 		// Try SwiftData first (most recent), then UserDefaults fallback
 		var displayData = await loadFacilityData(facilityId: selectedFacility.id)
 		if displayData == nil {
-			displayData = await SharedDataManager.shared.loadWidgetData(
+			displayData = SharedDataManager.shared.loadWidgetData(
 				forFacilityId: selectedFacility.id
 			)
 		}
@@ -164,7 +164,7 @@ struct FacilityProvider: AppIntentTimelineProvider {
 		.WidgetFacilityData?
 	{
 		// Use the shared container to ensure we're reading from the same data store as the app
-		let container = await SharedDataManager.sharedContainer
+		let container = SharedDataManager.sharedContainer
 		let context = ModelContext(container)
 
 		let descriptor = FetchDescriptor<ParkingFacility>(
@@ -186,7 +186,7 @@ struct FacilityProvider: AppIntentTimelineProvider {
 			)
 
 			// Convert to widget data format
-			return await SharedDataManager.shared.makeWidgetData(from: facility)
+			return SharedDataManager.shared.makeWidgetData(from: facility)
 		} catch {
 			logger
 				.error("❌ Widget: Failed to load facility data: \(error)")
@@ -220,8 +220,8 @@ struct FacilityWidget: Widget {
 
 struct FocusedFacilityWidgetConfigs: WidgetConfigurationIntent {
 
-	static var title: LocalizedStringResource = "widget.title.carParkVacancy"
-	static var description = IntentDescription(
+	static let title: LocalizedStringResource = "widget.title.carParkVacancy"
+	static let description = IntentDescription(
 		"widget.empty.selectPrompt"
 	)
 

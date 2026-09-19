@@ -6,7 +6,7 @@
 //
 
 import Foundation
-@preconcurrency import MapKit
+import MapKit
 import OSLog
 import SwiftUI
 
@@ -17,7 +17,7 @@ final class ETAManager {
 	// MARK: - Static Formatters
 
 	/// Cached distance formatter - creating formatters is expensive
-	nonisolated static let distanceFormatter: MKDistanceFormatter = {
+	static let distanceFormatter: MKDistanceFormatter = {
 		let formatter = MKDistanceFormatter()
 		formatter.unitStyle = .abbreviated
 		return formatter

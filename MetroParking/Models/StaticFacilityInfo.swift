@@ -7,10 +7,34 @@
 
 import Foundation
 
+/// Seed data for a car park. A value type, so the list can be shared freely and
+/// each load gets fresh `ParkingFacility` instances.
+nonisolated struct StaticFacilityInfo: Sendable {
+	let facilityId: String
+	let name: String
+	let suburb: String
+	let address: String
+	let latitude: Double
+	let longitude: Double
+	let totalSpaces: Int
+
+	func makeFacility() -> ParkingFacility {
+		ParkingFacility(
+			facilityId: facilityId,
+			name: name,
+			suburb: suburb,
+			address: address,
+			latitude: latitude,
+			longitude: longitude,
+			totalSpaces: totalSpaces
+		)
+	}
+}
+
 extension ParkingFacility {
 
-	static let staticFacilityData: [ParkingFacility] = [
-		ParkingFacility(
+	nonisolated static let staticFacilityData: [StaticFacilityInfo] = [
+		StaticFacilityInfo(
 			facilityId: "6",
 			name: "Park&Ride - Gordon Henry St (north)",
 			suburb: "Gordon",
@@ -19,7 +43,7 @@ extension ParkingFacility {
 			longitude: 151.154662,
 			totalSpaces: 213
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "7",
 			name: "Park&Ride - Kiama",
 			suburb: "Kiama",
@@ -28,7 +52,7 @@ extension ParkingFacility {
 			longitude: 150.854546,
 			totalSpaces: 42
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "8",
 			name: "Park&Ride - Gosford",
 			suburb: "Gosford",
@@ -37,7 +61,7 @@ extension ParkingFacility {
 			longitude: 151.340236,
 			totalSpaces: 1059
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "9",
 			name: "Park&Ride - Revesby",
 			suburb: "Revesby",
@@ -46,7 +70,7 @@ extension ParkingFacility {
 			longitude: 151.0168491,
 			totalSpaces: 864
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "10",
 			name: "Park&Ride - Warriewood",
 			suburb: "Warriewood",
@@ -55,7 +79,7 @@ extension ParkingFacility {
 			longitude: 151.302143,
 			totalSpaces: 233
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "11",
 			name: "Park&Ride - Narrabeen",
 			suburb: "Narrabeen",
@@ -64,7 +88,7 @@ extension ParkingFacility {
 			longitude: 151.29699,
 			totalSpaces: 46
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "12",
 			name: "Park&Ride - Mona Vale",
 			suburb: "Mona Vale",
@@ -73,7 +97,7 @@ extension ParkingFacility {
 			longitude: 151.306512,
 			totalSpaces: 68
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "13",
 			name: "Park&Ride - Dee Why",
 			suburb: "Dee Why",
@@ -82,7 +106,7 @@ extension ParkingFacility {
 			longitude: 151.286717,
 			totalSpaces: 121
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "14",
 			name: "Park&Ride - West Ryde",
 			suburb: "West Ryde",
@@ -91,7 +115,7 @@ extension ParkingFacility {
 			longitude: 151.091248,
 			totalSpaces: 151
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "15",
 			name: "Park&Ride - Sutherland",
 			suburb: "Sutherland",
@@ -100,7 +124,7 @@ extension ParkingFacility {
 			longitude: 151.058409,
 			totalSpaces: 373
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "16",
 			name: "Park&Ride - Leppington",
 			suburb: "Leppington",
@@ -109,7 +133,7 @@ extension ParkingFacility {
 			longitude: 150.806971,
 			totalSpaces: 1660
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "17",
 			name: "Park&Ride - Edmondson Park (south)",
 			suburb: "Edmondson Park",
@@ -118,7 +142,7 @@ extension ParkingFacility {
 			longitude: 150.856259,
 			totalSpaces: 1431
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "18",
 			name: "Park&Ride - St Marys",
 			suburb: "St Marys",
@@ -127,7 +151,7 @@ extension ParkingFacility {
 			longitude: 150.776314,
 			totalSpaces: 684
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "19",
 			name: "Park&Ride - Campbelltown Farrow Rd (north)",
 			suburb: "Campbelltown",
@@ -136,7 +160,7 @@ extension ParkingFacility {
 			longitude: 150.815283,
 			totalSpaces: 68
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "20",
 			name: "Park&Ride - Campbelltown Hurley St",
 			suburb: "Campbelltown",
@@ -145,7 +169,7 @@ extension ParkingFacility {
 			longitude: 150.812432,
 			totalSpaces: 118
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "21",
 			name: "Park&Ride - Penrith (at-grade)",
 			suburb: "Penrith",
@@ -154,7 +178,7 @@ extension ParkingFacility {
 			longitude: 150.69444,
 			totalSpaces: 229
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "22",
 			name: "Park&Ride - Penrith (multi-level)",
 			suburb: "Penrith",
@@ -163,7 +187,7 @@ extension ParkingFacility {
 			longitude: 150.695171,
 			totalSpaces: 1129
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "23",
 			name: "Park&Ride - Warwick Farm",
 			suburb: "Warwick Farm",
@@ -172,7 +196,7 @@ extension ParkingFacility {
 			longitude: 150.934409,
 			totalSpaces: 906
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "24",
 			name: "Park&Ride - Schofields",
 			suburb: "Schofields",
@@ -181,7 +205,7 @@ extension ParkingFacility {
 			longitude: 150.870861,
 			totalSpaces: 700
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "25",
 			name: "Park&Ride - Hornsby",
 			suburb: "Hornsby",
@@ -190,7 +214,7 @@ extension ParkingFacility {
 			longitude: 151.098004,
 			totalSpaces: 145
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "26",
 			name: "Park&Ride - Tallawong P1",
 			suburb: "Tallawong",
@@ -199,7 +223,7 @@ extension ParkingFacility {
 			longitude: 150.9052577,
 			totalSpaces: 123
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "27",
 			name: "Park&Ride - Tallawong P2",
 			suburb: "Tallawong",
@@ -208,7 +232,7 @@ extension ParkingFacility {
 			longitude: 150.9043098,
 			totalSpaces: 455
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "28",
 			name: "Park&Ride - Tallawong P3",
 			suburb: "Tallawong",
@@ -217,7 +241,7 @@ extension ParkingFacility {
 			longitude: 150.903874,
 			totalSpaces: 397
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "29",
 			name: "Park&Ride - Kellyville (north)",
 			suburb: "Kellyville",
@@ -226,7 +250,7 @@ extension ParkingFacility {
 			longitude: 150.934364,
 			totalSpaces: 351
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "30",
 			name: "Park&Ride - Kellyville (south)",
 			suburb: "Kellyville",
@@ -235,7 +259,7 @@ extension ParkingFacility {
 			longitude: 150.9363451,
 			totalSpaces: 964
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "31",
 			name: "Park&Ride - Bella Vista",
 			suburb: "Bella Vista",
@@ -244,7 +268,7 @@ extension ParkingFacility {
 			longitude: 150.941761,
 			totalSpaces: 774
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "32",
 			name: "Park&Ride - Hills Showground",
 			suburb: "Castle Hill",
@@ -253,7 +277,7 @@ extension ParkingFacility {
 			longitude: 150.98505,
 			totalSpaces: 584
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "33",
 			name: "Park&Ride - Cherrybrook",
 			suburb: "Cherrybrook",
@@ -262,7 +286,7 @@ extension ParkingFacility {
 			longitude: 151.033431,
 			totalSpaces: 384
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "34",
 			name: "Park&Ride - Lindfield Village Green",
 			suburb: "Lindfield",
@@ -271,7 +295,7 @@ extension ParkingFacility {
 			longitude: 151.170549,
 			totalSpaces: 94
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "35",
 			name: "Park&Ride - Beverly Hills",
 			suburb: "Beverly Hills",
@@ -280,7 +304,7 @@ extension ParkingFacility {
 			longitude: 151.0801,
 			totalSpaces: 200
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "36",
 			name: "Park&Ride - Emu Plains",
 			suburb: "Emu Plains",
@@ -289,7 +313,7 @@ extension ParkingFacility {
 			longitude: 150.66987,
 			totalSpaces: 750
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "37",
 			name: "Park&Ride - Riverwood",
 			suburb: "Riverwood",
@@ -298,7 +322,7 @@ extension ParkingFacility {
 			longitude: 151.050035,
 			totalSpaces: 135
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "486",
 			name: "Park&Ride - Ashfield",
 			suburb: "Ashfield",
@@ -307,7 +331,7 @@ extension ParkingFacility {
 			longitude: 151.126577,
 			totalSpaces: 228
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "487",
 			name: "Park&Ride - Kogarah",
 			suburb: "Kogarah",
@@ -316,7 +340,7 @@ extension ParkingFacility {
 			longitude: 151.1319494,
 			totalSpaces: 259
 		),
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "488",
 			name: "Park&Ride - Seven Hills",
 			suburb: "Seven Hills",
@@ -326,7 +350,7 @@ extension ParkingFacility {
 			totalSpaces: 1613
 		),
 
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "489",
 			name: "Park&Ride - Manly Vale",
 			suburb: "Manly Vale",
@@ -336,7 +360,7 @@ extension ParkingFacility {
 			totalSpaces: 142
 		),
 
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "490",
 			name: "Park&Ride - Brookvale",
 			suburb: "Brookvale",
@@ -346,7 +370,7 @@ extension ParkingFacility {
 			totalSpaces: 246
 		),
 
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "38",
 			name: "Park&Ride - North Rocks",
 			suburb: "North Rocks",
@@ -356,7 +380,7 @@ extension ParkingFacility {
 			totalSpaces: 139
 		),
 
-		ParkingFacility(
+		StaticFacilityInfo(
 			facilityId: "39",
 			name: "Park&Ride - Edmonson Park (north)",
 			suburb: "Edmondson Park",
@@ -367,7 +391,8 @@ extension ParkingFacility {
 		)
 	]
 
+	/// Returns new, unsaved facility instances for every known car park.
 	static func getAllStaticFacilities() -> [ParkingFacility] {
-		return staticFacilityData
+		staticFacilityData.map { $0.makeFacility() }
 	}
 }

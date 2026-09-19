@@ -25,8 +25,9 @@ enum TestFacility {
 		)
 	}
 
-	static let allFacilities: [ParkingFacility] = ParkingFacility
-		.staticFacilityData
+	static var allFacilities: [ParkingFacility] {
+		ParkingFacility.getAllStaticFacilities()
+	}
 
 	// Gordon (has parenthesised subtitle). Failed if the static data changed
 	static func gordon() -> ParkingFacility {

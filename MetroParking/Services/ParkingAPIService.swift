@@ -13,7 +13,7 @@ import OSLog
 /// Shared by the app and the widget extension (compiled into both targets).
 /// Rate limiting (`APIDispatcher`) and usage accounting (`APIUsageMonitor`)
 /// are the caller's responsibility.
-struct ParkingAPIService: Sendable {
+nonisolated struct ParkingAPIService: Sendable {
 	static let shared = ParkingAPIService()
 
 	private let session: URLSession
@@ -24,7 +24,9 @@ struct ParkingAPIService: Sendable {
 
 	// MARK: - API Methods
 
+	/// Runs on the concurrent pool so decoding never blocks the main actor.
 	/// - Parameter timeout: Request timeout; widgets use a short one because they have limited run time.
+	@concurrent
 	func fetchFacility(
 		id: String,
 		timeout: TimeInterval = 60
@@ -112,7 +114,7 @@ struct ParkingAPIService: Sendable {
 
 // MARK: - Supporting types
 
-enum APIError: LocalizedError {
+nonisolated enum APIError: LocalizedError {
 	case invalidURL
 	case noDataForFacility(String)
 	case decodingFailed(Error)

@@ -14,7 +14,7 @@ import SwiftData
 import SwiftUI
 
 @Model
-final class ParkingFacility {
+nonisolated final class ParkingFacility {
 	@Attribute(.unique) var facilityId: String
 	var name: String
 
@@ -53,9 +53,6 @@ final class ParkingFacility {
 
 	@Relationship(deleteRule: .cascade, inverse: \ParkingZone.facility)
 	var zones: [ParkingZone] = []
-
-	/// Regex pattern for parsing display names - compiled once
-	private static let displayNamePattern = /^(.+?)\s*\((.+?)\)$/
 
 	/// Cached MapItem - not persisted to SwiftData
 	@Transient private var _cachedMapItem: MKMapItem?
@@ -98,12 +95,12 @@ final class ParkingFacility {
 
 	/// Splits a TfNSW facility name into a display title and subtitle.
 	/// e.g. "Park&Ride - Gordon Henry St (north)" → ("Gordon Henry St", "North")
-	nonisolated static func parseDisplayName(_ name: String) -> (
+	static func parseDisplayName(_ name: String) -> (
 		title: String, subtitle: String, full: String
 	) {
 		let stripped = name.removePrefix("Park&Ride - ").localizedCapitalized
 
-		if let match = stripped.firstMatch(of: displayNamePattern) {
+		if let match = stripped.firstMatch(of: /^(.+?)\s*\((.+?)\)$/) {
 			return (
 				title: String(match.1).trimmingCharacters(in: .whitespaces),
 				subtitle: String(match.2).trimmingCharacters(in: .whitespaces),
@@ -464,7 +461,7 @@ extension ParkingFacility {
 // Almost full: vacancy < 10% of total
 
 /// Stored by raw value in the widget cache, so keep raw values stable.
-enum AvailabilityStatus: String, CaseIterable, Codable, Sendable {
+nonisolated enum AvailabilityStatus: String, CaseIterable, Codable, Sendable {
 	case available, almostFull, full, noData
 
 	/// Status for a known occupancy reading. Single source of the thresholds

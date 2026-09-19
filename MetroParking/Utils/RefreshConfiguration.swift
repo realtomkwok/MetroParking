@@ -23,7 +23,7 @@ import Foundation
 // MARK: - Unified Refresh Configuration
 
 /// Single source of truth for all refresh-related timing and strategy configuration
-enum RefreshConfiguration {
+nonisolated enum RefreshConfiguration {
 
 	// MARK: - Foreground Refresh Intervals
 
@@ -132,7 +132,7 @@ enum RefreshConfiguration {
 /// Simplified from 3-tier to 2-tier system:
 /// - **watched**: Favourites + widget facilities (actively monitored by user)
 /// - **unwatched**: Everything else (refresh on-demand when visible)
-enum RefreshTier: CaseIterable {
+nonisolated enum RefreshTier: CaseIterable {
 	case watched    // Favourites + widgets - highest priority
 	case unwatched  // Everything else - refresh when visible or in background sync
 
@@ -160,7 +160,7 @@ enum RefreshTier: CaseIterable {
 // MARK: - AppState
 
 /// Application lifecycle state for refresh scheduling
-enum AppState {
+nonisolated enum AppState {
 	case active
 	case background
 

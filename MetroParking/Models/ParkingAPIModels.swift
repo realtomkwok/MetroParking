@@ -8,7 +8,7 @@
 
 public protocol ApiModel: Codable, Hashable, Sendable, Equatable {}
 
-struct ParkingApiModel: ApiModel {
+nonisolated struct ParkingApiModel: ApiModel {
 	let tsn: String
 	let spots: String
 	let zones: [ParkingZoneAPI]
@@ -33,7 +33,7 @@ struct ParkingApiModel: ApiModel {
 	}
 }
 
-struct ParkingZoneAPI: ApiModel {
+nonisolated struct ParkingZoneAPI: ApiModel {
 	let zoneId: String
 	let zoneName: String
 	let spots: String
@@ -48,14 +48,14 @@ struct ParkingZoneAPI: ApiModel {
 	}
 }
 
-struct ParkingLocationAPI: ApiModel {
+nonisolated struct ParkingLocationAPI: ApiModel {
 	let suburb: String
 	let address: String
 	let latitude: String
 	let longitude: String
 }
 
-struct ParkingOccupancyAPI: ApiModel {
+nonisolated struct ParkingOccupancyAPI: ApiModel {
 	let loop: String?
 	let total: String?
 	let monthlies: String?

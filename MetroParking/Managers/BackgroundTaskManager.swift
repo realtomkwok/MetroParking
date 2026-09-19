@@ -38,7 +38,8 @@ final class BackgroundTaskManager {
 		let appRefreshSuccess = BGTaskScheduler.shared
 			.register(
 				forTaskWithIdentifier: Self.appRefreshTaskID,
-				using: nil
+				// Run launch handlers on the main queue: this class is main-actor isolated.
+				using: .main
 			) { task in
 				Task {
 					await self.handleAppRefresh(task: task as! BGAppRefreshTask)
@@ -48,7 +49,7 @@ final class BackgroundTaskManager {
 		let bgProcessingSuccess = BGTaskScheduler.shared
 			.register(
 				forTaskWithIdentifier: Self.processingTaskID,
-				using: nil
+				using: .main
 			) { task in
 				Task {
 					await self.handleProcessingTask(
@@ -138,8 +139,8 @@ extension BackgroundTaskManager {
 	/// Schedule a processing task only if none is currently pending.
 	/// Used at app launch to ensure the task chain is always started.
 	func scheduleProcessingTaskIfNeeded() {
-		BGTaskScheduler.shared.getPendingTaskRequests { [weak self] requests in
-			guard let self = self else { return }
+		Task {
+			let requests = await BGTaskScheduler.shared.pendingTaskRequests()
 
 			let hasProcessingTask = requests.contains {
 				$0.identifier == Self.processingTaskID
@@ -147,7 +148,7 @@ extension BackgroundTaskManager {
 
 			if !hasProcessingTask {
 				Logger.facilityRefresh.info("📅 No processing task pending, scheduling initial task")
-				self.scheduleProcessingTask()
+				scheduleProcessingTask()
 			} else {
 				Logger.facilityRefresh.debug("⏭️ Processing task already pending, skipping schedule")
 			}
@@ -380,7 +381,8 @@ extension BackgroundTaskManager {
 	#if DEBUG
 	/// Print all currently scheduled background tasks (debug only)
 	func printScheduledTasks() {
-		BGTaskScheduler.shared.getPendingTaskRequests { requests in
+		Task {
+			let requests = await BGTaskScheduler.shared.pendingTaskRequests()
 			if requests.isEmpty {
 				Logger.facilityRefresh.notice("📋 No scheduled background tasks")
 			} else {

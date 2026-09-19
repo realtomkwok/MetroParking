@@ -134,7 +134,9 @@ extension LocationManager {
 	) {
 		guard let location = locations.last else { return }
 
-		Task { @MainActor in
+		// CLLocationManager was created on the main thread, so it calls back there.
+		// Asserting (rather than hopping) keeps events in order.
+		MainActor.assumeIsolated {
 			Logger.location.debug("📍 didUpdateLocations")
 			Logger.location.debug(
 				"  → New location: \(location.coordinate.latitude, format: .fixed(precision: 6)), \(location.coordinate.longitude, format: .fixed(precision: 6))"
@@ -167,7 +169,9 @@ extension LocationManager {
 		_ manager: CLLocationManager,
 		didFailWithError error: any Error
 	) {
-		Task { @MainActor in
+		// CLLocationManager was created on the main thread, so it calls back there.
+		// Asserting (rather than hopping) keeps events in order.
+		MainActor.assumeIsolated {
 			isRefreshing = false
 
 			errorMsg = "Failed to get location: \(error.localizedDescription)"
@@ -181,19 +185,23 @@ extension LocationManager {
 	nonisolated func locationManagerDidChangeAuthorization(
 		_ manager: CLLocationManager
 	) {
-		Task { @MainActor in
+		let newStatus = manager.authorizationStatus
+
+		// CLLocationManager was created on the main thread, so it calls back there.
+		// Asserting (rather than hopping) keeps events in order.
+		MainActor.assumeIsolated {
 			Logger.location.debug("📍 didChangeAuthorization")
 			Logger.location.debug(
 				"  → Old status: \(self.authorisationStatus.description)"
 			)
 			Logger.location.debug(
-				"  → New status: \(manager.authorizationStatus.description)"
+				"  → New status: \(newStatus.description)"
 			)
 
-			authorisationStatus = manager.authorizationStatus
+			authorisationStatus = newStatus
 			updateLocationAvailability()
 
-			switch manager.authorizationStatus {
+			switch newStatus {
 			case .notDetermined:
 				Logger.location.info("📍 Location permission not determined")
 			case .denied, .restricted:

@@ -224,22 +224,15 @@ struct DetailSections: View {
 
 			nearbyRoutes = [:]
 
-			await withTaskGroup(
-				of: (String, (CLLocationDistance, TimeInterval)?).self
-			) { group in
-				for nearby in nearbyFacilities {
-					group.addTask { @MainActor in
-						let result =
-							await etaMgr.calculateDistanceBetweenFacilities(
-								from: selectedFacility,
-								to: nearby
-							)
-						return (nearby.facilityId, result)
-					}
-				}
-
-				for await (id, result) in group {
-					if let result { nearbyRoutes[id] = result }
+			// Every child would run on the main actor anyway, so a task group
+			// adds nothing; sequential requests also go easier on MKDirections limits.
+			for nearby in nearbyFacilities {
+				guard !Task.isCancelled else { return }
+				if let result = await etaMgr.calculateDistanceBetweenFacilities(
+					from: selectedFacility,
+					to: nearby
+				) {
+					nearbyRoutes[nearby.facilityId] = result
 				}
 			}
 		}

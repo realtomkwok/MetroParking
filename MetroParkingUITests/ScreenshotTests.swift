@@ -21,12 +21,12 @@ import MapKit
 /// - `SKIP_ONBOARDING`: Skips onboarding for tests that don't need it
 /// - `RESET_STATE`: Resets app state for clean screenshots
 /// - `DISABLE_ANIMATIONS`: Disable animation for faster screenshots
+@MainActor
 final class ScreenshotTests: XCTestCase {
 
     var app: XCUIApplication!
 
-	@MainActor
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
 
 		let sydney = CLLocation(latitude: -33.8833, longitude: 151.2056)
@@ -53,7 +53,7 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         app = nil
     }
 

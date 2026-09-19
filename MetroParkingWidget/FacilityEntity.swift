@@ -12,8 +12,8 @@ import OSLog
 
 /// Represents a parking facility as an AppEntity for widget configuration
 struct FacilityEntity: AppEntity, Identifiable {
-	static var typeDisplayRepresentation: TypeDisplayRepresentation = "facilityDetail.label.carPark"
-	static var defaultQuery = FacilityQuery()
+	static let typeDisplayRepresentation: TypeDisplayRepresentation = "facilityDetail.label.carPark"
+	static let defaultQuery = FacilityQuery()
 
 	let id: String
 	let name: String

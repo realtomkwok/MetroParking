@@ -261,11 +261,10 @@ struct BackgroundRefreshDebugView: View {
 	}
 
 	private func loadScheduledTasks() {
-		BGTaskScheduler.shared.getPendingTaskRequests { requests in
-			DispatchQueue.main.async {
-				self.scheduledTasks = requests
-				addLog("Loaded \(requests.count) scheduled task(s)")
-			}
+		Task {
+			let requests = await BGTaskScheduler.shared.pendingTaskRequests()
+			scheduledTasks = requests
+			addLog("Loaded \(requests.count) scheduled task(s)")
 		}
 	}
 

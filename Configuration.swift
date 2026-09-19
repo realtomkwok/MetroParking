@@ -8,7 +8,7 @@
 import Foundation
 import os.log
 
-enum Configuration {
+nonisolated enum Configuration {
 
     // MARK: - TfNSW API Key
 

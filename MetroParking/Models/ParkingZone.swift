@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class ParkingZone {
+nonisolated final class ParkingZone {
 	var zoneId: String
 	var zoneName: String
 	var totalSpaces: Int

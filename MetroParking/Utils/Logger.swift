@@ -7,8 +7,8 @@
 
 import OSLog
 
-extension Logger {
-    private static var subsystem = Bundle.main.bundleIdentifier ?? "MetroParking"
+nonisolated extension Logger {
+    private static let subsystem = Bundle.main.bundleIdentifier ?? "MetroParking"
 
     static let appConfiguration = Logger(subsystem: subsystem, category: "Configuration")
 	

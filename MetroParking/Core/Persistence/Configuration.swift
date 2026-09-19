@@ -12,38 +12,31 @@ nonisolated enum Configuration {
 
     // MARK: - TfNSW API Key
 
-    static let tfnswApiKey: String = {
+    /// The TfNSW API key from Info.plist, or `nil` if it's missing or malformed.
+    /// Both the app and the widget read it from their own Info.plist.
+    static let tfnswApiKey: String? = {
         guard
             let key = Bundle.main.object(forInfoDictionaryKey: "TFNSW_API_KEY")
                 as? String,
-            !key.isEmpty,
-            !key.hasPrefix("YOUR_"),
-            !key.contains("YOUR_API_KEY")
+            isValidAPIKey(key)
         else {
-            Logger.appConfiguration.error("❌ TFNSW_API_KEY missing - app will not function")
-            fatalError(
-                "TFNSW_API_KEY not configured. Get your key from https://opendata.transport.nsw.gov.au/"
+            Logger.appConfiguration.error(
+                "❌ TFNSW_API_KEY missing or invalid. Get a key from https://opendata.transport.nsw.gov.au/"
             )
-
-        }
-
-        /// Validation
-        guard key.count >= 16,
-            key.allSatisfy({ $0.isASCII && !$0.isWhitespace }),
-            !key.lowercased().contains("example"),
-            !key.lowercased().contains("test")
-        else {
-
-            Logger.appConfiguration.error("❌ TFNSW_API_KEY invalid format")
-            fatalError(
-                "TFNSW_API_KEY appears to be invalid. Use a real API key from TfNSW."
-            )
+            return nil
         }
 
         Logger.appConfiguration.info("✅ TFNSW API key loaded")
         return key
-
     }()
+
+    static func isValidAPIKey(_ key: String) -> Bool {
+        !key.isEmpty
+            && !key.hasPrefix("$(")  // unexpanded build setting
+            && !key.hasPrefix("YOUR_")
+            && key.count >= 16
+            && key.allSatisfy { $0.isASCII && !$0.isWhitespace }
+    }
 
     // MARK: - Car Park Base Url
 
@@ -73,7 +66,7 @@ nonisolated enum Configuration {
     static func printConfiguration() {
         Logger.appConfiguration.info("🔑 Configuration loaded:")
         Logger.appConfiguration.info("📍 Base URL: \(carParkBaseUrl)")
-        Logger.appConfiguration.info("🔐 API Key: \(tfnswApiKey.prefix(8))...")
+        Logger.appConfiguration.info("🔐 API Key: \(tfnswApiKey.map { "\($0.prefix(8))..." } ?? "missing")")
 
     }
 }
@@ -85,7 +78,7 @@ extension Configuration {
         #if DEBUG
             var issues: [String] = []
 
-            if tfnswApiKey.hasPrefix("YOUR_") || tfnswApiKey.count < 16 {
+            if tfnswApiKey == nil {
                 issues.append(
                     "TFNSW_API_KEY appears to be placeholder or too short"
                 )

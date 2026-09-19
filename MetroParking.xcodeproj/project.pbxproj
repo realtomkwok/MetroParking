@@ -119,6 +119,7 @@
 				Core/Model/ParkingFacility.swift,
 				Core/Model/ParkingZone.swift,
 				Core/Networking/ParkingAPIModels.swift,
+				Core/Networking/APIUsageMonitor.swift,
 				Core/Networking/ParkingAPIService.swift,
 				Core/Persistence/Configuration.swift,
 				Core/Persistence/SharedDataManager.swift,

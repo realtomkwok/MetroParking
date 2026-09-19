@@ -36,6 +36,8 @@ final class FacilityManager {
 	
 	// MARK: - Concurrency Control
 	private var currentOperationId: UUID?
+	/// A forced refresh requested while another cycle was running; run once it ends.
+	private var pendingForcedLoad = false
 	private var lastScheduleTime: Date?
 
 	private init() {}
@@ -119,8 +121,15 @@ extension FacilityManager {
 		// Prevent concurrent refresh operations
 		let operationId = UUID()
 		if let currentOp = self.currentOperationId {
-			Logger.facilityRefresh
-				.warning("⏩ Refresh operation \(currentOp) already in progress, skipping new operation")
+			if forced {
+				// Don't drop a pull-to-refresh or button tap: queue one follow-up.
+				pendingForcedLoad = true
+				Logger.facilityRefresh
+					.info("⏳ Refresh \(currentOp) in progress, queued a forced refresh")
+			} else {
+				Logger.facilityRefresh
+					.warning("⏩ Refresh operation \(currentOp) already in progress, skipping new operation")
+			}
 			return
 		}
 
@@ -194,20 +203,32 @@ extension FacilityManager {
 
 		loadProgress = .loading(0, toLoad.count)
 
-		// Process facilities sequentially with rate-limited API calls
+		// Fetch a few facilities at once. The dispatcher still spaces request
+		// starts to respect the API rate limit; results are applied here, on the
+		// main actor, as each one arrives.
 		var processedCount = 0
+		let facilitiesById = Dictionary(
+			toLoad.map { ($0.facilityId, $0) },
+			uniquingKeysWith: { first, _ in first }
+		)
+		var queue = toLoad.map(\.facilityId).makeIterator()
 
-		for facility in toLoad {
-			guard !Task.isCancelled else { break }
-
-			if processedCount > 0 {
-				try? await Task.sleep(nanoseconds: UInt64(RefreshConfiguration.API.uiStaggerDelay * 1_000_000_000))
+		await withTaskGroup(of: (String, Result<ParkingApiModel, any Error>).self) { group in
+			for _ in 0..<RefreshConfiguration.API.maxConcurrentRequests {
+				guard APIUsageMonitor.canMakeCall, let id = queue.next() else { break }
+				group.addTask { await Self.fetchLive(id, rateLimited: true) }
 			}
 
-			let updated = await refreshFacility(facility, forced: forced)
-			if updated {
-				processedCount += 1
-				loadProgress = .loading(processedCount, toLoad.count)
+			for await (id, result) in group {
+				if let facility = facilitiesById[id], apply(result, to: facility) {
+					processedCount += 1
+					loadProgress = .loading(processedCount, toLoad.count)
+				}
+
+				guard !Task.isCancelled, APIUsageMonitor.canMakeCall,
+					let next = queue.next()
+				else { continue }
+				group.addTask { await Self.fetchLive(next, rateLimited: true) }
 			}
 		}
 
@@ -226,21 +247,27 @@ extension FacilityManager {
 			WidgetBudgetTracker.shared.requestReload()
 		}
 
+		if pendingForcedLoad {
+			pendingForcedLoad = false
+			currentOperationId = nil
+			await performLoad(
+				forced: true,
+				context: context,
+				shouldScheduleNext: shouldScheduleNext
+			)
+			return
+		}
+
 		// Schedule next refresh only if requested and app is active
 		if shouldScheduleNext && AppStateManager.shared.appState == .active {
 			scheduleNextRefresh()
 		}
 	}
 
-	/// Refresh a single facility: fetch from API, update model, cache widget data.
-	/// This is the shared core used by both `performLoad()` and `loadFacility(_:)`.
-	/// - Parameters:
-	///   - facility: The facility to refresh
-	///   - forced: Skip cache validation
-	///   - rateLimit: Whether to wait for an API dispatcher slot (true for bulk, false for single)
+	/// Refresh a single facility outside a bulk cycle (detail view refresh).
 	/// - Returns: `true` if the facility was updated, `false` otherwise.
 	@discardableResult
-	private func refreshFacility(_ facility: ParkingFacility, forced: Bool = false, rateLimit: Bool = true) async -> Bool {
+	private func refreshFacility(_ facility: ParkingFacility, forced: Bool = false) async -> Bool {
 		guard forced || facility.shouldRefresh(appState: .active) else {
 			Logger.facilityRefresh
 				.info("⏭️ Cache still valid for \(facility.displayName.title)")
@@ -252,27 +279,47 @@ extension FacilityManager {
 			return false
 		}
 
-		if rateLimit {
+		let (_, result) = await Self.fetchLive(facility.facilityId, rateLimited: false)
+		return apply(result, to: facility)
+	}
+
+	/// Fetches one facility off the main actor.
+	@concurrent
+	nonisolated private static func fetchLive(
+		_ facilityId: String,
+		rateLimited: Bool
+	) async -> (String, Result<ParkingApiModel, any Error>) {
+		if rateLimited {
 			await APIDispatcher.shared.requestSlot()
 		}
+		APIUsageMonitor.recordCall()
 
 		do {
-			APIUsageMonitor.recordCall()
-			let rawResponse = try await ParkingAPIService.shared.fetchFacility(id: facility.facilityId)
+			let response = try await ParkingAPIService.shared.fetchFacility(id: facilityId)
+			return (facilityId, .success(response))
+		} catch {
+			return (facilityId, .failure(error))
+		}
+	}
 
-			let occupied = Int(rawResponse.occupancy.total ?? "0") ?? 0
-			let totalSpaces = Int(rawResponse.spots) ?? facility.totalSpaces
+	/// Writes a fetch result into the model and widget cache.
+	/// - Returns: `true` if the facility was updated.
+	private func apply(
+		_ result: Result<ParkingApiModel, any Error>,
+		to facility: ParkingFacility
+	) -> Bool {
+		switch result {
+		case .success(let response):
+			let occupied = Int(response.occupancy.total ?? "0") ?? 0
+			let totalSpaces = Int(response.spots) ?? facility.totalSpaces
 
 			withAnimation(.snappy) {
-				facility.updateOccupancy(
-					occupied: occupied,
-					totalSpaces: totalSpaces
-				)
+				facility.updateOccupancy(occupied: occupied, totalSpaces: totalSpaces)
 			}
-
 			SharedDataManager.shared.cacheWidgetDataIfSelected(facility)
 			return true
-		} catch {
+
+		case .failure(let error):
 			facility.markRefreshFailed()
 			Logger.facilityRefresh.error(
 				"❌ Failed to fetch \(facility.displayName.title): \(error.localizedDescription)"
@@ -287,7 +334,7 @@ extension FacilityManager {
 		isRefreshing = true
 		defer { isRefreshing = false }
 
-		let updated = await refreshFacility(facility, forced: forced, rateLimit: false)
+		let updated = await refreshFacility(facility, forced: forced)
 
 		if updated {
 			await saveContext()

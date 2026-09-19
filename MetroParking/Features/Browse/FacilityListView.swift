@@ -193,13 +193,6 @@ extension FacilityList {
 
 				Spacer()
 			}
-			.onChange(of: facility.refreshStatus.staleness) {
-				if facility.refreshStatus.staleness == .stale {
-					Task {
-						await facilityDataMgr.loadFacility(facility)
-					}
-				}
-			}
 			.padding(.vertical, 4)
 			.opacity(facility.refreshStatus.staleness.displayOpacity)
 			.animation(.smooth, value: facility.isFavourite)

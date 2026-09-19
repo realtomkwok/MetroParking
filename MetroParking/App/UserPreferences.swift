@@ -101,15 +101,16 @@ final class UserPreferences {
 	// MARK: - Helper Methods
 
 	/// Resets all preferences to default values (useful for testing)
+	/// Goes through the public setters so observing views update.
 	func resetToDefaults() {
-		_hasCompletedOnboarding = false
-		_notificationsEnabled = false
-		_vacancyThreshold = 10
-		_preferredSortOption = .name
-		_preferredSortingOrder = .ascending
-		_preferredFilterOption = .available
-		_filterIsOn = false
-		_enableHaptics = true
+		hasCompletedOnboarding = false
+		notificationsEnabled = false
+		vacancyThreshold = 10
+		preferredSortOption = .name
+		preferredSortingOrder = .ascending
+		preferredFilterOption = .available
+		filterIsOn = false
+		enableHaptics = true
 	}
 
 	/// Debug helper to print current preferences

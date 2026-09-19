@@ -28,19 +28,21 @@ actor APIDispatcher {
 		self.minInterval = minInterval
 	}
 
-	/// Request permission to make an API call. Blocks until rate limit allows.
-	/// Call this before making any API request to ensure proper rate limiting.
+	/// Request permission to make an API call. Suspends until this caller's slot.
+	///
+	/// The slot is reserved before suspending: actors are reentrant, so reading
+	/// `lastDispatchTime`, sleeping, then writing it would let concurrent callers
+	/// all wait the same amount and fire together.
 	func requestSlot() async {
 		let now = Date()
-		let elapsed = now.timeIntervalSince(lastDispatchTime)
+		let slot = max(now, lastDispatchTime.addingTimeInterval(minInterval))
+		lastDispatchTime = slot
 
-		if elapsed < minInterval {
-			let waitTime = minInterval - elapsed
-			Logger.api.debug("Rate limit: waiting \(String(format: "%.2f", waitTime))s")
-			try? await Task.sleep(nanoseconds: UInt64(waitTime * 1_000_000_000))
+		let wait = slot.timeIntervalSince(now)
+		if wait > 0 {
+			Logger.api.debug("Rate limit: waiting \(wait, format: .fixed(precision: 2))s")
+			try? await Task.sleep(for: .seconds(wait))
 		}
-
-		lastDispatchTime = Date()
 	}
 
 	/// Reset the dispatcher state (useful for testing)

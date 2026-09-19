@@ -8,61 +8,75 @@
 import Foundation
 import OSLog
 
-struct APIUsageMonitor {
-	private static let dailyLimit = 60000  // Current plan, can upgrade if exceeds too often
+/// Tracks TfNSW API calls against the daily quota.
+///
+/// Stored in the App Group so calls made by the widget count too. The count
+/// resets when the calendar day changes.
+nonisolated struct APIUsageMonitor {
+	static let dailyLimit = 60_000
 
-	private static let dailyCountKey = "api_daily_count"
-	private static let dailyDateKey = "api_daily_date"
+	private static let recordKey = "apiDailyUsage"
+
+	private struct Record: Codable {
+		var day: Date
+		var count: Int
+	}
+
+	private static var defaults: UserDefaults {
+		UserDefaults(suiteName: SharedDataManager.appGroupIdentifier) ?? .standard
+	}
 
 	static var dailyUsage: Int {
-		resetIfNeeded()
-		return UserDefaults.standard.integer(forKey: dailyCountKey)
+		dailyUsage(in: defaults)
 	}
 
 	static var canMakeCall: Bool {
-		resetIfNeeded()
-		return Double(dailyUsage) < Double(dailyLimit)
+		canMakeCall(in: defaults)
 	}
-}
-
-extension APIUsageMonitor {
 
 	static func recordCall() {
-		resetIfNeeded()
-
-		let newRecord = dailyUsage + 1
-		UserDefaults.standard.set(newRecord, forKey: dailyCountKey)
-		Logger.api.debug("📊 API Usage: \(newRecord)/\(dailyLimit) daily")
-
-		if newRecord >= Int(Double(dailyLimit) * 0.8) {
-			Logger.api
-				.warning(
-					"⚠️ Daily API usage at 80%: \(newRecord)/\(dailyLimit)"
-				)
-		}
+		recordCall(in: defaults)
 	}
 
-	private static func resetIfNeeded() {
-		let now = Date()
-		let calendar = Calendar.current
-
-		if let lastDailyDate = UserDefaults.standard.object(
-			forKey: dailyDateKey
-		) as? Date {
-			if !calendar.isDate(lastDailyDate, inSameDayAs: now) {
-				UserDefaults.standard.set(0, forKey: dailyCountKey)
-				UserDefaults.standard.set(now, forKey: dailyDateKey)
-				Logger.api.notice("🔄 Daily API counter reset")
-			} else {
-				UserDefaults.standard.set(now, forKey: dailyDateKey)
-			}
-		}
-	}
-
-	/// Manual reset for testing
+	/// Manual reset for debugging
 	static func resetCounter() {
-		UserDefaults.standard.set(0, forKey: dailyCountKey)
-		UserDefaults.standard.set(Date(), forKey: dailyDateKey)
+		defaults.removeObject(forKey: recordKey)
 		Logger.api.notice("🔄 API counters manually reset")
+	}
+
+	// MARK: - Testable core
+
+	static func dailyUsage(in defaults: UserDefaults, now: Date = .now, calendar: Calendar = .current) -> Int {
+		currentRecord(in: defaults, now: now, calendar: calendar).count
+	}
+
+	static func canMakeCall(in defaults: UserDefaults, now: Date = .now, calendar: Calendar = .current) -> Bool {
+		dailyUsage(in: defaults, now: now, calendar: calendar) < dailyLimit
+	}
+
+	static func recordCall(in defaults: UserDefaults, now: Date = .now, calendar: Calendar = .current) {
+		var record = currentRecord(in: defaults, now: now, calendar: calendar)
+		record.count += 1
+		if let data = try? JSONEncoder().encode(record) {
+			defaults.set(data, forKey: recordKey)
+		}
+
+		Logger.api.debug("📊 API Usage: \(record.count)/\(dailyLimit) daily")
+		if record.count == dailyLimit * 8 / 10 {
+			Logger.api.warning("⚠️ Daily API usage at 80%: \(record.count)/\(dailyLimit)")
+		}
+	}
+
+	/// Today's record; a record from an earlier day counts as zero.
+	private static func currentRecord(in defaults: UserDefaults, now: Date, calendar: Calendar) -> Record {
+		let today = calendar.startOfDay(for: now)
+		guard
+			let data = defaults.data(forKey: recordKey),
+			let record = try? JSONDecoder().decode(Record.self, from: data),
+			calendar.isDate(record.day, inSameDayAs: today)
+		else {
+			return Record(day: today, count: 0)
+		}
+		return record
 	}
 }

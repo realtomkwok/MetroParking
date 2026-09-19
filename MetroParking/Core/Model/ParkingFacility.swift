@@ -293,13 +293,12 @@ nonisolated final class ParkingFacility {
 		)
 	}
 
-	/// Returns the parsed display name (title and subtitle)
-	/// Values are cached during initialisation for optimal performance
-	/// Falls back to re-parsing if cache is empty (e.g., after SwiftData deserialization)
+	/// The parsed display name (title and subtitle), stored at initialisation.
+	/// Rows saved before these fields existed are parsed on the fly without
+	/// writing, so reading this from a view body or sort never mutates the model.
 	var displayName: (title: String, subtitle: String, full: String) {
-		// SwiftData doesn't call init() on deserialization, so cached values may be empty
-		if _displayFullName.isEmpty {
-			_parseAndCacheDisplayName()
+		guard !_displayFullName.isEmpty else {
+			return Self.parseDisplayName(name)
 		}
 		return (
 			title: _displayTitle, subtitle: _displaySubtitle,

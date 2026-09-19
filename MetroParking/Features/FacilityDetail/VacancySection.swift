@@ -17,43 +17,34 @@ extension DetailSections {
 			let selectedFacility: ParkingFacility
 			let isRefreshing: Bool
 
+			private var staleness: ParkingFacility.DataStaleness {
+				selectedFacility.refreshStatus.staleness
+			}
+
+			/// "available/total", e.g. 42/213. Numbers are verbatim, not localised keys.
+			private var spaceCount: some View {
+				let vacancy = selectedFacility.vacancy
+				return HStack(alignment: .firstTextBaseline, spacing: 0) {
+					Text(verbatim: "\(vacancy.available)")
+						.foregroundStyle(.primary)
+						.contentTransition(.numericText(value: Double(vacancy.available)))
+					Text(verbatim: "/\(vacancy.total)")
+						.foregroundStyle(.secondary)
+						.contentTransition(.numericText(value: Double(vacancy.total)))
+				}
+				.font(.title)
+				.fontWeight(.semibold)
+				.lineLimit(1)
+				.minimumScaleFactor(0.6)
+				.opacity(staleness.displayOpacity)
+				.breathingAnimation(staleness == .stale && isRefreshing)
+			}
+
 			var body: some View {
 				HStack(alignment: .center) {
 					VStack(alignment: .leading) {
 						HStack(alignment: .firstTextBaseline, spacing: 4) {
-							let vacancy = selectedFacility.vacancy
-							HStack(
-								alignment: .firstTextBaseline,
-								spacing: 0
-							) {
-								Text("\(vacancy.available)")
-									.foregroundStyle(.primary)
-									.contentTransition(
-										.numericText(
-											value: Double(vacancy.available)
-										)
-									)
-								Text("/\(vacancy.total)")
-									.foregroundStyle(.secondary)
-									.contentTransition(
-										.numericText(
-											value: Double(vacancy.total)
-										)
-									)
-							}
-							.font(.title)
-							.fontWeight(.semibold)
-							.lineLimit(1)
-							.minimumScaleFactor(0.6)
-							.opacity(
-								selectedFacility.refreshStatus.staleness
-									.displayOpacity
-							)
-							.breathingAnimation(
-								selectedFacility.refreshStatus.staleness
-									== .stale
-									&& isRefreshing
-							)
+							spaceCount
 
 							Text(.facilityDetailLabelSpaces)
 								.font(.callout)
@@ -64,7 +55,7 @@ extension DetailSections {
 						.layoutPriority(1)
 
 						HStack(alignment: .firstTextBaseline, spacing: 4) {
-							Text("\(selectedFacility.availabilityStatus.text)")
+							Text(verbatim: selectedFacility.availabilityStatus.text)
 								.font(.headline)
 								.transition(.blurReplace)
 						}
@@ -106,7 +97,10 @@ extension DetailSections {
 						lastUpdated
 					)
 
-					if timeInterval < 60 {
+					if lastUpdated == .distantPast {
+						// Never loaded; a relative date would read "2,025y ago".
+						Text(.dateLabelNever)
+					} else if timeInterval < 60 {
 						Text(.dateLabelJustNow)
 					} else {
 						Text(

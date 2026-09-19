@@ -9,6 +9,7 @@
 import Foundation
 import OSLog
 import SwiftData
+import Synchronization
 import WidgetKit
 
 @MainActor
@@ -17,7 +18,7 @@ final class SharedDataManager {
 	// App Group - nonisolated for access from non-MainActor contexts
 	nonisolated static let appGroupIdentifier: String = "group.com.tomkwok.MetroParking"
 
-	static var shared = SharedDataManager()
+	static let shared = SharedDataManager()
 
 	// MARK: - Widget ID Cache (reduces UserDefaults reads)
 	private var _cachedWidgetIds: [String]?
@@ -28,79 +29,56 @@ final class SharedDataManager {
 
 	// MARK: - SwiftData Container
 
-	/// Schema version for destructive migration (pre-launch only)
-	/// v7: Add name transformation
-	private static let schemaVersion = "v7"
-	private static let schemaVersionKey = "ModelSchemaVersion"
-
-	/// Shared ModelContainer instance used by both app and widget
-	/// This ensures both targets read from the same SwiftData store
-	@MainActor
-	static let sharedContainer: ModelContainer = {
+	/// Shared ModelContainer used by the app, background tasks and the widget,
+	/// so every target reads the same store in the App Group.
+	///
+	/// SwiftData's lightweight migration handles additive model changes. If the
+	/// store can't be opened at all (e.g. an incompatible schema), it is deleted
+	/// and rebuilt: facility data is re-fetched from the API, but pinned car
+	/// parks are lost, so this is logged as a fault. As a last resort the app
+	/// runs on an in-memory store instead of crashing.
+	nonisolated static let sharedContainer: ModelContainer = {
 		let schema = Schema([
 			ParkingFacility.self,
 			ParkingZone.self,
 		])
 
-		let modelConfiguration = ModelConfiguration(
+		let configuration = ModelConfiguration(
 			schema: schema,
 			isStoredInMemoryOnly: false,
 			groupContainer: .identifier(appGroupIdentifier)
 		)
 
 		do {
-			// Check if schema version has changed
-			let storedVersion = UserDefaults.standard.string(
-				forKey: schemaVersionKey
-			)
-			let needsMigration =
-				storedVersion != nil && storedVersion != schemaVersion
-
-			if needsMigration {
-				Logger.facilityData.info(
-					"📦 Schema version changed from \(storedVersion ?? "unknown") to \(schemaVersion)"
-				)
-				Logger.facilityData.info(
-					"🗑️ Clearing old data store for migration..."
-				)
-			}
-
-			let container = try ModelContainer(
-				for: schema,
-				configurations: [modelConfiguration]
-			)
-
-			// Save current schema version
-			UserDefaults.standard.set(schemaVersion, forKey: schemaVersionKey)
-
-			return container
+			return try ModelContainer(for: schema, configurations: [configuration])
 		} catch {
-			// Schema migration failed - likely due to model changes
-			Logger.facilityData.error(
-				"⚠️ ModelContainer creation failed: \(error.localizedDescription)"
+			Logger.facilityData.fault(
+				"⚠️ Could not open the data store, rebuilding it: \(error.localizedDescription)"
 			)
+		}
 
-			do {
-				// Try creating the container again with fresh store
-				let container = try ModelContainer(
-					for: schema,
-					configurations: [modelConfiguration]
-				)
+		destroyStore(at: configuration.url)
 
-				// Save schema version after successful recovery
-				UserDefaults.standard.set(
-					schemaVersion,
-					forKey: schemaVersionKey
-				)
-
-				return container
-			} catch {
-				fatalError(
-					"Could not create ModelContainer after cleanup: \(error.localizedDescription)"
-				)
-			}
+		do {
+			return try ModelContainer(for: schema, configurations: [configuration])
+		} catch {
+			Logger.facilityData.fault(
+				"❌ Could not rebuild the data store, using memory only: \(error.localizedDescription)"
+			)
+			let inMemory = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+			// An in-memory store with a valid schema can't fail to open.
+			return try! ModelContainer(for: schema, configurations: [inMemory])
 		}
 	}()
+
+	/// Removes a SQLite store and its sidecar files.
+	nonisolated private static func destroyStore(at url: URL) {
+		let fileManager = FileManager.default
+		for suffix in ["", "-wal", "-shm"] {
+			let fileURL = URL(fileURLWithPath: url.path + suffix)
+			try? fileManager.removeItem(at: fileURL)
+		}
+	}
 
 	/// Get the shared UserDefaults for App Group
 	private var sharedDefaults: UserDefaults? {
@@ -149,10 +127,10 @@ extension SharedDataManager {
 			}
 		}
 
-		/// Check if the cached data is stale (older than 15 minutes)
+		/// Data older than the watched tier's background validity is shown as stale.
 		var isStale: Bool {
-			let staleThreshold: TimeInterval = 15 * 60  // 15 minutes
-			return Date().timeIntervalSince(cacheTimestamp) > staleThreshold
+			Date().timeIntervalSince(cacheTimestamp)
+				> RefreshConfiguration.CacheValidity.Background.watched
 		}
 
 		/// Check if data is too old to display reliably
@@ -177,7 +155,13 @@ extension SharedDataManager {
 		facilityId: String,
 		existingData: WidgetFacilityData?
 	) async -> WidgetFacilityData? {
+		guard APIUsageMonitor.canMakeCall else {
+			Logger.widget.warning("⚠️ Widget: daily API limit reached, using cached data")
+			return nil
+		}
+
 		do {
+			APIUsageMonitor.recordCall()
 			let response = try await ParkingAPIService.shared.fetchFacility(
 				id: facilityId,
 				timeout: 10  // Widgets have limited run time
@@ -398,6 +382,7 @@ extension SharedDataManager {
 	/// Invalidates the widget ID cache, forcing a fresh read on next access
 	func invalidateWidgetIdsCache() {
 		_cachedWidgetIds = nil
+		Self.widgetIdCache.withLock { $0.readAt = .distantPast }
 	}
 
 	/// Check if a facility is currently displayed in any widget
@@ -405,13 +390,22 @@ extension SharedDataManager {
 		return getWidgetFacilityIDs().contains(facilityId)
 	}
 
-	/// Check if a facility is in a widget (nonisolated for use from SwiftData models)
-	/// Reads directly from UserDefaults without cache for thread safety
+	/// Short-lived cache of widget facility IDs. `refreshTier` reads this from
+	/// sort comparators, filters and every list row, so it must not hit
+	/// UserDefaults each time.
+	nonisolated private static let widgetIdCache = Mutex(
+		(ids: Set<String>(), readAt: Date.distantPast)
+	)
+	nonisolated private static let widgetIdCacheValidity: TimeInterval = 2
+
+	/// Whether a facility is shown in any widget. Safe to call from any context.
 	nonisolated static func isInWidget(_ facilityId: String) -> Bool {
-		guard let defaults = UserDefaults(suiteName: appGroupIdentifier) else {
-			return false
+		widgetIdCache.withLock { cache in
+			if Date().timeIntervalSince(cache.readAt) >= widgetIdCacheValidity {
+				let defaults = UserDefaults(suiteName: appGroupIdentifier)
+				cache = (Set(defaults?.stringArray(forKey: widgetFacilityIdsKey) ?? []), Date())
+			}
+			return cache.ids.contains(facilityId)
 		}
-		let ids = defaults.stringArray(forKey: widgetFacilityIdsKey) ?? []
-		return ids.contains(facilityId)
 	}
 }

@@ -401,6 +401,12 @@ final class ETAManager {
 		}
 
 		batchETATask = task
-		await task.value
+		// The work runs in its own task so a newer batch can cancel it;
+		// forward cancellation from the caller too.
+		await withTaskCancellationHandler {
+			await task.value
+		} onCancel: {
+			task.cancel()
+		}
 	}
 }

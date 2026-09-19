@@ -85,8 +85,8 @@ struct MetroParkingApp: App {
 	}
 
 	private func setupConfiguration() {
-		// Access configuration properties to trigger validation
-		// Each property has built-in validation that will fatalError if invalid
+		// Load configuration early so problems are logged at launch.
+		// A missing API key disables live data rather than crashing.
 		_ = Configuration.tfnswApiKey
 		_ = Configuration.carParkBaseUrl
 

@@ -21,6 +21,7 @@ struct ContentView: View {
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 	@Environment(\.verticalSizeClass) private var verticalSizeClass
 
+	@Environment(FacilityManager.self) private var facilityDataMgr
 	@Environment(ETAManager.self) private var etaMgr
 	@Environment(LocationManager.self) private var locationMgr
 	@Environment(DeepLinkManager.self) private var deepLinkMgr
@@ -108,6 +109,16 @@ struct ContentView: View {
 			// Initial batch ETA on first appearance if location is already available
 			if let location = locationMgr.currentLocation {
 				await triggerBatchETA(location: location)
+			}
+		}
+		.onChange(of: facilityDataMgr.staticDataLoadTime) {
+			// First launch: facilities are seeded after the view appears, so the
+			// initial batch above found nothing to calculate.
+			if let location = locationMgr.currentLocation {
+				batchETATask?.cancel()
+				batchETATask = Task {
+					await triggerBatchETA(location: location)
+				}
 			}
 		}
 		.onChange(of: locationMgr.isLocationAvailable) { _, isAvailable in

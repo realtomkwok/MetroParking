@@ -290,14 +290,16 @@ extension BackgroundTaskManager {
 		do {
 			let allFacilities: [ParkingFacility] = try context.fetch(descriptor)
 
-			// Filter by scope
-			let candidates: [ParkingFacility]
+			// Filter by scope, keeping only facilities whose cache has expired,
+			// so the quick-scope limit is spent on ones that need a refresh.
+			let inScope: [ParkingFacility]
 			switch scope {
 			case .quick:
-				candidates = allFacilities.filter { $0.refreshTier == .watched }
+				inScope = allFacilities.filter { $0.refreshTier == .watched }
 			case .full:
-				candidates = allFacilities
+				inScope = allFacilities
 			}
+			let candidates = inScope.filter { $0.shouldRefresh(appState: .background) }
 
 			guard !candidates.isEmpty else {
 				Logger.facilityRefresh.info("No facilities to refresh (\(scope.label))")
@@ -320,7 +322,6 @@ extension BackgroundTaskManager {
 			for facility in toRefresh {
 				guard !Task.isCancelled else { break }
 
-				await APIDispatcher.shared.requestSlot()
 				guard APIUsageMonitor.canMakeCall else { break }
 
 				if Date().timeIntervalSince(startTime) > scope.timeout {
@@ -328,7 +329,7 @@ extension BackgroundTaskManager {
 					break
 				}
 
-				guard facility.shouldRefresh(appState: .background) else { continue }
+				await APIDispatcher.shared.requestSlot()
 
 				let spacesBefore = facility.vacancy.available
 

@@ -32,7 +32,7 @@ nonisolated struct ParkingAPIService: Sendable {
 		timeout: TimeInterval = 60
 	) async throws -> ParkingApiModel {
 		let url = try buildURL(for: id)
-		var request = buildRequest(for: url)
+		var request = try buildRequest(for: url)
 		request.timeoutInterval = timeout
 
 		let (data, response) = try await session.data(for: request)
@@ -76,14 +76,14 @@ nonisolated struct ParkingAPIService: Sendable {
 		return url
 	}
 
-	private func buildRequest(for url: URL) -> URLRequest {
-		var req = URLRequest(url: url)
+	private func buildRequest(for url: URL) throws -> URLRequest {
+		guard let apiKey = Configuration.tfnswApiKey else {
+			throw APIError.missingAPIKey
+		}
 
+		var req = URLRequest(url: url)
 		req.setValue("application/json", forHTTPHeaderField: "accept")
-		req.setValue(
-			"apikey \(Configuration.tfnswApiKey)",
-			forHTTPHeaderField: "Authorization"
-		)
+		req.setValue("apikey \(apiKey)", forHTTPHeaderField: "Authorization")
 		return req
 	}
 
@@ -116,6 +116,7 @@ nonisolated struct ParkingAPIService: Sendable {
 
 nonisolated enum APIError: LocalizedError {
 	case invalidURL
+	case missingAPIKey
 	case noDataForFacility(String)
 	case decodingFailed(Error)
 	case networkError(Int)
@@ -124,6 +125,8 @@ nonisolated enum APIError: LocalizedError {
 		switch self {
 		case .invalidURL:
 			return "Invalid API URL configuration"
+		case .missingAPIKey:
+			return "TFNSW_API_KEY is not configured"
 		case .noDataForFacility(let id):
 			return "No data returned for facility \(id)"
 		case .decodingFailed(let error):

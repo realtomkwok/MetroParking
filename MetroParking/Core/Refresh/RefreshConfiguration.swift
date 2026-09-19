@@ -67,22 +67,21 @@ nonisolated enum RefreshConfiguration {
 		/// Processing task interval (full data sync)
 		static let processingTask: TimeInterval = 2 * 60 * 60  // 2 hours
 
-		/// Determine appropriate interval based on current time
-		static func current() -> TimeInterval {
-			let hour = Calendar.current.component(.hour, from: Date())
-			let isWeekday = !Calendar.current.isDateInWeekend(Date())
+		/// Determine appropriate interval based on the time of day.
+		static func current(at date: Date = .now, calendar: Calendar = .current) -> TimeInterval {
+			let hour = calendar.component(.hour, from: date)
+			guard !calendar.isDateInWeekend(date) else { return offPeak }
 
-			// Peak commute time on weekdays (7-9 AM, 5-7 PM)
-			if isWeekday && (7...9 ~= hour || 17...19 ~= hour) {
+			// Peak commute on weekdays: 7–9 AM and 5–7 PM
+			if (7..<9).contains(hour) || (17..<19).contains(hour) {
 				return peakHours
 			}
 
-			// Office hours on weekdays (9 AM - 5 PM)
-			if isWeekday && 9...17 ~= hour {
+			// Office hours on weekdays: 9 AM – 5 PM
+			if (9..<17).contains(hour) {
 				return officeHours
 			}
 
-			// Everything else
 			return offPeak
 		}
 	}
@@ -113,8 +112,10 @@ nonisolated enum RefreshConfiguration {
 		/// Minimum delay between sequential API calls (400ms between calls)
 		static let minCallInterval: TimeInterval = 0.4
 
-		/// Delay between UI updates for cascade animation effect
-		static let uiStaggerDelay: TimeInterval = 0.1  // 100ms
+		/// Facilities fetched at once in a foreground refresh. Request starts are
+		/// still spaced by `minCallInterval`, so this overlaps network latency
+		/// without exceeding the rate limit.
+		static let maxConcurrentRequests: Int = 4
 
 		/// Maximum facilities to refresh in quick background task
 		static let quickRefreshLimit: Int = 5

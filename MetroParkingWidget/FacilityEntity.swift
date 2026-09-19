@@ -38,7 +38,7 @@ struct FacilityEntity: AppEntity, Identifiable {
 /// Query to fetch available parking facilities
 struct FacilityQuery: EntityStringQuery {
 	func entities(for identifiers: [String]) async throws -> [FacilityEntity] {
-		let container = await SharedDataManager.sharedContainer
+		let container = SharedDataManager.sharedContainer
 		let context = ModelContext(container)
 
 		let descriptor = FetchDescriptor<ParkingFacility>(
@@ -60,7 +60,7 @@ struct FacilityQuery: EntityStringQuery {
 
 	func entities(matching string: String) async throws -> [FacilityEntity] {
 			// Fetch specific facilities by ID
-		let container = await SharedDataManager.sharedContainer
+		let container = SharedDataManager.sharedContainer
 		let context = ModelContext(container)
 
 		let descriptor = FetchDescriptor<ParkingFacility>(
@@ -84,7 +84,7 @@ struct FacilityQuery: EntityStringQuery {
 
 	func suggestedEntities() async throws -> [FacilityEntity] {
 			// Return all available facilities for selection
-		let container = await SharedDataManager.sharedContainer
+		let container = SharedDataManager.sharedContainer
 		let context = ModelContext(container)
 
 		let descriptor = FetchDescriptor<ParkingFacility>(
@@ -107,7 +107,7 @@ struct FacilityQuery: EntityStringQuery {
 
 	func defaultResult() async -> FacilityEntity? {
 			// Return the first favourite facility, or nil if none exists
-		let container = await SharedDataManager.sharedContainer
+		let container = SharedDataManager.sharedContainer
 		let context = ModelContext(container)
 
 		let descriptor = FetchDescriptor<ParkingFacility>(

@@ -60,7 +60,6 @@ private struct FacilityDestination: View {
 struct BrowseView: View {
 	@Bindable var model: MapSheetModel
 
-	@Environment(FacilityManager.self) private var facilityDataMgr
 	@Environment(SearchManager.self) private var searchMgr
 	@Environment(UserPreferences.self) private var preferences
 
@@ -111,23 +110,6 @@ struct BrowseView: View {
 		return sections
 	}
 
-	private var navigationSubtitle: Text {
-		if preferences.filterIsOn {
-			switch preferences.preferredFilterOption {
-			case .pinned:
-				return Text(.facilityListStatusPinnedOnly)
-			case .available:
-				return Text(.sortFilterStatusAvailableOnly)
-			}
-		}
-
-		if facilityDataMgr.isRefreshing {
-			return Text(facilityDataMgr.loadProgress.description)
-		}
-
-		return Text(.facilityListStatusAllUpdated)
-	}
-
 	var body: some View {
 		@Bindable var search = searchMgr
 		let sections = groupedFacilities
@@ -143,7 +125,7 @@ struct BrowseView: View {
 				BrowseControls(preferences: preferences)
 			}
 			.navigationTitle(.metroParking)
-			.navigationSubtitle(navigationSubtitle)
+			.modifier(RefreshStatusSubtitle())
 			.toolbarTitleDisplayMode(.inline)
 			.toolbar {
 				ToolbarItem(placement: .topBarTrailing) {
@@ -202,6 +184,38 @@ struct BrowseView: View {
 				.buttonStyle(.borderedProminent)
 			}
 		}
+	}
+}
+
+// MARK: - Subtitle
+
+/// Shows refresh progress as the navigation subtitle.
+///
+/// A separate modifier so progress updates (one per facility during a refresh)
+/// only re-render the subtitle, not BrowseView's filter, search and sort.
+private struct RefreshStatusSubtitle: ViewModifier {
+	@Environment(FacilityManager.self) private var facilityDataMgr
+	@Environment(UserPreferences.self) private var preferences
+
+	private var subtitle: Text {
+		if preferences.filterIsOn {
+			switch preferences.preferredFilterOption {
+			case .pinned:
+				return Text(.facilityListStatusPinnedOnly)
+			case .available:
+				return Text(.sortFilterStatusAvailableOnly)
+			}
+		}
+
+		if facilityDataMgr.isRefreshing {
+			return Text(facilityDataMgr.loadProgress.description)
+		}
+
+		return Text(.facilityListStatusAllUpdated)
+	}
+
+	func body(content: Content) -> some View {
+		content.navigationSubtitle(subtitle)
 	}
 }
 

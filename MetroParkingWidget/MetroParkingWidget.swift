@@ -93,18 +93,22 @@ struct FacilityProvider: AppIntentTimelineProvider {
 		// Register this facility as being displayed in a widget
 		SharedDataManager.shared.registerWidgetFacility(selectedFacility.id)
 
-		// STEP 1: Load cached data immediately (prevents placeholder flash)
-		// Try SwiftData first (most recent), then UserDefaults fallback
-		var displayData = await loadFacilityData(facilityId: selectedFacility.id)
-		if displayData == nil {
-			displayData = SharedDataManager.shared.loadWidgetData(
-				forFacilityId: selectedFacility.id
-			)
-		}
+		// STEP 1: Load cached data immediately (prevents placeholder flash).
+		// The app writes SwiftData; the widget's own fetches only update the
+		// App Group cache. Use whichever is newer, or the widget would keep
+		// seeing stale SwiftData and re-fetch on every timeline.
+		let storeData = await loadFacilityData(facilityId: selectedFacility.id)
+		let cachedData = SharedDataManager.shared.loadWidgetData(
+			forFacilityId: selectedFacility.id
+		)
+		var displayData = [storeData, cachedData]
+			.compactMap { $0 }
+			.max { $0.cacheTimestamp < $1.cacheTimestamp }
 
 		// STEP 2: Refresh if data is stale (> 5 min)
 		// This ensures widget shows fresh vacancy data when WidgetKit refreshes the timeline
-		let staleThreshold: TimeInterval = 5 * 60  // 5 minutes
+		// Widget facilities are in the watched tier, so they share its cache validity.
+		let staleThreshold = RefreshConfiguration.CacheValidity.Foreground.watched
 		let isDataStale = displayData?.cacheTimestamp.timeIntervalSinceNow ?? -.infinity < -staleThreshold
 
 		if isDataStale {

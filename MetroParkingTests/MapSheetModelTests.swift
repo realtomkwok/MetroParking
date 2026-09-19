@@ -152,3 +152,43 @@ struct DeepLinkTests {
 		#expect(manager.selectedFacilityId == nil)
 	}
 }
+
+@MainActor
+@Suite("Floating panel sizing", .tags(.navigation))
+struct FloatingPanelTests {
+
+	@Test(
+		arguments: [
+			(600, 340),  // narrow: clamped up to the minimum width
+			(1000, 360),  // 36% of the width
+			(1400, 420),  // wide: clamped down to the maximum width
+		] as [(CGFloat, CGFloat)]
+	)
+	func `sizes to the container without a fold`(containerWidth: CGFloat, expected: CGFloat) {
+		#expect(FloatingPanel.width(forContainerWidth: containerWidth, fold: nil) == expected)
+	}
+
+	@Test func `fills the leading pane up to a vertical fold`() {
+		let fold = CGRect(x: 440, y: 0, width: 8, height: 900)
+
+		let width = FloatingPanel.width(forContainerWidth: 888, fold: fold)
+
+		#expect(width == 440 - 2 * FloatingPanel.margin)
+	}
+
+	@Test func `ignores a horizontal fold`() {
+		let fold = CGRect(x: 0, y: 400, width: 900, height: 8)
+
+		let width = FloatingPanel.width(forContainerWidth: 1000, fold: fold)
+
+		#expect(width == 360)
+	}
+
+	@Test func `ignores a fold that leaves too little room`() {
+		let fold = CGRect(x: 200, y: 0, width: 8, height: 900)
+
+		let width = FloatingPanel.width(forContainerWidth: 1000, fold: fold)
+
+		#expect(width == 360)
+	}
+}

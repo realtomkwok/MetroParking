@@ -60,8 +60,6 @@
 		180974D62F3AE67C00E48620 /* ProductionTestPlan.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = ProductionTestPlan.xctestplan; sourceTree = "<group>"; };
 		180F1B5D2EE659EF00A72037 /* SortingFiltering Architecture.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "SortingFiltering Architecture.md"; sourceTree = "<group>"; };
 		180F1B5E2EE659EF00A72037 /* CONFIGURATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONFIGURATION.md; sourceTree = "<group>"; };
-		180F1BC42EE794EF00A72037 /* MAPS_MANAGER_MIGRATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MAPS_MANAGER_MIGRATION.md; sourceTree = "<group>"; };
-		180F1BC82EE79CD900A72037 /* TECHNICAL_DEEP_DIVE_MAPS_MANAGER.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TECHNICAL_DEEP_DIVE_MAPS_MANAGER.md; sourceTree = "<group>"; };
 		180F1BCE2EE8EECB00A72037 /* PERMISSION_FLOW_DIAGRAM.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PERMISSION_FLOW_DIAGRAM.md; sourceTree = "<group>"; };
 		180F337E2F3547E300540491 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		181F077F2EF1235E008F451B /* WIDGET_ARCHITECTURE_PLAN.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_ARCHITECTURE_PLAN.md; sourceTree = "<group>"; };
@@ -74,8 +72,6 @@
 		181F07A62EF1415B008F451B /* WIDGET_IMPLEMENTATION_CHECKLIST.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_IMPLEMENTATION_CHECKLIST.md; sourceTree = "<group>"; };
 		181F07B42EF2D517008F451B /* WIDGET_APPINTENT_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_APPINTENT_GUIDE.md; sourceTree = "<group>"; };
 		181F07CA2EF80426008F451B /* WIDGET_BUDGET_UPDATE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WIDGET_BUDGET_UPDATE.md; sourceTree = "<group>"; };
-		181F07CF2EF8D9FF008F451B /* CODE_REVIEW_CHECKLIST.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CODE_REVIEW_CHECKLIST.md; sourceTree = "<group>"; };
-		181F07D02EF8D9FF008F451B /* CONCURRENCY_FIXES_SUMMARY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONCURRENCY_FIXES_SUMMARY.md; sourceTree = "<group>"; };
 		182A3C0D2E03BC3100E64A38 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		182A3C282E0833FF00E64A38 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
 		182A3CC82E0EC2E300E64A38 /* MapKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MapKit.framework; path = System/Library/Frameworks/MapKit.framework; sourceTree = SDKROOT; };
@@ -204,7 +200,6 @@
 		180F1B5F2EE659EF00A72037 /* Docs */ = {
 			isa = PBXGroup;
 			children = (
-				181F07D12EF8D9FF008F451B /* Concurrency */,
 				181F07842EF1235E008F451B /* Widgets */,
 				180F1B622EE65A0000A72037 /* Components */,
 				180F1B5E2EE659EF00A72037 /* CONFIGURATION.md */,
@@ -217,8 +212,6 @@
 			isa = PBXGroup;
 			children = (
 				180F1B5D2EE659EF00A72037 /* SortingFiltering Architecture.md */,
-				180F1BC42EE794EF00A72037 /* MAPS_MANAGER_MIGRATION.md */,
-				180F1BC82EE79CD900A72037 /* TECHNICAL_DEEP_DIVE_MAPS_MANAGER.md */,
 				180F1BCE2EE8EECB00A72037 /* PERMISSION_FLOW_DIAGRAM.md */,
 			);
 			path = Components;
@@ -236,15 +229,6 @@
 				181F07CA2EF80426008F451B /* WIDGET_BUDGET_UPDATE.md */,
 			);
 			path = Widgets;
-			sourceTree = "<group>";
-		};
-		181F07D12EF8D9FF008F451B /* Concurrency */ = {
-			isa = PBXGroup;
-			children = (
-				181F07CF2EF8D9FF008F451B /* CODE_REVIEW_CHECKLIST.md */,
-				181F07D02EF8D9FF008F451B /* CONCURRENCY_FIXES_SUMMARY.md */,
-			);
-			path = Concurrency;
 			sourceTree = "<group>";
 		};
 		182A3C272E0833FE00E64A38 /* Frameworks */ = {

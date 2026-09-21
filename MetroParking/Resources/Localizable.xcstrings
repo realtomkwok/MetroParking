@@ -1583,6 +1583,30 @@
       },
       "shouldTranslate" : false
     },
+    "map.control.locate" : {
+      "comment" : "Accessibility label for the map button that recentres the map on the user's current location.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current Location"
+          }
+        },
+        "zh-HK" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目前位置"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前位置"
+          }
+        }
+      }
+    },
     "navigation.option.appleMaps" : {
       "extractionState" : "manual",
       "localizations" : {

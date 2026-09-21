@@ -26,8 +26,16 @@ final class MapSheetModel {
 	static let peekDetent: PresentationDetent = .height(peekHeight)
 	static let detents: Set<PresentationDetent> = [peekDetent, .medium, .large]
 
+	/// Gap between the top of the sheet and whatever sits above it: MapKit's
+	/// attribution, and our own controls.
+	static let controlGap: Double = 16
+
 	/// Metres spanned by the camera when focusing on a single facility.
 	static let focusSpan: CLLocationDistance = 1800
+
+	/// Camera span under which annotations show their vacancy count. Roughly a
+	/// few suburbs: any wider and neighbouring counts collide.
+	static let countSpan: CLLocationDistance = 6_000
 
 	/// Padding applied around the bounding box of the facilities in `showAll`.
 	private static let overviewPadding: Double = 1.3
@@ -57,10 +65,15 @@ final class MapSheetModel {
 	var leadingOcclusionFraction: Double = 0
 
 	/// The facility currently shown in the sheet, if any.
+	///
 	/// Derived from the navigation path so the map and sheet can never disagree.
+	/// Settable so the map can bind its selection straight to it.
 	var selectedFacilityId: String? {
-		guard case .facility(let id)? = path.last else { return nil }
-		return id
+		get {
+			guard case .facility(let id)? = path.last else { return nil }
+			return id
+		}
+		set { handleMapSelection(newValue) }
 	}
 
 	/// Shows a facility's detail, replacing whatever the sheet was showing.
@@ -195,6 +208,11 @@ final class MapSheetModel {
 				longitudeDelta: longitudeDelta
 			)
 		)
+	}
+
+	/// Whether the camera is close enough in for annotations to show their counts.
+	static func showsCounts(at region: MKCoordinateRegion) -> Bool {
+		region.span.latitudeDelta * metresPerDegreeLatitude < countSpan
 	}
 
 	/// Close enough anywhere on Earth for framing a map.

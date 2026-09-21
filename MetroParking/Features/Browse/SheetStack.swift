@@ -121,12 +121,12 @@ struct BrowseView: View {
 					emptyState
 				}
 			}
-			.safeAreaBar(edge: .top) {
-				BrowseControls(preferences: preferences)
-			}
+//			.safeAreaBar(edge: .top) {
+//				BrowseControls(preferences: preferences)
+//			}
 			.navigationTitle(.metroParking)
 			.modifier(RefreshStatusSubtitle())
-			.toolbarTitleDisplayMode(.inline)
+			.toolbarTitleDisplayMode(.inlineLarge)
 			.toolbar {
 				ToolbarItem(placement: .topBarTrailing) {
 					RefreshButton(scope: .all)
@@ -339,5 +339,34 @@ private struct BrowseControls: View {
 		.sensoryFeedback(.selection, trigger: preferences.preferredSortOption)
 		.sensoryFeedback(.selection, trigger: preferences.preferredSortingOrder)
 		.accessibilityIdentifier("sorting-menu")
+	}
+}
+
+// MARK: - Previews
+
+#Preview {
+	PreviewSheetHost()
+		.previewEnvironment()
+		.modelContainer(.preview())
+}
+
+/// Mirrors how `ContentView` presents the sheet over the map, so this preview
+/// shows the real detents and background interaction instead of a bare stack.
+private struct PreviewSheetHost: View {
+	@State private var model = MapSheetModel()
+	@Namespace private var scope
+
+	var body: some View {
+		ParkingMapView(model: model, scope: scope)
+			.ignoresSafeArea()
+			.sheet(isPresented: .constant(true)) {
+				NavigationStack {
+					BrowseView(model: model)
+				}
+				.presentationDetents(MapSheetModel.detents, selection: $model.detent)
+				.presentationBackgroundInteraction(.enabled(upThrough: .medium))
+				.presentationDragIndicator(.visible)
+				.interactiveDismissDisabled()
+			}
 	}
 }

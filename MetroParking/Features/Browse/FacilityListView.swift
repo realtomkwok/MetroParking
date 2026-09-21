@@ -251,7 +251,6 @@ extension FacilityList {
 			.transition(.blurReplace)
 		}
 	}
-
 }
 
 // MARK: - Previews

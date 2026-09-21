@@ -139,6 +139,9 @@ Temporary Items
 *.swp
 *.swo
 
+# Local Xcode Build Server configuration (contains machine-specific paths)
+/buildServer.json
+
 # Project specific ignores
 /.llm-context
 

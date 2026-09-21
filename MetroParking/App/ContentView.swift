@@ -6,7 +6,6 @@
 //
 
 import MapKit
-import OSLog
 import SwiftData
 import SwiftUI
 
@@ -16,35 +15,39 @@ import SwiftUI
 /// - Regular width or compact height (iPhone Duo inner display, landscape):
 ///   a floating panel beside the map. Layout is driven by size class only,
 ///   never by device or orientation.
+///
+/// The sheet's only say over the map is the camera scope, which follows the
+/// *detent* via `MapSheetModel.framed(_:)` — never live sheet geometry, which
+/// would make the map chase the finger. `MapControlCluster` sits at a fixed
+/// top-trailing position and is independent of the sheet entirely.
+///
+/// MapKit's own attribution and legal link stay at the bottom of the map and so
+/// end up behind the sheet. Measured on 2026-09-21: a `safeAreaInset` on the map
+/// does reach its safe area but MapKit places attribution against the *frame*
+/// and ignores it, and shrinking the frame to move it re-opens the white gap
+/// this layout exists to avoid. Neither is worth the trade.
 struct ContentView: View {
-	@Environment(\.modelContext) private var modelContext
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 	@Environment(\.verticalSizeClass) private var verticalSizeClass
 
-	@Environment(FacilityManager.self) private var facilityDataMgr
-	@Environment(ETAManager.self) private var etaMgr
+	@Environment(\.modelContext) private var modelContext
 	@Environment(LocationManager.self) private var locationMgr
-	@Environment(DeepLinkManager.self) private var deepLinkMgr
+	@Environment(FacilityManager.self) private var facilityDataMgr
 
 	@State private var sheet = MapSheetModel()
-	@State private var containerSize: CGSize = .zero
+	/// Ties the map to the controls `MapControlCluster` places for it.
+	@Namespace private var mapScope
 	/// Active fold on a foldable (iOS 27.1+), in this view's coordinates.
 	@State private var foldFrame: CGRect?
-	@State private var batchETATask: Task<Void, Never>?
 	@State private var scopeShiftTask: Task<Void, Never>?
-
-	/// Larger distance threshold for ETA recalculation (500m).
-	/// At driving speed, 100m triggers every ~5s which overwhelms MKDirections rate limits.
-	/// ETAs to distant parking lots don't change meaningfully over 500m.
-	private let batchETADistanceThreshold: CLLocationDistance = 500
-
-	private var panelWidth: CGFloat {
-		FloatingPanel.width(forContainerWidth: containerSize.width, fold: foldFrame)
-	}
-
-	private var usesFloatingPanel: Bool {
-		horizontalSizeClass == .regular || verticalSizeClass == .compact
-	}
+	/// The safe area: what the floating panel and the controls are laid out in.
+	@State private var containerSize: CGSize = .zero
+	/// What lies beyond it — status bar, home indicator, landscape notch.
+	///
+	/// Read off the map, which ignores the safe area and so is the only layer
+	/// here that still knows the insets. `containerSize` plus these is the
+	/// screen, which is what the detents and the camera are shares of.
+	@State private var safeAreaInsets = EdgeInsets()
 
 	/// Lets the sheet settle at its new detent before the map re-frames, so the
 	/// two motions read as one settle instead of fighting each other on curves
@@ -54,27 +57,58 @@ struct ContentView: View {
 	/// The map's own curve for a scope change.
 	private static let scopeShift: Animation = .spring(duration: 0.5, bounce: 0.15)
 
-	/// Share of the map's height the sheet covers.
+	private var panelWidth: CGFloat {
+		FloatingPanel.width(forContainerWidth: containerSize.width, fold: foldFrame)
+	}
+
+	private var usesFloatingPanel: Bool {
+		horizontalSizeClass == .regular || verticalSizeClass == .compact
+	}
+
+	/// The map spans this, not the safe-area box, and so do the detents.
+	private var screenHeight: Double {
+		Double(containerSize.height) + safeAreaInsets.top + safeAreaInsets.bottom
+	}
+
+	private var screenWidth: Double {
+		Double(containerSize.width) + safeAreaInsets.leading
+			+ safeAreaInsets.trailing
+	}
+
+	/// Points of the map's height the sheet covers.
 	///
 	/// Derived from the detent rather than live sheet geometry, so the map
 	/// doesn't re-frame on every frame of a drag. `.medium` and `.large` share a
 	/// value: at `.large` the map is hidden anyway, so re-framing there would
 	/// only cost a big camera move on the way back down.
-	private var bottomOcclusionFraction: Double {
-		guard !usesFloatingPanel, containerSize.height > 0 else { return 0 }
+	private var sheetCover: Double {
+		guard !usesFloatingPanel, screenHeight > 0 else { return 0 }
 
-		let covered =
-			sheet.detent == MapSheetModel.peekDetent
-			? MapSheetModel.peekHeight
-			: containerSize.height / 2
-		return covered / containerSize.height
+		// `.medium` is *about* half the screen — UIKit trims it on some
+		// displays (the iPhone Duo's cover screen gives ~58%). Good enough
+		// for framing, where a few percent is invisible; never good enough
+		// to place a control against, which is why none are placed here.
+		return sheet.detent == MapSheetModel.peekDetent
+			? Double(MapSheetModel.peekHeight)
+			: screenHeight / 2
+	}
+
+	/// Share of the map's height the sheet covers.
+	private var bottomOcclusionFraction: Double {
+		guard screenHeight > 0 else { return 0 }
+		return sheetCover / screenHeight
 	}
 
 	/// Share of the map's width the floating panel covers.
+	///
+	/// The panel is laid out inside the safe area, so on a notched device in
+	/// landscape it hides that inset as well as its own width and margin.
 	private var leadingOcclusionFraction: Double {
-		guard usesFloatingPanel, containerSize.width > 0 else { return 0 }
+		guard usesFloatingPanel, screenWidth > 0 else { return 0 }
 
-		return (panelWidth + FloatingPanel.margin) / containerSize.width
+		let covered =
+			safeAreaInsets.leading + Double(panelWidth) + FloatingPanel.margin
+		return covered / screenWidth
 	}
 
 	var body: some View {
@@ -82,14 +116,34 @@ struct ContentView: View {
 			// Edge to edge, with no safe-area padding: padding would shrink the
 			// map itself, and a delayed scope shift would then expose a gap
 			// under the sheet. The occlusion is handled in the camera framing.
-			ParkingMapView(model: sheet)
+			ParkingMapView(model: sheet, scope: mapScope)
 				.ignoresSafeArea()
+				// The only proxy here that still reports the insets: every layer
+				// above sits inside the safe area and so sees zero.
+				.onGeometryChange(for: EdgeInsets.self) { proxy in
+					proxy.safeAreaInsets
+				} action: { insets in
+					safeAreaInsets = insets
+				}
 
-			if usesFloatingPanel {
-				SheetStack(model: sheet)
-					.floatingPanel(width: panelWidth)
-					.transition(.move(edge: .leading).combined(with: .opacity))
+			// Grouped so the animation covers the panel's insertion and removal
+			// without also wrapping the map's container.
+			Group {
+				if usesFloatingPanel {
+					SheetStack(model: sheet)
+						.floatingPanel(width: panelWidth)
+						.transition(
+							.move(edge: .leading).combined(with: .opacity)
+						)
+				}
 			}
+			.animation(.smooth, value: usesFloatingPanel)
+		}
+		// On the ZStack, not the map: this layer carries the device's safe area,
+		// so the controls clear the status bar, Dynamic Island and landscape
+		// notch on every device without any of it being measured here.
+		.overlay(alignment: .bottomTrailing) {
+			MapControlCluster(model: sheet, scope: mapScope)
 		}
 		.onGeometryChange(for: CGSize.self) { proxy in
 			proxy.size
@@ -101,12 +155,9 @@ struct ContentView: View {
 		} action: { fold in
 			foldFrame = fold
 		}
-		.animation(.smooth, value: usesFloatingPanel)
 		.sheet(
-			isPresented: Binding(
-				get: { !usesFloatingPanel },
-				set: { _ in }  // Persistent: only the layout decides.
-			)
+			// Persistent: only the layout decides whether it is up.
+			isPresented: .constant(!usesFloatingPanel)
 		) {
 			SheetStack(model: sheet)
 				.presentationDetents(
@@ -130,65 +181,21 @@ struct ContentView: View {
 		.onChange(of: containerSize) {
 			shiftScope(after: 0)
 		}
-		.onChange(of: deepLinkMgr.selectedFacilityId, initial: true) {
-			_,
-			facilityId in
-			guard let facilityId else { return }
-			handleDeepLink(facilityId: facilityId)
-		}
-		.task {
-			// Initial batch ETA on first appearance if location is already available
-			if let location = locationMgr.currentLocation {
-				await triggerBatchETA(location: location)
-			}
-		}
 		.onChange(of: facilityDataMgr.staticDataLoadTime) {
-			// Facilities have just been seeded: frame the opening overview.
-			if sheet.selectedFacilityId == nil { shiftScope(after: 0) }
-
-			// First launch: facilities are seeded after the view appears, so the
-			// initial batch above found nothing to calculate.
-			if let location = locationMgr.currentLocation {
-				batchETATask?.cancel()
-				batchETATask = Task {
-					await triggerBatchETA(location: location)
-				}
-			}
+			frameOpeningOverview()
 		}
-		.onChange(of: locationMgr.isLocationAvailable) { _, isAvailable in
-			// Location just arrived: close in on what's nearby.
-			if sheet.selectedFacilityId == nil { shiftScope(after: 0) }
-
-			if isAvailable, let location = locationMgr.currentLocation {
-				batchETATask?.cancel()
-				batchETATask = Task {
-					await triggerBatchETA(location: location)
-				}
-			}
+		.onChange(of: locationMgr.isLocationAvailable) {
+			frameOpeningOverview()
 		}
-		.onChange(of: locationMgr.currentLocation) {
-			oldLocation,
-			newLocation in
-			guard let newLoc = newLocation else { return }
+		.schedulesBatchETA()
+		.deepLinkSelection(into: sheet)
+	}
 
-			// Use a larger threshold for ETA recalculation than the 100m location filter.
-			// At driving speed, 100m fires every ~5s which overwhelms MKDirections (50 req/min).
-			let isSignificantChange: Bool
-			if let oldLoc = oldLocation {
-				isSignificantChange =
-					newLoc.distance(from: oldLoc)
-					> batchETADistanceThreshold
-			} else {
-				isSignificantChange = true
-			}
-
-			guard isSignificantChange else { return }
-
-			batchETATask?.cancel()
-			batchETATask = Task {
-				await triggerBatchETA(location: newLoc)
-			}
-		}
+	/// Facilities have been seeded, or location has arrived. Either one changes
+	/// what the map should be framing — but only while nothing is selected.
+	private func frameOpeningOverview() {
+		guard sheet.selectedFacilityId == nil else { return }
+		shiftScope(after: 0)
 	}
 }
 
@@ -199,7 +206,7 @@ extension ContentView {
 		// fetch on the animation's first frame drops that frame.
 		if let facilityId {
 			guard
-				let coordinate = fetchFacility(id: facilityId)?.location
+				let coordinate = modelContext.facility(id: facilityId)?.location
 					.coordinate
 			else { return }  // Unknown id: leave the camera where it is.
 			withAnimation(.smooth) {
@@ -236,8 +243,7 @@ extension ContentView {
 	/// What the map frames when nothing is selected: the nearest few facilities
 	/// plus the user, or every facility when there's no location to work from.
 	private func overviewCoordinates() -> [CLLocationCoordinate2D] {
-		let descriptor = FetchDescriptor<ParkingFacility>()
-		let facilities = (try? modelContext.fetch(descriptor)) ?? []
+		let facilities = modelContext.allFacilities()
 
 		guard let location = locationMgr.currentLocation else {
 			return facilities.map(\.location.coordinate)
@@ -261,45 +267,9 @@ extension ContentView {
 		guard !nearest.isEmpty else { return [] }
 		return nearest + [location.coordinate]
 	}
-
-	private func fetchFacility(id facilityId: String) -> ParkingFacility? {
-		var descriptor = FetchDescriptor<ParkingFacility>(
-			predicate: #Predicate { $0.facilityId == facilityId }
-		)
-		descriptor.fetchLimit = 1
-		return try? modelContext.fetch(descriptor).first
-	}
 }
 
-// MARK: - Batch ETA
-extension ContentView {
-	private func triggerBatchETA(location: CLLocation) async {
-		let facilities =
-			(try? modelContext.fetch(FetchDescriptor<ParkingFacility>())) ?? []
-		guard !facilities.isEmpty else { return }
-		await etaMgr.calculateBatchETA(
-			from: location.coordinate,
-			for: facilities
-		)
-	}
-}
-
-// MARK: - Deep link
-extension ContentView {
-	private func handleDeepLink(facilityId: String) {
-		defer { deepLinkMgr.clearSelection() }
-
-		guard fetchFacility(id: facilityId) != nil else {
-			Logger.deeplink.error(
-				"⚠️ Deep link: No facility found with ID: \(facilityId)"
-			)
-			return
-		}
-
-		Logger.deeplink.info("✅ Deep link: Showing facility \(facilityId)")
-		sheet.select(facilityId)
-	}
-}
+// MARK: - Previews
 
 #Preview("With Pinned Facilities") {
 	ContentView()

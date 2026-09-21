@@ -91,27 +91,31 @@ struct FacilityProvider: AppIntentTimelineProvider {
 		}
 
 		// Register this facility as being displayed in a widget
-		await SharedDataManager.shared.registerWidgetFacility(selectedFacility.id)
+		SharedDataManager.shared.registerWidgetFacility(selectedFacility.id)
 
-		// STEP 1: Load cached data immediately (prevents placeholder flash)
-		// Try SwiftData first (most recent), then UserDefaults fallback
-		var displayData = await loadFacilityData(facilityId: selectedFacility.id)
-		if displayData == nil {
-			displayData = await SharedDataManager.shared.loadWidgetData(
-				forFacilityId: selectedFacility.id
-			)
-		}
+		// STEP 1: Load cached data immediately (prevents placeholder flash).
+		// The app writes SwiftData; the widget's own fetches only update the
+		// App Group cache. Use whichever is newer, or the widget would keep
+		// seeing stale SwiftData and re-fetch on every timeline.
+		let storeData = await loadFacilityData(facilityId: selectedFacility.id)
+		let cachedData = SharedDataManager.shared.loadWidgetData(
+			forFacilityId: selectedFacility.id
+		)
+		var displayData = [storeData, cachedData]
+			.compactMap { $0 }
+			.max { $0.cacheTimestamp < $1.cacheTimestamp }
 
 		// STEP 2: Refresh if data is stale (> 5 min)
 		// This ensures widget shows fresh vacancy data when WidgetKit refreshes the timeline
-		let staleThreshold: TimeInterval = 5 * 60  // 5 minutes
+		// Widget facilities are in the watched tier, so they share its cache validity.
+		let staleThreshold = RefreshConfiguration.CacheValidity.Foreground.watched
 		let isDataStale = displayData?.cacheTimestamp.timeIntervalSinceNow ?? -.infinity < -staleThreshold
 
 		if isDataStale {
 			Logger
 				.widget
 				.info("🔄 Widget: Data is stale, fetching fresh from API...")
-			if let freshData = await WidgetAPIService.shared.fetchAndUpdateCache(
+			if let freshData = await SharedDataManager.shared.refreshWidgetData(
 				facilityId: selectedFacility.id,
 				existingData: displayData
 			) {
@@ -164,7 +168,7 @@ struct FacilityProvider: AppIntentTimelineProvider {
 		.WidgetFacilityData?
 	{
 		// Use the shared container to ensure we're reading from the same data store as the app
-		let container = await SharedDataManager.sharedContainer
+		let container = SharedDataManager.sharedContainer
 		let context = ModelContext(container)
 
 		let descriptor = FetchDescriptor<ParkingFacility>(
@@ -186,7 +190,7 @@ struct FacilityProvider: AppIntentTimelineProvider {
 			)
 
 			// Convert to widget data format
-			return await SharedDataManager.shared.makeWidgetData(from: facility)
+			return SharedDataManager.shared.makeWidgetData(from: facility)
 		} catch {
 			logger
 				.error("❌ Widget: Failed to load facility data: \(error)")
@@ -220,8 +224,8 @@ struct FacilityWidget: Widget {
 
 struct FocusedFacilityWidgetConfigs: WidgetConfigurationIntent {
 
-	static var title: LocalizedStringResource = "widget.title.carParkVacancy"
-	static var description = IntentDescription(
+	static let title: LocalizedStringResource = "widget.title.carParkVacancy"
+	static let description = IntentDescription(
 		"widget.empty.selectPrompt"
 	)
 
@@ -259,7 +263,7 @@ extension SharedDataManager.WidgetFacilityData {
 			availableSpaces: available,
 			totalSpaces: total,
 			occupancyRatio: Double(total - available) / Double(total),
-			availabilityStatus: status.text,
+			availabilityStatus: status.rawValue,
 			distance: 2500.0,
 			travelTime: 420.0,
 			lastUpdated: Date(),

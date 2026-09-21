@@ -139,11 +139,12 @@ Temporary Items
 *.swp
 *.swo
 
+# Local Xcode Build Server configuration (contains machine-specific paths)
+/buildServer.json
+
 # Project specific ignores
 /.llm-context
 
 # Configuration files (be careful with these - you might want to track some)
 # Uncomment specific config files you want to ignore:
-# Config.xcconfig
-# *.xcconfig
-MetroParking.xcodeproj/project.pbxproj
+Config.xcconfig

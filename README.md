@@ -11,19 +11,14 @@ the [TfNSW Car Park API](https://data.nsw.gov.au/data/dataset/2-car-park-api).
 
 ## Features
 
-- **Real-time Availability**: Live parking space data for 37 Park&Ride facilities across NSW
-- **Interactive Map**: Facility locations with availability status indicators
-- **Smart Sorting**: Sort by distance, availability, name, suburb, or capacity
-- **Pinned Facilities**: Save frequently used locations for quick access
-- **ETA Calculations**: Traffic-aware driving time estimates using MapKit
-- **Street View**: Look Around integration for facility reconnaissance
-- **Location Services**: Distance calculations and nearby facility discovery
-- **Search**: Find facilities by name or suburb
-- **Home/Lock Screen Widgets**: Quick glance at your selected facility with configurable AppIntent
-- **Background Refresh**: Automatic data updates using BGTaskScheduler
-- **App Groups Integration**: Seamless data sharing between app and widgets
-- **Onboarding Experience**: Welcome screen on first launch with feature highlights
-- **Settings Menu**: Comprehensive settings including notifications, widgets, and app preferences
+- **Map-first design**: Every car park on a full-screen map, colour-coded by availability, with a Maps-style sheet on top
+- **Real-time availability**: Live space counts for Park&Ride car parks across NSW
+- **iPhone Duo ready**: A floating panel beside the map on the open inner display, filling the pane up to the fold; a bottom sheet on the outer display
+- **Sort, filter and search**: By distance, availability, name or last update; pinned car parks first
+- **Travel times**: Driving ETA and distance using MapKit, plus nearby car parks
+- **Look Around**: Street-level imagery of each car park
+- **Widgets**: A configurable home screen widget for any car park
+- **Background refresh**: Pinned and widget car parks stay fresh with BGTaskScheduler
 - **Navigation**: Open directions in Apple Maps or Google Maps
 
 ### Coming Soon
@@ -33,7 +28,7 @@ the [TfNSW Car Park API](https://data.nsw.gov.au/data/dataset/2-car-park-api).
 ## Requirements
 
 - iOS 26.0+
-- Xcode 16.3+
+- Xcode 27.0+ (Swift 6.4). Xcode 27.1 adds iPhone Duo fold handling and the iPhone Duo simulator.
 - TfNSW API Key ([Get one here](https://opendata.transport.nsw.gov.au/))
 
 ## Setup
@@ -59,132 +54,69 @@ the [TfNSW Car Park API](https://data.nsw.gov.au/data/dataset/2-car-park-api).
    DEVELOPMENT_TEAM=your_apple_developer_team_id
    ```
 
+   Both the app and the widget read these values. Without a valid key the app runs, but live data is unavailable.
    See [Configuration Guide](Docs/CONFIGURATION.md) for details.
 
 3. **Build and run**
    ```bash
    open MetroParking.xcodeproj
    ```
-   Hit ⌘+R.
+   Select the `MetroParking` scheme and hit ⌘+R. Run the unit tests with ⌘+U.
 
 ## Architecture
 
-### Core Components
+See [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) for the full picture and
+[Docs/IPHONE_DUO.md](Docs/IPHONE_DUO.md) for foldable layout rules.
 
-- **Models**: SwiftData entities for persistent storage
-    - `ParkingFacility`: Main facility data with occupancy caching
-    - `ParkingZone`: Individual parking zones within facilities
-
-- **Services**:
-    - `ParkingAPIService`: TfNSW API integration
-
-- **Managers**:
-    - `FacilityManager`: Facility data loading with concurrency control
-    - `SharedDataManager`: App Groups data sharing (app ↔ widget)
-    - `BackgroundTaskManager`: BGTaskScheduler integration for background refresh
-    - `AppStateManager`: App lifecycle state management
-    - `ETAManager`: MapKit-based route calculations
-    - `LocationManager`: Core Location wrapper
-    - `MapsManager`: Map interaction and navigation
-    - `LookAroundManager`: Street View integration
-    - `SearchManager`: Facility search
-    - `DeepLinkManager`: URL scheme handling
-    - `OnboardingManager`: Onboarding flow state and navigation
-    - `UserPreferences`: Centralized user preferences using @AppStorage
-
-- **Utilities**:
-    - `RefreshConfiguration`: Unified refresh timing constants and cache validity tiers
-    - `WidgetBudgetTracker`: Widget reload budget management (60/day limit)
-    - `SortAndFilterHelper`: Sorting and filtering logic
-    - `Logger`: Centralized logging system (shared target)
-
-### Data Flow
-
-1. **Initial Load**: Static facility metadata → SwiftData (shared via App Groups)
-2. **Priority Tiers**:
-   - Critical (widgets + favorites): 1 min cache (foreground) / 10 min (background)
-   - Standard (recently visited): 5 min cache (foreground) / 30 min (background)
-   - Background tier: 10 min cache (foreground) / 1 hour (background)
-3. **Foreground Updates**: 60s refresh cycle with tiered cache validation
-4. **Background Tasks**:
-   - Quick refresh (15 min intervals): Critical + Standard tiers
-   - Full refresh (2 hour intervals): All facilities
-5. **Widget Updates**: Budget-controlled reloads (60/day, 15s throttle)
-
-### API Integration
-
-The app consumes the [TfNSW Car Park API](https://opendata.transport.nsw.gov.au/):
-
-- **Facilities Endpoint**: `/v1/carpark` - List all facilities
-- **Occupancy Endpoint**: `/v1/carpark?facility={id}` - Real-time data
-- **Rate Limiting**: Managed by `RefreshConfiguration` with tiered intervals
-- **Error Handling**: Exponential backoff for failed requests
-- **Concurrency Control**: Single operation lock prevents overlapping refreshes
+- **Swift 6** language mode with complete data-race checking. App and widget code is main-actor isolated by default; the data layer (models, networking, configuration) is `nonisolated` so the widget and background tasks can use it.
+- **SwiftUI + SwiftData + `@Observable`**, with services injected through `AppEnvironment`.
+- **Shared code**: the widget compiles the model, networking and persistence files from the app target.
 
 ## Project Structure
 
 ```
 MetroParking/
 ├── MetroParking/
-│   ├── Models/             # SwiftData models and API responses
-│   ├── Views/              # SwiftUI views and components
-│   │   ├── Components/     # Reusable UI components (e.g., ParkingProgressGauge)
-│   │   └── ...
-│   ├── Services/           # API client (ParkingAPIService)
-│   ├── Managers/           # State management and business logic
-│   ├── Utils/              # Helpers, extensions, and configuration
-│   ├── Tips/               # TipKit definitions
-│   └── MetroParkingApp.swift
-├── MetroParkingWidget/     # Widget extension with AppIntent support
-├── Shared/                 # Shared code between targets (Logger)
-├── Docs/                   # Documentation (widgets, concurrency, setup)
-│   ├── Widgets/            # Widget implementation guides
-│   ├── Concurrency/        # Concurrency fixes and review checklists
-│   └── Components/         # Architecture and migration docs
-└── Config.xcconfig         # Environment configuration (gitignored)
+│   ├── App/             # Entry point, root map view, AppEnvironment, deep links, preferences
+│   ├── Core/
+│   │   ├── Model/       # SwiftData models and seed data
+│   │   ├── Networking/  # TfNSW API client, DTOs, rate limiting, usage quota
+│   │   ├── Persistence/ # Shared SwiftData container, widget cache, configuration
+│   │   ├── Refresh/     # Foreground and background refresh, widget reload budget
+│   │   ├── Location/    # Location, ETAs, Look Around
+│   │   └── Support/     # Logging and helpers
+│   ├── Features/        # Map, Browse, FacilityDetail, Settings, Onboarding, Debug
+│   ├── DesignSystem/    # Reusable views
+│   └── Resources/       # Info.plist, entitlements, strings, assets
+├── MetroParkingWidget/  # Widget extension (AppIntent configuration)
+├── MetroParkingTests/   # Swift Testing unit tests
+├── MetroParkingUITests/ # Screenshot automation (fastlane snapshot)
+└── Docs/
 ```
-
-## Key Files
-
-- `ContentView.swift`: Main app interface with map and facility list
-- `ParkingFacility.swift`: Core SwiftData model with occupancy logic
-- `FacilityManager.swift`: Facility data loading with concurrency control
-- `BackgroundTaskManager.swift`: BGTaskScheduler integration for background refresh
-- `SharedDataManager.swift`: App Groups container for app ↔ widget data sharing
-- `ParkingAPIService.swift`: TfNSW API client implementation
-- `RefreshConfiguration.swift`: Unified timing constants and cache validity tiers
-- `WidgetBudgetTracker.swift`: Widget reload budget management
-- `MetroParkingWidget.swift`: Widget entry point with AppIntent configuration
-- `WidgetAPIService.swift`: Dedicated API service for widget data fetching
 
 ## Development Notes
 
 ### Refresh Strategy
 
-The app uses a tiered cache validity system with concurrency control:
+Timing lives in `RefreshConfiguration`.
 
-1. **Foreground Refresh**: 60s cycle interval with tiered cache validation
-   - Critical tier (widgets + favorites): 1 min cache validity
-   - Standard tier (recently visited): 5 min cache validity
-   - Background tier (others): 10 min cache validity
+1. **Foreground**: A refresh cycle every 5 minutes. Up to 4 requests run at once, with request starts spaced 0.4 s apart to respect the TfNSW rate limit.
+   - Watched car parks (pinned or in a widget): 5 min cache validity
+   - Everything else: 15 min cache validity
+2. **Background tasks**:
+   - Quick refresh (15–30 min depending on time of day): watched car parks that need it
+   - Full refresh (every 2 hours): all car parks
+3. **Widget**: Uses the newer of the shared store and its own cache; fetches when older than 5 minutes. App reloads are budgeted at 60 per day with a 15 s throttle.
+4. **Quota**: A daily API counter in the App Group covers the app and the widget.
 
-2. **Background Tasks**:
-   - Quick refresh (15 min intervals): Updates critical + standard tiers
-   - Full refresh (2 hour intervals): Updates all facilities
+### Testing
 
-3. **Widget Budget**: 60 reloads per day, 15s minimum throttle between reloads
+Unit tests use Swift Testing and cover API decoding, availability thresholds, sheet navigation, deep links, the rate limiter, the usage counter and refresh scheduling:
 
-4. **Concurrency Control**: Operation lock prevents overlapping refreshes
-
-### Performance Optimizations
-
-- **Tiered Cache Validity**: 1-60 min depending on facility priority and app state
-- **Widget Budget Management**: Prevents budget exhaustion with smart throttling
-- **Background Task Scheduling**: Intelligent scheduling based on time of day
-- **Concurrency Control**: Prevents overlapping refreshes with operation locks
-- **App Groups**: Zero-copy data sharing between app and widgets
-- **Smart Scheduling**: Exponential backoff for failed requests
-- **Memory Management**: SwiftData with automatic persistence
+```bash
+xcodebuild test -project MetroParking.xcodeproj -scheme MetroParking \
+  -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -only-testing:MetroParkingTests
+```
 
 ## Contributing
 
@@ -198,11 +130,11 @@ The app uses a tiered cache validity system with concurrency control:
 
 ### Code Style
 
-- Use SwiftUI for all UI components
-- Follow MVVM architecture patterns
-- Leverage SwiftData for persistence
-- Use `@MainActor` for UI-bound classes
-- Implement proper error handling and logging
+- SwiftUI for all UI; lay out by size class, never by device or orientation
+- Keep code building in Swift 6 mode with no concurrency warnings
+- New data-layer types shared with the widget must be `nonisolated`
+- Use `Logger` categories, not `print`
+- Write new tests with Swift Testing
 
 ## API Documentation
 
@@ -228,6 +160,13 @@ License as published by the Free Software Foundation, either version 3 of the Li
 version.
 
 ## Changelog
+
+### Unreleased
+
+- Map-first main screen with a Maps-style sheet, and a floating panel on wide screens and the iPhone Duo inner display
+- Swift 6 language mode; project reorganised into feature folders
+- Faster refresh (concurrent, rate-limited requests) and fewer redundant widget API calls
+- Fixed: daily API counter never reset; widget crash without an API key; widget colours in Chinese; forced refresh ignored during a running cycle
 
 ### v1.0 (February 2026)
 

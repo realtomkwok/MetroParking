@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CAR_PARK_BASE_URL</key>
+	<string>$(CAR_PARK_BASE_URL)</string>
+	<key>TFNSW_API_KEY</key>
+	<string>$(TFNSW_API_KEY)</string>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionPointIdentifier</key>

@@ -85,6 +85,9 @@ extension DetailSections {
 					.smooth,
 					value: selectedFacility.refreshStatus.staleness
 				)
+				// Drives the numeric content transitions and the gauge, which have
+				// no ambient animation of their own.
+				.animation(.smooth, value: selectedFacility.vacancy.available)
 			}
 		}
 

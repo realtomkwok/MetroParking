@@ -313,9 +313,11 @@ extension FacilityManager {
 			let occupied = Int(response.occupancy.total ?? "0") ?? 0
 			let totalSpaces = Int(response.spots) ?? facility.totalSpaces
 
-			withAnimation(.snappy) {
-				facility.updateOccupancy(occupied: occupied, totalSpaces: totalSpaces)
-			}
+			// No `withAnimation` here: a refresh writes once per facility, and a
+			// model-layer animation leaks one transaction per write into every
+			// observer — including the map, where it preempts the camera.
+			// The views animate on the values they show instead.
+			facility.updateOccupancy(occupied: occupied, totalSpaces: totalSpaces)
 			SharedDataManager.shared.cacheWidgetDataIfSelected(facility)
 			return true
 

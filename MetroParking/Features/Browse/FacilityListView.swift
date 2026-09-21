@@ -195,6 +195,7 @@ extension FacilityList {
 			}
 			.padding(.vertical, 4)
 			.opacity(facility.refreshStatus.staleness.displayOpacity)
+			.animation(.smooth, value: facility.vacancy.available)
 			.animation(.smooth, value: facility.isFavourite)
 			.animation(.smooth, value: facility.refreshStatus.staleness)
 			.animation(.smooth, value: facility.route?.travelTime)

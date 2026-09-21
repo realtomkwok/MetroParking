@@ -13,7 +13,10 @@ import SwiftUI
 struct ParkingMapView: View {
 	@Bindable var model: MapSheetModel
 
-	@Query private var facilities: [ParkingFacility]
+	// Sorted so annotation order is stable across store updates; otherwise
+	// MapKit re-adds annotation views on every refresh write.
+	@Query(sort: \ParkingFacility.facilityId)
+	private var facilities: [ParkingFacility]
 
 	private var selection: Binding<String?> {
 		Binding(

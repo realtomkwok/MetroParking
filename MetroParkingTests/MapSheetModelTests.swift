@@ -104,14 +104,105 @@ struct MapSheetModelTests {
 
 		model.focus(on: coordinate)
 
-		let camera = try #require(model.camera.camera)
-		#expect(camera.centerCoordinate.latitude == coordinate.latitude)
-		#expect(camera.centerCoordinate.longitude == coordinate.longitude)
-		#expect(camera.distance == MapSheetModel.focusDistance)
-
-		model.showAll()
+		let region = try #require(model.camera.region)
+		#expect(region.center.latitude == coordinate.latitude)
+		#expect(region.center.longitude == coordinate.longitude)
 		#expect(model.camera.positionedByUser == false)
-		#expect(model.camera.camera == nil)
+	}
+
+	@Test func `showing all frames every facility`() throws {
+		let model = MapSheetModel()
+		model.focus(on: CLLocationCoordinate2D(latitude: -33.8, longitude: 151.0))
+
+		model.showAll(fitting: [
+			CLLocationCoordinate2D(latitude: -33.9, longitude: 151.0),
+			CLLocationCoordinate2D(latitude: -33.7, longitude: 151.2),
+		])
+
+		let region = try #require(model.camera.region)
+		#expect(abs(region.center.latitude - -33.8) < 0.0001)
+		#expect(abs(region.center.longitude - 151.1) < 0.0001)
+		// Both points inside, with padding around them.
+		#expect(region.span.latitudeDelta > 0.2)
+		#expect(region.span.longitudeDelta > 0.2)
+		#expect(model.camera.positionedByUser == false)
+	}
+
+	@Test func `showing all without coordinates falls back to the overview`()
+		throws
+	{
+		let model = MapSheetModel()
+
+		model.showAll(fitting: [])
+
+		let region = try #require(model.camera.region)
+		#expect(
+			region.center.latitude
+				== MapSheetModel.overviewRegion.center.latitude
+		)
+		#expect(
+			region.center.longitude
+				== MapSheetModel.overviewRegion.center.longitude
+		)
+	}
+
+	@Test func `framing offsets the centre away from the sheet`() throws {
+		let model = MapSheetModel()
+		let coordinate = CLLocationCoordinate2D(latitude: -33.8, longitude: 151.0)
+
+		model.focus(on: coordinate)
+		let unoccluded = try #require(model.camera.region)
+
+		// Half the map covered by the sheet.
+		model.bottomOcclusionFraction = 0.5
+		model.focus(on: coordinate)
+		let occluded = try #require(model.camera.region)
+
+		// The centre moves south, so the facility sits in the visible top half.
+		#expect(occluded.center.latitude < unoccluded.center.latitude)
+		// And the span grows, so the same context still fits in that half.
+		#expect(occluded.span.latitudeDelta > unoccluded.span.latitudeDelta)
+
+		// The facility should land near the middle of the uncovered band.
+		let visibleCentre =
+			occluded.center.latitude + occluded.span.latitudeDelta * 0.25
+		#expect(abs(visibleCentre - coordinate.latitude) < 0.0001)
+	}
+
+	@Test func `framing offsets away from the floating panel`() throws {
+		let model = MapSheetModel()
+		let coordinate = CLLocationCoordinate2D(latitude: -33.8, longitude: 151.0)
+
+		model.leadingOcclusionFraction = 0.5
+		model.focus(on: coordinate)
+		let region = try #require(model.camera.region)
+
+		// The centre moves west, so the facility sits in the visible trailing half.
+		#expect(region.center.longitude < coordinate.longitude)
+	}
+
+	@Test func `a single facility gets a usable span, not a zero one`() throws {
+		let region = try #require(
+			MapSheetModel.region(fitting: [
+				CLLocationCoordinate2D(latitude: -33.8, longitude: 151.0)
+			])
+		)
+
+		#expect(region.span.latitudeDelta > 0)
+		#expect(region.span.longitudeDelta > 0)
+	}
+
+	@Test func `identical coordinates get a usable span, not a zero one`() throws
+	{
+		let coordinate = CLLocationCoordinate2D(latitude: -33.8, longitude: 151.0)
+
+		let region = try #require(
+			MapSheetModel.region(fitting: [coordinate, coordinate, coordinate])
+		)
+
+		#expect(region.center.latitude == coordinate.latitude)
+		#expect(region.span.latitudeDelta > 0)
+		#expect(region.span.longitudeDelta > 0)
 	}
 }
 
